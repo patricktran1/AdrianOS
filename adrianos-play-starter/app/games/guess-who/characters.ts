@@ -1,0 +1,178 @@
+export type Character = {
+  id: string;
+  name: string;
+  emoji: string;
+  background: string;
+  traits: string[];
+};
+
+export const characters: Character[] = [
+  {
+    id: "adrian",
+    name: "Adrian",
+    emoji: "🧒🏻",
+    background: "#D9FF5B",
+    traits: ["dark hair", "child", "no glasses"],
+  },
+  {
+    id: "elliot",
+    name: "Elliot",
+    emoji: "👦🏻",
+    background: "#C6B8FF",
+    traits: ["dark hair", "child", "no glasses"],
+  },
+  {
+    id: "maya",
+    name: "Maya",
+    emoji: "👧🏽",
+    background: "#F7B2D9",
+    traits: ["dark hair", "child", "no glasses"],
+  },
+  {
+    id: "leo",
+    name: "Leo",
+    emoji: "👦🏼",
+    background: "#8FE3CF",
+    traits: ["light hair", "child", "no glasses"],
+  },
+  {
+    id: "zoe",
+    name: "Zoe",
+    emoji: "👧🏻",
+    background: "#FFCF70",
+    traits: ["dark hair", "child", "no glasses"],
+  },
+  {
+    id: "max",
+    name: "Max",
+    emoji: "👦🏾",
+    background: "#8EC5FF",
+    traits: ["dark hair", "child", "no glasses"],
+  },
+  {
+    id: "nina",
+    name: "Nina",
+    emoji: "👩🏽‍🦱",
+    background: "#E392FF",
+    traits: ["curly hair", "adult", "no glasses"],
+  },
+  {
+    id: "jack",
+    name: "Jack",
+    emoji: "🧔🏻",
+    background: "#FF9B85",
+    traits: ["beard", "adult", "dark hair"],
+  },
+  {
+    id: "sam",
+    name: "Sam",
+    emoji: "👨🏿‍🦲",
+    background: "#FFE27A",
+    traits: ["bald", "adult", "no glasses"],
+  },
+  {
+    id: "lily",
+    name: "Lily",
+    emoji: "👩🏼",
+    background: "#B6E388",
+    traits: ["light hair", "adult", "no glasses"],
+  },
+  {
+    id: "omar",
+    name: "Omar",
+    emoji: "👨🏽",
+    background: "#72D5D0",
+    traits: ["dark hair", "adult", "no glasses"],
+  },
+  {
+    id: "ava",
+    name: "Ava",
+    emoji: "👩🏻‍🦰",
+    background: "#F4A261",
+    traits: ["red hair", "adult", "no glasses"],
+  },
+  {
+    id: "ben",
+    name: "Ben",
+    emoji: "👨🏼‍🦱",
+    background: "#A0C4FF",
+    traits: ["curly hair", "adult", "no glasses"],
+  },
+  {
+    id: "ruby",
+    name: "Ruby",
+    emoji: "👵🏾",
+    background: "#FFC6FF",
+    traits: ["gray hair", "adult", "no glasses"],
+  },
+  {
+    id: "theo",
+    name: "Theo",
+    emoji: "👴🏻",
+    background: "#BDE0FE",
+    traits: ["gray hair", "adult", "no glasses"],
+  },
+  {
+    id: "mia",
+    name: "Mia",
+    emoji: "👩🏻‍🦳",
+    background: "#E9EDC9",
+    traits: ["gray hair", "adult", "no glasses"],
+  },
+  {
+    id: "alex",
+    name: "Alex",
+    emoji: "🤓",
+    background: "#FFD6A5",
+    traits: ["glasses", "adult"],
+  },
+  {
+    id: "ivy",
+    name: "Ivy",
+    emoji: "👩🏿‍🏫",
+    background: "#CAFFBF",
+    traits: ["glasses", "adult", "dark hair"],
+  },
+  {
+    id: "noah",
+    name: "Noah",
+    emoji: "👨🏻‍🔬",
+    background: "#9BF6FF",
+    traits: ["glasses", "adult", "dark hair"],
+  },
+  {
+    id: "ella",
+    name: "Ella",
+    emoji: "👩🏼‍🎨",
+    background: "#FDFFB6",
+    traits: ["hat", "adult", "light hair"],
+  },
+  {
+    id: "kai",
+    name: "Kai",
+    emoji: "👨🏽‍🚀",
+    background: "#A0A6FF",
+    traits: ["hat", "adult"],
+  },
+  {
+    id: "rose",
+    name: "Rose",
+    emoji: "👒",
+    background: "#FFADAD",
+    traits: ["hat", "adult"],
+  },
+  {
+    id: "drew",
+    name: "Drew",
+    emoji: "🧢",
+    background: "#BDB2FF",
+    traits: ["hat", "adult"],
+  },
+  {
+    id: "finn",
+    name: "Finn",
+    emoji: "🤠",
+    background: "#FAD2A1",
+    traits: ["hat", "adult"],
+  },
+];

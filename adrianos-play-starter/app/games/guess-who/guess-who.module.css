@@ -1,0 +1,347 @@
+.game {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.statusBar > div:first-child {
+  min-width: 110px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 18px;
+  background: #181d28;
+}
+
+.statusLabel {
+  display: block;
+  margin-bottom: 2px;
+  color: #aab1bf;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.statusBar strong {
+  font-size: 1.5rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.secondaryButton,
+.cancelButton,
+.primaryButton {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.secondaryButton {
+  color: #f6f5f2;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: #222936;
+}
+
+.cancelButton {
+  color: #10131b;
+  background: #ffc1c8;
+}
+
+.primaryButton {
+  color: #10131b;
+  background: #d9ff5b;
+}
+
+.guessBanner {
+  margin-bottom: 14px;
+  padding: 13px 16px;
+  border: 1px solid rgba(217, 255, 91, 0.32);
+  border-radius: 16px;
+  color: #d9ff5b;
+  background: rgba(217, 255, 91, 0.08);
+  font-weight: 850;
+  text-align: center;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.card {
+  position: relative;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 20px;
+  color: #f6f5f2;
+  background: #181d28;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(217, 255, 91, 0.55);
+}
+
+.guessMode {
+  outline: 2px solid rgba(217, 255, 91, 0.22);
+}
+
+.portrait {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+}
+
+.portrait span {
+  display: block;
+  font-size: clamp(3.2rem, 7vw, 6.2rem);
+  line-height: 1;
+  transform: translateY(3%);
+}
+
+.cardFooter {
+  min-height: 66px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 12px 12px;
+  text-align: left;
+}
+
+.cardFooter strong {
+  overflow: hidden;
+  font-size: 1rem;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardFooter span {
+  margin-top: 4px;
+  color: #aab1bf;
+  font-size: 0.69rem;
+}
+
+.eliminated {
+  opacity: 0.48;
+  transform: scale(0.96);
+}
+
+.eliminated:hover {
+  transform: scale(0.98);
+}
+
+.flipCover {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(16, 19, 27, 0.93),
+      rgba(34, 41, 54, 0.96)
+    );
+}
+
+.flipCover span {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 3px solid rgba(255, 255, 255, 0.55);
+  border-radius: 50%;
+  font-size: 2.7rem;
+  font-weight: 500;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(7, 9, 13, 0.84);
+  backdrop-filter: blur(14px);
+}
+
+.modal {
+  position: relative;
+  width: min(520px, 100%);
+  max-height: min(780px, calc(100dvh - 36px));
+  overflow-y: auto;
+  padding: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 30px;
+  background: #181d28;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.48);
+  text-align: center;
+}
+
+.closeButton {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  color: #f6f5f2;
+  background: #222936;
+  font-size: 1.65rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-top: 9px;
+  color: #d9ff5b;
+  font-size: 0.74rem;
+  font-weight: 950;
+  letter-spacing: 0.17em;
+}
+
+.modal h1 {
+  margin: 12px 0 10px;
+  font-size: clamp(2rem, 7vw, 3.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.modal p {
+  margin: 0 auto 22px;
+  max-width: 420px;
+  color: #aab1bf;
+  line-height: 1.55;
+}
+
+.secretCard {
+  width: min(280px, 82vw);
+  margin: 10px auto 22px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 25px;
+  color: #f6f5f2;
+  background: #222936;
+  cursor: pointer;
+}
+
+.secretPortrait,
+.largeSecretPortrait {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  overflow: hidden;
+}
+
+.secretPortrait {
+  aspect-ratio: 4 / 5;
+}
+
+.largeSecretPortrait {
+  width: min(280px, 78vw);
+  aspect-ratio: 4 / 5;
+  margin: 20px auto 24px;
+  border-radius: 26px;
+}
+
+.secretPortrait span,
+.largeSecretPortrait span {
+  font-size: clamp(6rem, 22vw, 10rem);
+  line-height: 1;
+  transform: translateY(3%);
+}
+
+.secretCard strong {
+  display: block;
+  padding: 15px;
+  font-size: 1.08rem;
+}
+
+@media (max-width: 980px) {
+  .board {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 650px) {
+  .statusBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .actions {
+    justify-content: stretch;
+  }
+
+  .actions button {
+    flex: 1 1 120px;
+  }
+
+  .board {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .card {
+    border-radius: 14px;
+  }
+
+  .cardFooter {
+    min-height: 58px;
+    padding: 8px 9px 10px;
+  }
+
+  .cardFooter strong {
+    font-size: 0.88rem;
+  }
+
+  .cardFooter span {
+    font-size: 0.61rem;
+  }
+
+  .portrait span {
+    font-size: clamp(2.8rem, 18vw, 4.8rem);
+  }
+
+  .modal {
+    padding: 30px 20px 24px;
+    border-radius: 24px;
+  }
+}
+
+@media (max-width: 390px) {
+  .board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
