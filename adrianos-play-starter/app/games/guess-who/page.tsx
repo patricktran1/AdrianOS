@@ -1,26 +1,73 @@
 import Link from "next/link";
-import GameFrame from "@/components/GameFrame";
+
+const GUESS_WHO_URL = "PASTE-YOUR-GUESS-WHO-LIVE-URL-HERE";
 
 export default function GuessWhoPage() {
   return (
-    <GameFrame title="Guess Who">
-      <div className="import-panel">
-        <div className="import-icon">🕵️</div>
-        <span className="eyebrow">NEXT INTEGRATION</span>
-        <h1>Move the existing Guess Who game here.</h1>
-        <p>
-          Its final home will be <code>/games/guess-who</code>, with the same
-          full-screen frame, a reliable Home button, correctly cropped secret
-          cards, and tap-to-flip elimination.
-        </p>
-        <div className="import-checklist">
-          <span>✓ Portrait-safe image sizing</span>
-          <span>✓ One close button in the top-right</span>
-          <span>✓ Tap cards to flip them down</span>
-          <span>✓ Clean end screen at every screen size</span>
-        </div>
-        <Link href="/" className="primary-button inline-button">Back to library</Link>
-      </div>
-    </GameFrame>
+    <main
+      style={{
+        height: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        background: "#10131b",
+      }}
+    >
+      <header
+        style={{
+          height: "64px",
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 18px",
+          borderBottom: "1px solid rgba(255,255,255,0.12)",
+          background: "#10131b",
+          color: "white",
+        }}
+      >
+        <Link
+          href="/"
+          style={{
+            padding: "10px 15px",
+            borderRadius: "999px",
+            background: "#222936",
+            color: "white",
+            textDecoration: "none",
+            fontWeight: 800,
+          }}
+        >
+          ← Games
+        </Link>
+
+        <strong>Guess Who</strong>
+
+        <a
+          href={GUESS_WHO_URL}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            color: "#d9ff5b",
+            textDecoration: "none",
+            fontWeight: 800,
+            fontSize: "14px",
+          }}
+        >
+          Full screen ↗
+        </a>
+      </header>
+
+      <iframe
+        src={GUESS_WHO_URL}
+        title="Guess Who"
+        allow="fullscreen"
+        allowFullScreen
+        style={{
+          width: "100%",
+          flex: 1,
+          border: 0,
+          background: "white",
+        }}
+      />
+    </main>
   );
 }
