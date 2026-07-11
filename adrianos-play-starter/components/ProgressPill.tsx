@@ -1,13 +1,15 @@
 "use client";
 
 import { useAdrianProgress } from "@/lib/adrian-progress";
+import { useFamilyProfiles } from "@/lib/adrian-profiles";
 
 export default function ProgressPill({ large = false }: { large?: boolean }) {
   const { progress, xpIntoLevel, xpPerLevel } = useAdrianProgress();
+  const { activeProfile } = useFamilyProfiles();
 
   return (
     <div
-      aria-label={`Level ${progress.level}, ${progress.coins} coins, ${xpIntoLevel} of ${xpPerLevel} XP`}
+      aria-label={`${activeProfile.name}, level ${progress.level}, ${progress.coins} coins, ${xpIntoLevel} of ${xpPerLevel} XP`}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -22,6 +24,7 @@ export default function ProgressPill({ large = false }: { large?: boolean }) {
         fontWeight: 900,
       }}
     >
+      <span>{activeProfile.emoji} {activeProfile.name}</span>
       <span style={{ color: "#d9ff5b" }}>LV {progress.level}</span>
       <span style={{ color: "#f6f5f2" }}>🪙 {progress.coins}</span>
       <span style={{ color: "#aab1bf" }}>{xpIntoLevel}/{xpPerLevel} XP</span>
