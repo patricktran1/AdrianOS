@@ -8,8 +8,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type Mode = "mission" | "timer" | "daily" | "review";
-type Topic = "mixed" | "addition" | "subtraction" | "money";
+type Topic = "mixed" | "addition" | "subtraction" | "money" | "word-problems";
 type Screen = "menu" | "play" | "results";
+type ProblemKind = "equation" | "missing" | "story";
 
 type Problem = {
   left: number;
@@ -17,6 +18,9 @@ type Problem = {
   operator: "+" | "−";
   answer: number;
   money: boolean;
+  kind: ProblemKind;
+  prompt: string;
+  missingSide?: "left" | "right";
 };
 
 const GAME_SLUG = "math-blast";
@@ -51,40 +55,107 @@ function seededRandom(seed: number) {
   };
 }
 
-function makeProblem(topic: Topic, difficulty: number, random = Math.random): Problem {
-  const selectedTopic = topic === "mixed" ? (random() > 0.5 ? "addition" : "subtraction") : topic;
+function formatValue(value: number, money: boolean) {
+  return money ? `$${(value / 100).toFixed(2)}` : String(value);
+}
 
-  if (selectedTopic === "money") {
+function arithmeticValues(topic: "addition" | "subtraction" | "money", difficulty: number, random: () => number) {
+  if (topic === "money") {
     const maxCents = 100 + difficulty * 75;
     const left = (Math.floor(random() * Math.max(2, Math.floor(maxCents / 5))) + 1) * 5;
     const subtract = random() > 0.55;
     const rightLimit = subtract ? left : maxCents;
     const right = Math.floor(random() * Math.max(1, Math.floor(rightLimit / 5) + 1)) * 5;
-    return {
-      left,
-      right,
-      operator: subtract ? "−" : "+",
-      answer: subtract ? left - right : left + right,
-      money: true,
-    };
+    return { left, right, operator: subtract ? "−" as const : "+" as const, money: true };
   }
 
   const max = 10 + difficulty * 12;
-  if (selectedTopic === "subtraction") {
+  if (topic === "subtraction") {
     const left = Math.floor(random() * max) + 1;
     const right = Math.floor(random() * (left + 1));
-    return { left, right, operator: "−", answer: left - right, money: false };
+    return { left, right, operator: "−" as const, money: false };
   }
 
-  const left = Math.floor(random() * max);
-  const right = Math.floor(random() * max);
-  return { left, right, operator: "+", answer: left + right, money: false };
+  return {
+    left: Math.floor(random() * max),
+    right: Math.floor(random() * max),
+    operator: "+" as const,
+    money: false,
+  };
+}
+
+function makeStoryProblem(difficulty: number, random: () => number): Problem {
+  const addition = random() > 0.45;
+  const max = 10 + difficulty * 10;
+  const names = ["Adrian", "Elliot", "Maya", "Leo", "Nora", "Kai"];
+  const objects = ["shells", "stickers", "blocks", "marbles", "books", "toy cars", "berries", "stars"];
+  const name = names[Math.floor(random() * names.length)];
+  const object = objects[Math.floor(random() * objects.length)];
+
+  if (addition) {
+    const left = Math.floor(random() * max) + 1;
+    const right = Math.floor(random() * max) + 1;
+    return {
+      left,
+      right,
+      operator: "+",
+      answer: left + right,
+      money: false,
+      kind: "story",
+      prompt: `${name} has ${left} ${object} and gets ${right} more. How many ${object} are there now? ${left} + ${right} = ?`,
+    };
+  }
+
+  const left = Math.floor(random() * max) + Math.max(3, difficulty);
+  const right = Math.floor(random() * (left + 1));
+  return {
+    left,
+    right,
+    operator: "−",
+    answer: left - right,
+    money: false,
+    kind: "story",
+    prompt: `${name} has ${left} ${object} and gives away ${right}. How many ${object} remain? ${left} − ${right} = ?`,
+  };
+}
+
+function chooseMixedTopic(random: () => number): Exclude<Topic, "mixed"> {
+  const roll = random();
+  if (roll < 0.3) return "addition";
+  if (roll < 0.58) return "subtraction";
+  if (roll < 0.78) return "word-problems";
+  return "money";
+}
+
+function makeProblem(topic: Topic, difficulty: number, random = Math.random): Problem {
+  const selectedTopic = topic === "mixed" ? chooseMixedTopic(random) : topic;
+  if (selectedTopic === "word-problems") return makeStoryProblem(difficulty, random);
+
+  const values = arithmeticValues(selectedTopic, difficulty, random);
+  const total = values.operator === "+" ? values.left + values.right : values.left - values.right;
+  const useMissing = !values.money && difficulty >= 2 && random() < 0.35;
+
+  if (useMissing) {
+    const missingSide = values.operator === "+" && random() > 0.5 ? "left" : "right";
+    const answer = missingSide === "left" ? values.left : values.right;
+    const prompt = missingSide === "left"
+      ? `? ${values.operator} ${values.right} = ${total}`
+      : `${values.left} ${values.operator} ? = ${total}`;
+    return { ...values, answer, kind: "missing", prompt, missingSide };
+  }
+
+  return {
+    ...values,
+    answer: total,
+    kind: "equation",
+    prompt: `${formatValue(values.left, values.money)} ${values.operator} ${formatValue(values.right, values.money)}`,
+  };
 }
 
 function makeChoices(problem: Problem, random = Math.random): number[] {
   const choices = new Set<number>([problem.answer]);
   const step = problem.money ? 5 : 1;
-  const spread = problem.money ? 8 : 6;
+  const spread = problem.money ? 8 : Math.max(5, Math.ceil(problem.answer / 5));
 
   while (choices.size < 4) {
     let offset = Math.floor(random() * (spread * 2 + 1)) - spread;
@@ -95,8 +166,8 @@ function makeChoices(problem: Problem, random = Math.random): number[] {
   return Array.from(choices).sort(() => random() - 0.5);
 }
 
-function formatValue(value: number, money: boolean) {
-  return money ? `$${(value / 100).toFixed(2)}` : String(value);
+function problemKey(problem: Problem) {
+  return `${problem.kind}:${problem.prompt}:${problem.answer}`;
 }
 
 function problemFromReview(item: ReviewItem): Problem | null {
@@ -106,8 +177,18 @@ function problemFromReview(item: ReviewItem): Problem | null {
   const money = item.data?.money;
   if (typeof left !== "number" || typeof right !== "number") return null;
   if (operator !== "+" && operator !== "−") return null;
-  const answer = operator === "+" ? left + right : left - right;
-  return { left, right, operator, answer, money: money === true };
+  const kind = item.data?.kind === "missing" || item.data?.kind === "story" ? item.data.kind : "equation";
+  const storedAnswer = item.data?.answer;
+  const answer = typeof storedAnswer === "number"
+    ? storedAnswer
+    : operator === "+" ? left + right : left - right;
+  const prompt = typeof item.data?.prompt === "string"
+    ? item.data.prompt
+    : `${formatValue(left, money === true)} ${operator} ${formatValue(right, money === true)}`;
+  const missingSide = item.data?.missingSide === "left" || item.data?.missingSide === "right"
+    ? item.data.missingSide
+    : undefined;
+  return { left, right, operator, answer, money: money === true, kind, prompt, missingSide };
 }
 
 export default function MathBlastPage() {
@@ -129,7 +210,9 @@ export default function MathBlastPage() {
   const [lastReward, setLastReward] = useState({ xp: 0, coins: 0 });
   const sessionEndedRef = useRef(false);
   const autoStarted = useRef(false);
-  const profileId = getActiveProfile().id;
+  const seenProblemsRef = useRef<Set<string>>(new Set());
+  const profile = getActiveProfile();
+  const profileId = profile.id;
   const dueReviews = getDueReviewItems(profileId, GAME_SLUG);
 
   const bestScore = progress.games[GAME_SLUG]?.bestScore ?? 0;
@@ -147,6 +230,10 @@ export default function MathBlastPage() {
     if (Number.isFinite(requestedDifficulty) && requestedDifficulty >= 1) {
       setInitialDifficulty(clamp(Math.round(requestedDifficulty), 1, 7));
     }
+    const requestedTopic = params.get("topic");
+    if (["mixed", "addition", "subtraction", "money", "word-problems"].includes(requestedTopic ?? "")) {
+      setTopic(requestedTopic as Topic);
+    }
     if (params.get("review") === "1" && dueReviews.length > 0 && !autoStarted.current) {
       autoStarted.current = true;
       startSession("review", "mixed");
@@ -155,21 +242,26 @@ export default function MathBlastPage() {
 
   useEffect(() => {
     if (screen !== "play" || mode !== "timer") return;
-    const timer = window.setInterval(() => {
-      setSecondsLeft((current) => Math.max(0, current - 1));
-    }, 1000);
+    const timer = window.setInterval(() => setSecondsLeft((current) => Math.max(0, current - 1)), 1000);
     return () => window.clearInterval(timer);
   }, [screen, mode]);
 
   useEffect(() => {
-    if (screen === "play" && mode === "timer" && secondsLeft === 0) {
-      finishSession(false);
-    }
+    if (screen === "play" && mode === "timer" && secondsLeft === 0) finishSession(false);
   }, [secondsLeft, screen, mode]);
+
+  function freshProblem(nextTopic: Topic, nextDifficulty: number, random = Math.random): Problem {
+    let candidate = makeProblem(nextTopic, nextDifficulty, random);
+    for (let attempt = 0; attempt < 20 && seenProblemsRef.current.has(problemKey(candidate)); attempt += 1) {
+      candidate = makeProblem(nextTopic, nextDifficulty, random);
+    }
+    seenProblemsRef.current.add(problemKey(candidate));
+    return candidate;
+  }
 
   function dailyProblem(number: number, nextDifficulty: number) {
     const random = seededRandom(hashText(`${dateKey()}-${profileId}-${number}-${nextDifficulty}`));
-    return makeProblem("mixed", nextDifficulty, random);
+    return freshProblem("mixed", nextDifficulty, random);
   }
 
   function queuedProblems(): Problem[] {
@@ -183,7 +275,7 @@ export default function MathBlastPage() {
     if (mode === "review") {
       setProblem(reviewProblems[nextQuestion - 1] ?? reviewProblems[0]);
     } else {
-      setProblem(mode === "daily" ? dailyProblem(nextQuestion, nextDifficulty) : makeProblem(topic, nextDifficulty));
+      setProblem(mode === "daily" ? dailyProblem(nextQuestion, nextDifficulty) : freshProblem(topic, nextDifficulty));
     }
     setQuestionNumber(nextQuestion);
     setLocked(false);
@@ -193,11 +285,12 @@ export default function MathBlastPage() {
   function startSession(nextMode: Mode, nextTopic: Topic) {
     const queued = nextMode === "review" ? queuedProblems() : [];
     if (nextMode === "review" && queued.length === 0) return;
+    seenProblemsRef.current = new Set();
     const firstProblem = nextMode === "review"
       ? queued[0]
       : nextMode === "daily"
         ? dailyProblem(1, initialDifficulty)
-        : makeProblem(nextTopic, initialDifficulty);
+        : freshProblem(nextTopic, initialDifficulty);
 
     setMode(nextMode);
     setTopic(nextMode === "daily" || nextMode === "review" ? "mixed" : nextTopic);
@@ -217,10 +310,7 @@ export default function MathBlastPage() {
     recordPlay(GAME_SLUG);
   }
 
-  function finishSession(
-    completed: boolean,
-    snapshot?: { score: number; correct: number; wrong: number }
-  ) {
+  function finishSession(completed: boolean, snapshot?: { score: number; correct: number; wrong: number }) {
     if (sessionEndedRef.current || screen !== "play") return;
     sessionEndedRef.current = true;
 
@@ -249,23 +339,27 @@ export default function MathBlastPage() {
     setLocked(true);
 
     const isCorrect = value === problem.answer;
-    const skillId = problem.money
-      ? "math-money"
-      : problem.operator === "+"
-        ? "math-addition"
-        : "math-subtraction";
-    const skillLabel = problem.money
-      ? "Money math"
-      : problem.operator === "+"
-        ? "Addition"
-        : "Subtraction";
-    const prompt = `${formatValue(problem.left, problem.money)} ${problem.operator} ${formatValue(problem.right, problem.money)}`;
+    const skillId = problem.kind === "story"
+      ? "math-word-problems"
+      : problem.money
+        ? "math-money"
+        : problem.operator === "+"
+          ? "math-addition"
+          : "math-subtraction";
+    const skillLabel = problem.kind === "story"
+      ? "Math word problems"
+      : problem.money
+        ? "Money math"
+        : problem.operator === "+"
+          ? "Addition"
+          : "Subtraction";
+
     recordLearningAttempt({
       gameSlug: GAME_SLUG,
       subject: "Math",
       skillId,
       skillLabel,
-      prompt,
+      prompt: problem.prompt,
       correctAnswer: formatValue(problem.answer, problem.money),
       correct: isCorrect,
       review: mode === "review",
@@ -274,6 +368,10 @@ export default function MathBlastPage() {
         right: problem.right,
         operator: problem.operator,
         money: problem.money,
+        answer: problem.answer,
+        kind: problem.kind,
+        prompt: problem.prompt,
+        missingSide: problem.missingSide ?? false,
       },
     }, profileId);
 
@@ -284,7 +382,8 @@ export default function MathBlastPage() {
     let nextScore = score;
 
     if (isCorrect) {
-      const points = 10 + difficulty * 3 + Math.min(20, nextStreak * 2);
+      const formatBonus = problem.kind === "story" ? 8 : problem.kind === "missing" ? 5 : 0;
+      const points = 10 + difficulty * 3 + formatBonus + Math.min(20, nextStreak * 2);
       nextScore = score + points;
       setScore(nextScore);
       setCorrect(nextCorrect);
@@ -297,13 +396,9 @@ export default function MathBlastPage() {
     }
 
     const complete = mode !== "timer" && questionNumber >= targetQuestions;
-
     window.setTimeout(() => {
-      if (complete) {
-        finishSession(true, { score: nextScore, correct: nextCorrect, wrong: nextWrong });
-      } else {
-        nextProblem(questionNumber + 1, nextDifficulty);
-      }
+      if (complete) finishSession(true, { score: nextScore, correct: nextCorrect, wrong: nextWrong });
+      else nextProblem(questionNumber + 1, nextDifficulty);
     }, isCorrect ? 650 : 950);
   }
 
@@ -314,46 +409,23 @@ export default function MathBlastPage() {
           <section style={menuCard}>
             <span style={eyebrow}>CHOOSE A MISSION</span>
             <h1 style={menuTitle}>Make math feel like a game.</h1>
-            <p style={mutedText}>Pick a mode, choose a skill, and chase a new personal best.</p>
+            <p style={mutedText}>Direct equations, missing-number puzzles, and real-world stories all feed the same adaptive path.</p>
 
             <div style={modeGrid}>
-              <button style={modeButton} onClick={() => startSession("mission", topic)}>
-                <span style={{ fontSize: 42 }}>🚀</span>
-                <strong>10-Question Mission</strong>
-                <small>Starts at adaptive level {initialDifficulty}.</small>
-              </button>
-              <button style={modeButton} onClick={() => startSession("timer", topic)}>
-                <span style={{ fontSize: 42 }}>⏱️</span>
-                <strong>60-Second Blast</strong>
-                <small>Score as much as you can.</small>
-              </button>
-              <button style={{ ...modeButton, borderColor: "rgba(217,255,91,.45)" }} onClick={() => startSession("daily", "mixed")}>
-                <span style={{ fontSize: 42 }}>🎁</span>
-                <strong>Daily Challenge</strong>
-                <small>Eight questions with a daily bonus.</small>
-              </button>
-              {dueReviews.length > 0 && (
-                <button style={{ ...modeButton, borderColor: "rgba(198,184,255,.55)" }} onClick={() => startSession("review", "mixed")}>
-                  <span style={{ fontSize: 42 }}>🧠</span>
-                  <strong>Review {dueReviews.length} Due</strong>
-                  <small>Practice exact missed equations.</small>
-                </button>
-              )}
+              <button style={modeButton} onClick={() => startSession("mission", topic)}><span style={{ fontSize: 42 }}>🚀</span><strong>10-Question Mission</strong><small>Starts at adaptive level {initialDifficulty}.</small></button>
+              <button style={modeButton} onClick={() => startSession("timer", topic)}><span style={{ fontSize: 42 }}>⏱️</span><strong>60-Second Blast</strong><small>Score as much as you can.</small></button>
+              <button style={{ ...modeButton, borderColor: "rgba(217,255,91,.45)" }} onClick={() => startSession("daily", "mixed")}><span style={{ fontSize: 42 }}>🎁</span><strong>Daily Challenge</strong><small>Eight varied questions with a daily bonus.</small></button>
+              {dueReviews.length > 0 && <button style={{ ...modeButton, borderColor: "rgba(198,184,255,.55)" }} onClick={() => startSession("review", "mixed")}><span style={{ fontSize: 42 }}>🧠</span><strong>Review {dueReviews.length} Due</strong><small>Practice exact missed problems.</small></button>}
             </div>
 
             <h2 style={{ marginTop: 30 }}>Choose a skill</h2>
             <div style={topicRow}>
-              {(["mixed", "addition", "subtraction", "money"] as Topic[]).map((item) => (
-                <button
-                  key={item}
-                  onClick={() => setTopic(item)}
-                  style={{ ...topicButton, background: topic === item ? "#d9ff5b" : "#222936", color: topic === item ? "#10131b" : "#fff" }}
-                >
-                  {item === "mixed" ? "Mixed" : item === "money" ? "Money" : item[0].toUpperCase() + item.slice(1)}
+              {(["mixed", "addition", "subtraction", "money", "word-problems"] as Topic[]).map((item) => (
+                <button key={item} onClick={() => setTopic(item)} style={{ ...topicButton, background: topic === item ? "#d9ff5b" : "#222936", color: topic === item ? "#10131b" : "#fff" }}>
+                  {item === "mixed" ? "Mixed" : item === "money" ? "Money" : item === "word-problems" ? "Word Problems" : item[0].toUpperCase() + item.slice(1)}
                 </button>
               ))}
             </div>
-
             <p style={{ ...mutedText, marginTop: 24 }}>Best score: {bestScore}</p>
           </section>
         </div>
@@ -386,6 +458,7 @@ export default function MathBlastPage() {
     );
   }
 
+  const formatLabel = problem.kind === "story" ? "WORD PROBLEM" : problem.kind === "missing" ? "MISSING NUMBER" : topic.toUpperCase();
   return (
     <GameFrame title="Math Blast">
       <main style={{ width: "min(780px,100%)", margin: "0 auto" }}>
@@ -397,9 +470,9 @@ export default function MathBlastPage() {
         </section>
 
         <section style={playCard}>
-          <span style={eyebrow}>{mode === "daily" ? "DAILY CHALLENGE" : mode === "review" ? "SPACED REVIEW" : topic.toUpperCase()}</span>
-          <h1 style={problemText}>
-            {formatValue(problem.left, problem.money)} {problem.operator} {formatValue(problem.right, problem.money)}
+          <span style={eyebrow}>{mode === "daily" ? "DAILY CHALLENGE" : mode === "review" ? "SPACED REVIEW" : formatLabel}</span>
+          <h1 style={{ ...problemText, fontSize: problem.kind === "story" ? "clamp(2rem,6vw,3.8rem)" : problemText.fontSize, lineHeight: problem.kind === "story" ? 1.05 : .9 }}>
+            {problem.prompt}
           </h1>
           <div style={choiceGrid}>
             {choices.map((choice) => (
