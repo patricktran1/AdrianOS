@@ -14,6 +14,7 @@ import {
   type DailySession,
   type DailySessionMission,
 } from "@/lib/adrian-daily-session";
+import { readLearningSchedule } from "@/lib/adrian-learning-schedule";
 import { games } from "@/lib/generated-games";
 
 function kindLabel(kind: DailySessionMission["kind"]): string {
@@ -72,6 +73,7 @@ export default function DailySessionPage() {
     const events = [
       DAILY_SESSION_EVENT,
       "adrianos-learning-updated",
+      "adrianos-learning-schedule-updated",
       "adrianos-progress-updated",
       "adrianos-family-updated",
     ];
@@ -121,11 +123,13 @@ export default function DailySessionPage() {
 
   const reward = rewardFor(session);
   const copy = heroCopy(session);
+  const schedule = readLearningSchedule(activeProfile.id);
+  const schoolHome = schedule.schoolMode ? "/school" : "/";
 
   return (
     <main style={page}>
       <header style={topbar}>
-        <Link href="/" style={homeLink}>← Home</Link>
+        <Link href={schoolHome} style={homeLink}>{schedule.schoolMode ? "← School" : "← Home"}</Link>
         <strong>AdrianOS School</strong>
         <span>{activeProfile.emoji} {activeProfile.name}</span>
       </header>
@@ -176,7 +180,7 @@ export default function DailySessionPage() {
                 <p style={{ ...muted, margin: 0 }}>{mission.reason}</p>
                 <div style={missionActionRow}>
                   {complete ? (
-                    <strong style={{ color: "#d9ff5b" }}>MISSION COMPLETE</strong>
+                    <strong style={{ color: "#d9ff5b" }}>VERIFIED COMPLETE</strong>
                   ) : active ? (
                     <button onClick={() => launchMission(index)} style={primaryButton} type="button">
                       {mission.status === "active" ? "Resume mission →" : "Start mission →"}
@@ -199,19 +203,24 @@ export default function DailySessionPage() {
           <p style={muted}>
             {session.rewardClaimed
               ? "The reward is collected and today’s learning evidence is safely saved."
-              : "Collect the daily reward and enjoy the rest of the day."}
+              : "Collect the daily reward and finish the school day."}
           </p>
           {!session.rewardClaimed && (
             <button onClick={claimReward} style={rewardButton} type="button">Collect {reward.xp} XP + {reward.coins} coins</button>
           )}
           {message && <p style={notice}>{message}</p>}
-          <Link href="/" style={secondaryLink}>Return home</Link>
+          <div style={finishLinks}>
+            <Link href={schoolHome} style={secondaryLink}>{schedule.schoolMode ? "Return to School Mode" : "Return home"}</Link>
+            {session.rewardClaimed && schedule.libraryAfterSession && (
+              <Link href="/" style={freePlayLink}>Open free play</Link>
+            )}
+          </div>
         </section>
       )}
 
       {!allComplete && (
         <div style={pauseRow}>
-          <Link href="/" style={secondaryLink}>Pause for now</Link>
+          <Link href={schoolHome} style={secondaryLink}>Pause for now</Link>
           <span style={muted}>Your place is saved automatically.</span>
         </div>
       )}
@@ -241,8 +250,10 @@ const missionTitle: React.CSSProperties = { margin: 0, fontSize: "clamp(1.8rem,5
 const missionActionRow: React.CSSProperties = { minHeight: 46, display: "flex", alignItems: "center", marginTop: 3 };
 const primaryButton: React.CSSProperties = { padding: "12px 18px", borderRadius: 999, border: 0, background: "#d9ff5b", color: "#10131b", fontWeight: 950, cursor: "pointer" };
 const finishCard: React.CSSProperties = { maxWidth: 800, margin: "22px auto 0", padding: "clamp(28px,6vw,60px)", borderRadius: 32, border: "1px solid rgba(217,255,91,.38)", background: "rgba(217,255,91,.08)", textAlign: "center" };
-const finishTitle: React.CSSProperties = { margin: "12px 0", fontSize: "clamp(2.6rem,7vw,5rem)", lineHeight: .94, letterSpacing: "-.065em" };
+const finishTitle: React.CSSProperties = { fontSize: "clamp(2.6rem,7vw,5rem)", lineHeight: .94, letterSpacing: "-.065em", margin: "12px 0" };
 const rewardButton: React.CSSProperties = { margin: "14px 0", padding: "14px 22px", borderRadius: 999, border: "2px solid #d9ff5b", background: "#d9ff5b", color: "#10131b", fontWeight: 950, cursor: "pointer" };
+const finishLinks: React.CSSProperties = { display: "flex", justifyContent: "center", gap: 9, flexWrap: "wrap", marginTop: 12 };
 const secondaryLink: React.CSSProperties = { display: "inline-block", padding: "11px 16px", borderRadius: 999, border: "1px solid rgba(255,255,255,.16)", background: "#222936", color: "#fff", textDecoration: "none", fontWeight: 900 };
+const freePlayLink: React.CSSProperties = { display: "inline-block", padding: "11px 16px", borderRadius: 999, border: "1px solid rgba(217,255,91,.3)", background: "rgba(217,255,91,.09)", color: "#d9ff5b", textDecoration: "none", fontWeight: 900 };
 const notice: React.CSSProperties = { color: "#d9ff5b", fontWeight: 900 };
 const pauseRow: React.CSSProperties = { maxWidth: 900, margin: "20px auto 0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" };
