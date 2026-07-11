@@ -1,0 +1,10 @@
+{
+  "slug": "guess-who",
+  "title": "Guess Who",
+  "description": "Ask smart questions and flip down the wrong cards.",
+  "emoji": "🕵️",
+  "subject": "Logic",
+  "age": "Ages 6+",
+  "status": "playable",
+  "order": 1
+}
