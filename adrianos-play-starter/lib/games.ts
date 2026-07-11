@@ -9,6 +9,8 @@ export type Game = {
     | "Math"
     | "Reading"
     | "Science"
+    | "Geography"
+    | "Coding"
     | "Creativity";
   age: string;
   status: "playable" | "coming-soon";
@@ -66,6 +68,33 @@ export const games: Game[] = [
     description: "Race through kid-sized world questions.",
     emoji: "🚀",
     subject: "Reading",
+    age: "Ages 6+",
+    status: "playable",
+  },
+  {
+    slug: "pattern-master",
+    title: "Pattern Master",
+    description: "Spot visual, number, and symbol patterns.",
+    emoji: "🧩",
+    subject: "Logic",
+    age: "Ages 6+",
+    status: "playable",
+  },
+  {
+    slug: "world-explorer",
+    title: "World Explorer",
+    description: "Travel the globe through clues and landmarks.",
+    emoji: "🌍",
+    subject: "Geography",
+    age: "Ages 6+",
+    status: "playable",
+  },
+  {
+    slug: "robot-commands",
+    title: "Robot Commands",
+    description: "Build simple programs to guide a robot.",
+    emoji: "🤖",
+    subject: "Coding",
     age: "Ages 6+",
     status: "playable",
   },
