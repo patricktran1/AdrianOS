@@ -5,6 +5,7 @@ import type { Game } from "@/lib/games";
 import { useAdrianProgress } from "@/lib/adrian-progress";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import { useLearningState, type LearningStage } from "@/lib/adrian-learning";
+import { skillHref, useSkillGraph } from "@/lib/adrian-skill-graph";
 
 function stageColor(stage: LearningStage): string {
   if (stage === "Mastered") return "#d9ff5b";
@@ -15,7 +16,8 @@ function stageColor(stage: LearningStage): string {
 export default function TodaysAdventure({ games }: { games: Game[] }) {
   const { progress, hydrated } = useAdrianProgress();
   const { activeProfile, hydrated: profilesReady } = useFamilyProfiles();
-  const { state, mastery, dueReviews, hydrated: learningReady } = useLearningState(games, progress);
+  const { state, dueReviews, hydrated: learningReady } = useLearningState(games, progress);
+  const { nodes, recommended } = useSkillGraph(activeProfile, progress);
 
   if (!hydrated || !profilesReady || !learningReady || !state.dailyAdventure) {
     return (
@@ -26,14 +28,31 @@ export default function TodaysAdventure({ games }: { games: Game[] }) {
     );
   }
 
-  const items = state.dailyAdventure.items;
+  const skillIndex = state.dailyAdventure.items.findIndex((item) => item.kind === "skill");
+  const items = state.dailyAdventure.items.map((item, index) => {
+    if (!recommended || index !== skillIndex) return item;
+    return {
+      ...item,
+      id: `${state.dailyAdventure!.date}:skill:${recommended.id}`,
+      gameSlug: recommended.gameSlug,
+      title: recommended.label,
+      reason: recommended.goal && !recommended.goalComplete
+        ? `Parent goal: reach ${recommended.goal.targetMastery}% mastery.`
+        : recommended.dueReviews > 0
+          ? `Review ${recommended.dueReviews} missed item${recommended.dueReviews === 1 ? "" : "s"} in this skill.`
+          : `This is the next unlocked skill after its prerequisites.`,
+      difficulty: `${recommended.stage} · ${recommended.mastery}%`,
+      href: skillHref(recommended),
+      baselinePlays: progress.games[recommended.gameSlug]?.plays ?? 0,
+    };
+  });
   const completed = items.filter(
     (item) => (progress.games[item.gameSlug]?.plays ?? 0) > item.baselinePlays
   ).length;
   const stages = {
-    Learning: mastery.filter((row) => row.stage === "Learning").length,
-    Practicing: mastery.filter((row) => row.stage === "Practicing").length,
-    Mastered: mastery.filter((row) => row.stage === "Mastered").length,
+    Learning: nodes.filter((node) => !node.locked && node.stage === "Learning").length,
+    Practicing: nodes.filter((node) => !node.locked && node.stage === "Practicing").length,
+    Mastered: nodes.filter((node) => !node.locked && node.stage === "Mastered").length,
   };
 
   return (
@@ -43,7 +62,7 @@ export default function TodaysAdventure({ games }: { games: Game[] }) {
           <span className="eyebrow">TODAY’S ADVENTURE</span>
           <h2 style={title}>{activeProfile.name}’s three missions</h2>
           <p style={muted}>
-            AdrianOS picks a review, a skill builder, and a fun finish from each child’s own progress.
+            AdrianOS chooses a review, the next prerequisite skill, and a fun finish from this child’s own graph.
           </p>
         </div>
         <div style={progressOrb} aria-label={`${completed} of ${items.length} missions complete`}>
@@ -62,11 +81,11 @@ export default function TodaysAdventure({ games }: { games: Game[] }) {
               <div style={missionTop}>
                 <span style={missionNumber}>{isComplete ? "✓" : index + 1}</span>
                 <span style={kindPill}>
-                  {item.kind === "review" ? "REVIEW" : item.kind === "skill" ? "BUILD" : "EXPLORE"}
+                  {item.kind === "review" ? "REVIEW" : item.kind === "skill" ? "NEXT SKILL" : "EXPLORE"}
                 </span>
               </div>
               <div style={{ fontSize: 46 }}>{game.emoji}</div>
-              <h3 style={missionTitle}>{game.title}</h3>
+              <h3 style={missionTitle}>{item.title}</h3>
               <p style={{ ...muted, margin: 0 }}>{item.reason}</p>
               <div style={missionFooter}>
                 <span>{item.difficulty}</span>
@@ -79,7 +98,7 @@ export default function TodaysAdventure({ games }: { games: Game[] }) {
 
       <div style={learningStrip}>
         <div>
-          <small style={stripLabel}>LEARNING MAP</small>
+          <small style={stripLabel}>SKILL GRAPH</small>
           <strong>{dueReviews.length > 0 ? `${dueReviews.length} review${dueReviews.length === 1 ? "" : "s"} ready` : "No reviews due"}</strong>
         </div>
         {(["Learning", "Practicing", "Mastered"] as LearningStage[]).map((stage) => (
