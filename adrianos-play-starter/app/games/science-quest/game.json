@@ -1,0 +1,10 @@
+{
+  "slug": "science-quest",
+  "title": "Science Quest",
+  "description": "Explore lightning, snow, computers, bodies, and more.",
+  "emoji": "🔬",
+  "subject": "Science",
+  "age": "Ages 6+",
+  "status": "playable",
+  "order": 5
+}
