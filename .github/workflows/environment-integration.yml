@@ -1,0 +1,152 @@
+name: Environment Integration Patch
+
+on:
+  push:
+    branches: [feature/nature-environment-lab]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event_name == 'pull_request' || github.event.head_commit.message != 'Integrate Environment across AdrianOS'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/nature-environment-lab
+      - name: Wire skills and portfolio
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          skills = Path('adrianos-play-starter/lib/adrian-skill-graph.ts')
+          text = skills.read_text()
+          nodes = '''  {
+              id: "environment-ecosystems",
+              label: "Ecosystems and living relationships",
+              subject: "Environment",
+              description: "Trace habitats, food webs, pollination, and indirect effects among living things.",
+              prerequisites: [],
+              gameSlug: "nature-environment-lab",
+              minAge: 4,
+              order: 1,
+              evidenceSkillIds: ["environment-ecosystems"],
+            },
+            {
+              id: "environment-resources",
+              label: "Natural resources and conservation",
+              subject: "Environment",
+              description: "Reason about water, forests, regeneration, shared supplies, and conservation trade-offs.",
+              prerequisites: [],
+              gameSlug: "nature-environment-lab",
+              minAge: 4,
+              order: 2,
+              evidenceSkillIds: ["environment-resources"],
+            },
+            {
+              id: "environment-waste-cycles",
+              label: "Waste, reuse, and material cycles",
+              subject: "Environment",
+              description: "Use reuse, composting, repair, and life-cycle thinking to reduce unnecessary waste.",
+              prerequisites: ["environment-resources"],
+              gameSlug: "nature-environment-lab",
+              minAge: 4,
+              order: 3,
+              evidenceSkillIds: ["environment-waste-cycles"],
+            },
+            {
+              id: "environment-energy",
+              label: "Energy choices and efficiency",
+              subject: "Environment",
+              description: "Reduce wasted energy and reason about insulation, generation, storage, and reliable systems.",
+              prerequisites: [],
+              gameSlug: "nature-environment-lab",
+              minAge: 4,
+              order: 4,
+              evidenceSkillIds: ["environment-energy"],
+            },
+            {
+              id: "environment-climate-action",
+              label: "Weather, climate, and practical action",
+              subject: "Environment",
+              description: "Separate weather from climate and choose layered, evidence-based adaptation strategies.",
+              prerequisites: ["environment-ecosystems", "environment-energy"],
+              gameSlug: "nature-environment-lab",
+              minAge: 6,
+              order: 5,
+              evidenceSkillIds: ["environment-climate-action"],
+            },
+          '''
+          marker = '  {\n    id: "coding-sequences",'
+          if 'id: "environment-ecosystems"' not in text:
+              text = text.replace(marker, nodes + marker, 1)
+          route = '''  if (node.gameSlug === "nature-environment-lab") {
+              const level = node.id === "environment-ecosystems" || node.id === "environment-resources"
+                ? "Nature Helper"
+                : node.id === "environment-climate-action"
+                  ? "Systems Steward"
+                  : "Eco Explorer";
+              params.set("level", level);
+              params.set("focus", node.id);
+            }
+          '''
+          route_marker = '  if (node.gameSlug === "life-skills-lab") {'
+          if 'node.gameSlug === "nature-environment-lab"' not in text:
+              text = text.replace(route_marker, route + route_marker, 1)
+          skills.write_text(text)
+
+          portfolio = Path('adrianos-play-starter/lib/adrian-portfolio.ts')
+          text = portfolio.read_text()
+          if 'from "@/lib/adrian-environment-toolkit"' not in text:
+              text = text.replace(
+                  'import { readIndependenceToolkit, type IndependenceToolkit } from "@/lib/adrian-life-skills-toolkit";',
+                  'import { readIndependenceToolkit, type IndependenceToolkit } from "@/lib/adrian-life-skills-toolkit";\nimport { readEnvironmentToolkit, type EnvironmentToolkit } from "@/lib/adrian-environment-toolkit";',
+                  1,
+              )
+          text = text.replace(
+              '  movementToolkit: MovementToolkit,\n  independenceToolkit: IndependenceToolkit\n): PortfolioHighlight[] {',
+              '  movementToolkit: MovementToolkit,\n  independenceToolkit: IndependenceToolkit,\n  environmentToolkit: EnvironmentToolkit\n): PortfolioHighlight[] {',
+              1,
+          )
+          block = '''  if (environmentToolkit.cards.length > 0) {
+              const latest = environmentToolkit.cards[environmentToolkit.cards.length - 1];
+              addHighlight(highlights, {
+                id: "environment-toolkit",
+                kind: "achievement",
+                emoji: "🌿",
+                title: "Nature & Environment Toolkit",
+                detail: `${environmentToolkit.cards.length} systems tool${environmentToolkit.cards.length === 1 ? "" : "s"} earned across ${environmentToolkit.missions} environment mission${environmentToolkit.missions === 1 ? "" : "s"}. Recent tools: ${environmentToolkit.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+                date: latest?.earnedAt ?? environmentToolkit.updatedAt,
+                subject: "Environment",
+                value: `${environmentToolkit.cards.length} TOOLS`,
+              });
+            }
+
+          '''
+          marker2 = '  if (independenceToolkit.cards.length > 0) {'
+          if 'id: "environment-toolkit"' not in text:
+              text = text.replace(marker2, block + marker2, 1)
+          text = text.replace(
+              '  const independenceToolkit = readIndependenceToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit, independenceToolkit);',
+              '  const independenceToolkit = readIndependenceToolkit(profile.id);\n  const environmentToolkit = readEnvironmentToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit, independenceToolkit, environmentToolkit);',
+              1,
+          )
+          text = text.replace(
+              '  const independenceSubjects = independenceToolkit.cards.length > 0 ? ["Life Skills" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects, ...independenceSubjects]).size;',
+              '  const independenceSubjects = independenceToolkit.cards.length > 0 ? ["Life Skills" as const] : [];\n  const environmentSubjects = environmentToolkit.cards.length > 0 ? ["Environment" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects, ...independenceSubjects, ...environmentSubjects]).size;',
+              1,
+          )
+          portfolio.write_text(text)
+          PY
+      - name: Commit integration
+        run: |
+          git config user.name "AdrianOS Build Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add adrianos-play-starter/lib/adrian-skill-graph.ts adrianos-play-starter/lib/adrian-portfolio.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "Integrate Environment across AdrianOS"
+            git push origin HEAD:feature/nature-environment-lab
+          fi
