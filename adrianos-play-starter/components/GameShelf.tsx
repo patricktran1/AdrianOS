@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Game } from "@/lib/games";
 import ProgressPill from "@/components/ProgressPill";
+import TodaysAdventure from "@/components/TodaysAdventure";
 import HomeHub from "@/components/HomeHub";
 import { useAdrianProgress } from "@/lib/adrian-progress";
 
@@ -59,6 +60,7 @@ export default function GameShelf({ games }: { games: Game[] }) {
         </div>
       </section>
 
+      <TodaysAdventure games={games} />
       <HomeHub games={games} />
 
       {recent.length > 0 && (
