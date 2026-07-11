@@ -43,6 +43,7 @@ export default function SchoolPage() {
       "adrianos-learning-updated",
       "adrianos-learning-schedule-updated",
       "adrianos-family-updated",
+      "adrianos-portfolio-updated",
     ];
     for (const eventName of events) window.addEventListener(eventName, refresh);
     return () => {
@@ -80,7 +81,10 @@ export default function SchoolPage() {
           <span style={brand}>ADRIANOS SCHOOL</span>
           <small style={subbrand}>Private learning mode</small>
         </div>
-        <Link href="/parent" style={parentLink}>Parent access 🔒</Link>
+        <div style={topActions}>
+          <Link href="/portfolio" style={portfolioLink}>📚 My portfolio</Link>
+          <Link href="/parent" style={parentLink}>Parent access 🔒</Link>
+        </div>
       </header>
 
       <div style={profileRow} aria-label="Choose student">
@@ -147,13 +151,16 @@ export default function SchoolPage() {
         <section style={doneCard}>
           <div style={{ fontSize: 78 }}>{session.rewardClaimed ? "🏆" : "🎁"}</div>
           <h2 style={doneTitle}>{session.rewardClaimed ? "School is finished." : "One reward is waiting."}</h2>
-          {!session.rewardClaimed ? (
-            <Link href="/daily-session?school=1" style={rewardButton}>Collect today’s reward →</Link>
-          ) : schedule.libraryAfterSession ? (
-            <Link href="/" style={freePlayButton}>Open free play</Link>
-          ) : (
-            <p style={lockedMessage}>Free play is closed after school today. Great work. Come back tomorrow.</p>
-          )}
+          <div style={doneActions}>
+            {!session.rewardClaimed ? (
+              <Link href="/daily-session?school=1" style={rewardButton}>Collect today’s reward →</Link>
+            ) : schedule.libraryAfterSession ? (
+              <Link href="/" style={freePlayButton}>Open free play</Link>
+            ) : (
+              <p style={lockedMessage}>Free play is closed after school today. Great work. Come back tomorrow.</p>
+            )}
+            <Link href="/portfolio" style={portfolioDoneButton}>See my learning portfolio →</Link>
+          </div>
         </section>
       )}
 
@@ -167,10 +174,12 @@ export default function SchoolPage() {
 }
 
 const page: React.CSSProperties = { minHeight: "100vh", padding: "0 18px 70px", background: "#10131b", color: "#fff" };
-const topbar: React.CSSProperties = { maxWidth: 1040, minHeight: 78, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 };
+const topbar: React.CSSProperties = { maxWidth: 1040, minHeight: 78, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" };
+const topActions: React.CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" };
 const brand: React.CSSProperties = { display: "block", color: "#d9ff5b", fontWeight: 950, letterSpacing: ".14em" };
 const subbrand: React.CSSProperties = { display: "block", marginTop: 3, color: "#7f8898" };
 const parentLink: React.CSSProperties = { padding: "11px 15px", borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", background: "#181d28", color: "#fff", textDecoration: "none", fontWeight: 900 };
+const portfolioLink: React.CSSProperties = { padding: "11px 15px", borderRadius: 999, border: "1px solid rgba(198,184,255,.3)", background: "rgba(198,184,255,.1)", color: "#c6b8ff", textDecoration: "none", fontWeight: 900 };
 const profileRow: React.CSSProperties = { maxWidth: 1040, margin: "4px auto 16px", display: "flex", gap: 11, flexWrap: "wrap" };
 const profileButton: React.CSSProperties = { minWidth: 180, display: "flex", alignItems: "center", gap: 12, padding: "13px 17px", borderRadius: 22, border: "1px solid rgba(255,255,255,.12)", background: "#181d28", color: "#fff", textAlign: "left", cursor: "pointer" };
 const profileButtonActive: React.CSSProperties = { borderColor: "#d9ff5b", background: "rgba(217,255,91,.1)" };
@@ -189,7 +198,9 @@ const missionTitle: React.CSSProperties = { margin: "6px 0", fontSize: "clamp(2r
 const startButton: React.CSSProperties = { padding: "16px 21px", borderRadius: 999, background: "#d9ff5b", color: "#10131b", textDecoration: "none", fontSize: 17, fontWeight: 950, whiteSpace: "nowrap" };
 const doneCard: React.CSSProperties = { maxWidth: 800, margin: "0 auto", padding: "clamp(30px,6vw,64px)", borderRadius: 34, border: "1px solid rgba(217,255,91,.32)", background: "rgba(217,255,91,.07)", textAlign: "center" };
 const doneTitle: React.CSSProperties = { margin: "12px 0 20px", fontSize: "clamp(2.8rem,7vw,5.2rem)", lineHeight: .92, letterSpacing: "-.065em" };
+const doneActions: React.CSSProperties = { display: "grid", justifyItems: "center", gap: 10 };
 const rewardButton: React.CSSProperties = { display: "inline-block", padding: "15px 22px", borderRadius: 999, background: "#d9ff5b", color: "#10131b", textDecoration: "none", fontWeight: 950 };
 const freePlayButton: React.CSSProperties = { display: "inline-block", padding: "14px 21px", borderRadius: 999, border: "1px solid rgba(255,255,255,.16)", background: "#222936", color: "#fff", textDecoration: "none", fontWeight: 950 };
+const portfolioDoneButton: React.CSSProperties = { display: "inline-block", padding: "13px 20px", borderRadius: 999, border: "1px solid rgba(198,184,255,.3)", background: "rgba(198,184,255,.1)", color: "#c6b8ff", textDecoration: "none", fontWeight: 950 };
 const lockedMessage: React.CSSProperties = { maxWidth: 520, margin: "0 auto", color: "#aab1bf", lineHeight: 1.55, fontWeight: 800 };
 const notice: React.CSSProperties = { maxWidth: 900, margin: "18px auto 0", padding: 14, borderRadius: 17, background: "rgba(255,181,191,.1)", border: "1px solid rgba(255,181,191,.25)", color: "#ffb5bf", fontWeight: 850 };
