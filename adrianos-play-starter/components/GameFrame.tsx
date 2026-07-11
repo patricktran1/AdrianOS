@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ProgressPill from "@/components/ProgressPill";
 
 export default function GameFrame({
   title,
@@ -14,7 +15,9 @@ export default function GameFrame({
           ← Home
         </Link>
         <div className="game-title">{title}</div>
-        <div className="topbar-spacer" />
+        <div className="topbar-spacer">
+          <ProgressPill />
+        </div>
       </header>
       <section className="game-stage">{children}</section>
     </main>
