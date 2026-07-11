@@ -1,0 +1,94 @@
+name: Reading Lab Skill Graph Patch
+
+on:
+  push:
+    branches: [feature/reading-lab]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Wire Reading Lab into skill graph'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/reading-lab
+      - name: Add reading comprehension skill nodes and routes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('adrianos-play-starter/lib/adrian-skill-graph.ts')
+          text = path.read_text()
+          nodes = '''  {
+              id: "reading-comprehension-detail",
+              label: "Finding story details",
+              subject: "Reading",
+              description: "Locate important facts and answer directly from a passage.",
+              prerequisites: ["reading-spelling-easy"],
+              gameSlug: "reading-lab",
+              minAge: 5,
+              order: 4,
+              evidenceSkillIds: ["reading-comprehension-detail"],
+            },
+            {
+              id: "reading-sequencing",
+              label: "Story sequencing",
+              subject: "Reading",
+              description: "Put events and ideas in the order shown by a passage.",
+              prerequisites: ["reading-comprehension-detail"],
+              gameSlug: "reading-lab",
+              minAge: 6,
+              order: 5,
+              evidenceSkillIds: ["reading-sequencing"],
+            },
+            {
+              id: "reading-vocabulary",
+              label: "Vocabulary in context",
+              subject: "Reading",
+              description: "Use nearby words and events to understand unfamiliar vocabulary.",
+              prerequisites: ["reading-comprehension-detail"],
+              gameSlug: "reading-lab",
+              minAge: 6,
+              order: 6,
+              evidenceSkillIds: ["reading-vocabulary"],
+            },
+            {
+              id: "reading-inference",
+              label: "Reading inference",
+              subject: "Reading",
+              description: "Combine passage clues with reasoning to understand what is implied.",
+              prerequisites: ["reading-comprehension-detail", "reading-sequencing"],
+              gameSlug: "reading-lab",
+              minAge: 7,
+              order: 7,
+              evidenceSkillIds: ["reading-inference"],
+            },
+          '''
+          science_marker = '  {\n    id: "science-earth",'
+          if 'id: "reading-comprehension-detail"' not in text:
+              text = text.replace(science_marker, nodes + science_marker, 1)
+          route = '''  if (node.gameSlug === "reading-lab") {
+              const level = node.id === "reading-inference"
+                ? "Challenge"
+                : node.id === "reading-comprehension-detail"
+                  ? "Starter"
+                  : "Growing";
+              params.set("level", level);
+            }
+          '''
+          route_marker = '  if (node.gameSlug === "science-quest") {'
+          if 'node.gameSlug === "reading-lab"' not in text:
+              text = text.replace(route_marker, route + route_marker, 1)
+          path.write_text(text)
+          PY
+      - name: Commit skill graph integration
+        run: |
+          git config user.name "AdrianOS Build Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add adrianos-play-starter/lib/adrian-skill-graph.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "Wire Reading Lab into skill graph"
+            git push origin HEAD:feature/reading-lab
+          fi
