@@ -7,6 +7,12 @@ import {
   writeLearningForProfile,
   type ReviewItem,
 } from "@/lib/adrian-learning";
+import {
+  getProjectTemplate,
+  projectArtifactSummary,
+  readProjectHistory,
+  type ProjectWork,
+} from "@/lib/adrian-projects";
 import { getSkillGraph, type SkillNode } from "@/lib/adrian-skill-graph";
 import { readWeeklyReports, type WeeklyReport } from "@/lib/adrian-weekly-report";
 import type { Game } from "@/lib/games";
@@ -200,10 +206,26 @@ function buildHighlights(
   games: Game[],
   transcript: PortfolioTranscriptRow[],
   reports: WeeklyReport[],
-  sessions: ReturnType<typeof completedSessionRows>
+  sessions: ReturnType<typeof completedSessionRows>,
+  projects: ProjectWork[]
 ): PortfolioHighlight[] {
   const highlights = new Map<string, PortfolioHighlight>();
   const now = new Date().toISOString();
+
+  for (const project of projects.slice(0, 10)) {
+    const template = getProjectTemplate(project.templateId);
+    if (!template || !project.completedAt) continue;
+    addHighlight(highlights, {
+      id: `project:${project.id}`,
+      kind: "achievement",
+      emoji: template.emoji,
+      title: project.projectName || template.title,
+      detail: projectArtifactSummary(project),
+      date: project.completedAt,
+      subject: template.subjects[0] ?? "Creativity",
+      value: "PROJECT",
+    });
+  }
 
   for (const row of transcript.filter((item) => item.stage === "Mastered").slice(0, 8)) {
     addHighlight(highlights, {
@@ -293,7 +315,8 @@ export function buildLearningPortfolio(
   const transcript = transcriptFor(profile, progress);
   const reports = readWeeklyReports(profile.id).slice(0, 6);
   const sessions = completedSessionRows(profile.id);
-  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions);
+  const projects = readProjectHistory(profile.id).filter((project) => Boolean(project.completedAt));
+  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects);
   const selected = readPortfolioShowcase(profile.id);
   const defaultIds = highlights.slice(0, 6).map((item) => item.id);
   const showcaseIds = selected ?? defaultIds;
@@ -303,11 +326,15 @@ export function buildLearningPortfolio(
   const masteredSkills = transcript.filter((row) => row.stage === "Mastered").length;
   const practicingSkills = transcript.filter((row) => row.stage === "Practicing").length;
   const activeSkills = transcript.length;
-  const subjectsWithEvidence = new Set(transcript.map((row) => row.subject)).size;
+  const projectSubjects = projects.flatMap((project) => getProjectTemplate(project.templateId)?.subjects ?? []);
+  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects]).size;
   const totalCompletions = Object.values(progress.games).reduce((sum, row) => sum + row.completions, 0);
-  const summary = activeSkills === 0
+  const projectText = projects.length > 0
+    ? ` and ${projects.length} completed project${projects.length === 1 ? "" : "s"}`
+    : "";
+  const summary = activeSkills === 0 && projects.length === 0
     ? `${profile.name} is beginning a new learning portfolio. Evidence will appear after the first completed activities.`
-    : `${profile.name} has learning evidence across ${subjectsWithEvidence} subject${subjectsWithEvidence === 1 ? "" : "s"}, with ${masteredSkills} mastered skill${masteredSkills === 1 ? "" : "s"} and ${practicingSkills} skill${practicingSkills === 1 ? "" : "s"} currently being practiced.`;
+    : `${profile.name} has learning evidence across ${subjectsWithEvidence} subject${subjectsWithEvidence === 1 ? "" : "s"}, with ${masteredSkills} mastered skill${masteredSkills === 1 ? "" : "s"}, ${practicingSkills} skill${practicingSkills === 1 ? "" : "s"} currently being practiced${projectText}.`;
 
   return {
     profile,
