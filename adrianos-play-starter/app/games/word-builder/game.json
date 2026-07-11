@@ -1,0 +1,10 @@
+{
+  "slug": "word-builder",
+  "title": "Word Builder",
+  "description": "Unscramble letters using clues and build new words.",
+  "emoji": "🔤",
+  "subject": "Reading",
+  "age": "Ages 6+",
+  "status": "playable",
+  "order": 4
+}
