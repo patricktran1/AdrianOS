@@ -1,6 +1,6 @@
 "use client";
 
-import type { AdrianProgress } from "@/lib/adrian-progress";
+import { readProgressForProfile, type AdrianProgress } from "@/lib/adrian-progress";
 import type { ChildProfile } from "@/lib/adrian-profiles";
 import {
   ensureDailyAdventure,
@@ -239,10 +239,19 @@ export function startDailySessionMission(
   const session = readDailySession(profileId);
   if (!session || !session.missions[missionIndex]) return null;
   const now = new Date().toISOString();
+  const progress = readProgressForProfile(profileId);
   const missions = session.missions.map((mission, index) => {
     if (mission.status === "complete") return mission;
     if (index === missionIndex) {
-      return { ...mission, status: "active" as const, startedAt: mission.startedAt ?? now };
+      const firstStart = mission.startedAt === null;
+      const game = progress.games[mission.gameSlug];
+      return {
+        ...mission,
+        status: "active" as const,
+        startedAt: mission.startedAt ?? now,
+        baselinePlays: firstStart ? game?.plays ?? mission.baselinePlays : mission.baselinePlays,
+        baselineCompletions: firstStart ? game?.completions ?? mission.baselineCompletions : mission.baselineCompletions,
+      };
     }
     return { ...mission, status: "pending" as const };
   });
