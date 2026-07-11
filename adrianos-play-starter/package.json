@@ -5,8 +5,9 @@
   "scripts": {
     "generate:games": "node scripts/generate-games.mjs",
     "dev": "npm run generate:games && next dev",
-    "build": "npm run generate:games && next build",
-    "start": "next start"
+    "build": "npm run generate:games && npm run check:school-controls && next build",
+    "start": "next start",
+    "check:school-controls": "node scripts/check-school-mode-controls.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",

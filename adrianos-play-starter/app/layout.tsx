@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import CloudSyncBridge from "@/components/CloudSyncBridge";
 import WeeklyReportBridge from "@/components/WeeklyReportBridge";
 import "./globals.css";
-import "./guess-who-school-mode.css";
+import "./school-mode-controls.css";
 
 export const metadata: Metadata = {
   title: "AdrianOS Play",

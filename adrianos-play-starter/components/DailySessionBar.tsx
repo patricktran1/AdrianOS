@@ -22,6 +22,7 @@ export default function DailySessionBar() {
     const profile = params.get("guidedProfile");
     const index = Number(params.get("guidedMission"));
     if (!profile || !Number.isInteger(index) || index < 0) return;
+    document.documentElement.dataset.schoolMissionActive = "true";
     setProfileId(profile);
     setMissionIndex(index);
     const refresh = () => setSession(readDailySession(profile));
@@ -29,6 +30,7 @@ export default function DailySessionBar() {
     window.addEventListener(DAILY_SESSION_EVENT, refresh);
     window.addEventListener("adrianos-learning-updated", refresh);
     return () => {
+      delete document.documentElement.dataset.schoolMissionActive;
       window.removeEventListener(DAILY_SESSION_EVENT, refresh);
       window.removeEventListener("adrianos-learning-updated", refresh);
     };
@@ -88,18 +90,18 @@ export default function DailySessionBar() {
     : "Complete the game or review round to unlock the next step automatically.");
 
   return (
-    <aside style={shell} aria-label="Daily session controls">
+    <aside className="daily-session-bar" style={shell} aria-label="Daily session controls" role="status" aria-live="polite">
       <div style={progressTrack}>
         <div style={{ ...progressFill, width: `${((missionIndex + 1) / session.missions.length) * 100}%` }} />
       </div>
-      <div style={body}>
+      <div className="daily-session-bar-body" style={body}>
         <div style={stepBubble}>{message ? "✓" : missionIndex + 1}</div>
         <div style={{ minWidth: 0 }}>
           <small style={eyebrow}>SCHOOL MODE · MISSION {missionIndex + 1} OF {session.missions.length}</small>
           <strong style={title}>{mission.title}</strong>
-          <span style={status}>{instruction}</span>
+          <span className="daily-session-bar-status" style={status}>{instruction}</span>
         </div>
-        <button onClick={() => { window.location.href = "/daily-session?school=1"; }} style={pauseButton} type="button">
+        <button className="daily-session-bar-pause" onClick={() => { window.location.href = "/daily-session?school=1"; }} style={pauseButton} type="button" aria-label="Pause School Mode and return to today’s route">
           Pause
         </button>
       </div>
@@ -107,7 +109,7 @@ export default function DailySessionBar() {
   );
 }
 
-const shell: React.CSSProperties = { position: "fixed", left: "50%", bottom: 14, transform: "translateX(-50%)", zIndex: 150, width: "min(820px,calc(100vw - 24px))", overflow: "hidden", borderRadius: 22, border: "1px solid rgba(127,220,255,.42)", background: "rgba(16,19,27,.96)", boxShadow: "0 22px 65px rgba(0,0,0,.5)", backdropFilter: "blur(16px)" };
+const shell: React.CSSProperties = { position: "fixed", left: "50%", bottom: "max(10px, env(safe-area-inset-bottom))", transform: "translateX(-50%)", zIndex: 150, width: "min(820px,calc(100vw - 24px))", overflow: "hidden", borderRadius: 22, border: "1px solid rgba(127,220,255,.42)", background: "rgba(16,19,27,.96)", boxShadow: "0 22px 65px rgba(0,0,0,.5)", backdropFilter: "blur(16px)" };
 const progressTrack: React.CSSProperties = { height: 5, background: "#222936" };
 const progressFill: React.CSSProperties = { height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#7fdcff,#c6b8ff,#d9ff5b)" };
 const body: React.CSSProperties = { display: "grid", gridTemplateColumns: "42px minmax(0,1fr) auto", gap: 12, alignItems: "center", padding: 13 };

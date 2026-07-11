@@ -1,0 +1,51 @@
+/* Shared clearance for guided School Mode controls.
+   Game-level fixed bottom controls should add this variable to their normal offset. */
+:root {
+  --school-mode-ribbon-clearance: 0px;
+}
+
+html[data-school-mission-active="true"] {
+  --school-mode-ribbon-clearance: calc(104px + env(safe-area-inset-bottom));
+  scroll-padding-bottom: var(--school-mode-ribbon-clearance);
+}
+
+.game-stage {
+  transition: padding-bottom 180ms ease;
+}
+
+html[data-school-mission-active="true"] .game-stage {
+  padding-bottom: calc(clamp(18px, 4vw, 48px) + var(--school-mode-ribbon-clearance));
+}
+
+.daily-session-bar {
+  bottom: max(10px, env(safe-area-inset-bottom)) !important;
+}
+
+@media (max-width: 570px) {
+  html[data-school-mission-active="true"] {
+    --school-mode-ribbon-clearance: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .daily-session-bar {
+    width: calc(100vw - 16px) !important;
+    border-radius: 18px !important;
+  }
+
+  .daily-session-bar-body {
+    grid-template-columns: 34px minmax(0, 1fr) auto !important;
+    gap: 8px !important;
+    padding: 10px !important;
+  }
+
+  .daily-session-bar-status {
+    display: none !important;
+  }
+
+  .daily-session-bar-pause {
+    padding: 8px 10px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-stage { transition: none; }
+}
