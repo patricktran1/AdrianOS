@@ -13,6 +13,12 @@ import {
   readProjectHistory,
   type ProjectWork,
 } from "@/lib/adrian-projects";
+import {
+  getWritingPrompt,
+  readWritingHistory,
+  writingArtifactSummary,
+  type WritingPiece,
+} from "@/lib/adrian-writing";
 import { getSkillGraph, type SkillNode } from "@/lib/adrian-skill-graph";
 import { readWeeklyReports, type WeeklyReport } from "@/lib/adrian-weekly-report";
 import type { Game } from "@/lib/games";
@@ -207,10 +213,26 @@ function buildHighlights(
   transcript: PortfolioTranscriptRow[],
   reports: WeeklyReport[],
   sessions: ReturnType<typeof completedSessionRows>,
-  projects: ProjectWork[]
+  projects: ProjectWork[],
+  writings: WritingPiece[]
 ): PortfolioHighlight[] {
   const highlights = new Map<string, PortfolioHighlight>();
   const now = new Date().toISOString();
+
+  for (const piece of writings.slice(0, 10)) {
+    const prompt = getWritingPrompt(piece.promptId);
+    if (!prompt || !piece.completedAt) continue;
+    addHighlight(highlights, {
+      id: `writing:${piece.id}`,
+      kind: "achievement",
+      emoji: prompt.emoji,
+      title: piece.title || prompt.title,
+      detail: writingArtifactSummary(piece),
+      date: piece.completedAt,
+      subject: "Reading",
+      value: "PUBLISHED",
+    });
+  }
 
   for (const project of projects.slice(0, 10)) {
     const template = getProjectTemplate(project.templateId);
@@ -316,7 +338,8 @@ export function buildLearningPortfolio(
   const reports = readWeeklyReports(profile.id).slice(0, 6);
   const sessions = completedSessionRows(profile.id);
   const projects = readProjectHistory(profile.id).filter((project) => Boolean(project.completedAt));
-  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects);
+  const writings = readWritingHistory(profile.id).filter((piece) => Boolean(piece.completedAt));
+  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings);
   const selected = readPortfolioShowcase(profile.id);
   const defaultIds = highlights.slice(0, 6).map((item) => item.id);
   const showcaseIds = selected ?? defaultIds;
@@ -327,14 +350,18 @@ export function buildLearningPortfolio(
   const practicingSkills = transcript.filter((row) => row.stage === "Practicing").length;
   const activeSkills = transcript.length;
   const projectSubjects = projects.flatMap((project) => getProjectTemplate(project.templateId)?.subjects ?? []);
-  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects]).size;
+  const writingSubjects = writings.length > 0 ? ["Reading" as const] : [];
+  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects]).size;
   const totalCompletions = Object.values(progress.games).reduce((sum, row) => sum + row.completions, 0);
   const projectText = projects.length > 0
-    ? ` and ${projects.length} completed project${projects.length === 1 ? "" : "s"}`
+    ? `, ${projects.length} completed project${projects.length === 1 ? "" : "s"}`
     : "";
-  const summary = activeSkills === 0 && projects.length === 0
+  const writingText = writings.length > 0
+    ? `, and ${writings.length} published writing piece${writings.length === 1 ? "" : "s"}`
+    : "";
+  const summary = activeSkills === 0 && projects.length === 0 && writings.length === 0
     ? `${profile.name} is beginning a new learning portfolio. Evidence will appear after the first completed activities.`
-    : `${profile.name} has learning evidence across ${subjectsWithEvidence} subject${subjectsWithEvidence === 1 ? "" : "s"}, with ${masteredSkills} mastered skill${masteredSkills === 1 ? "" : "s"}, ${practicingSkills} skill${practicingSkills === 1 ? "" : "s"} currently being practiced${projectText}.`;
+    : `${profile.name} has learning evidence across ${subjectsWithEvidence} subject${subjectsWithEvidence === 1 ? "" : "s"}, with ${masteredSkills} mastered skill${masteredSkills === 1 ? "" : "s"}, ${practicingSkills} skill${practicingSkills === 1 ? "" : "s"} currently being practiced${projectText}${writingText}.`;
 
   return {
     profile,
