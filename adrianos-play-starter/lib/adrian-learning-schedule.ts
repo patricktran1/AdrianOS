@@ -14,6 +14,8 @@ export type LearningSchedule = {
   days: Record<LearningDayKey, LearningDayMode>;
   fullMinutes: number;
   lightMinutes: number;
+  schoolMode: boolean;
+  libraryAfterSession: boolean;
   updatedAt: string;
 };
 
@@ -45,6 +47,8 @@ function defaultSchedule(): LearningSchedule {
     },
     fullMinutes: 12,
     lightMinutes: 6,
+    schoolMode: true,
+    libraryAfterSession: true,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -65,6 +69,8 @@ function normalizeSchedule(value: unknown): LearningSchedule {
     days,
     fullMinutes: typeof raw.fullMinutes === "number" ? Math.max(8, Math.min(30, Math.round(raw.fullMinutes))) : fallback.fullMinutes,
     lightMinutes: typeof raw.lightMinutes === "number" ? Math.max(3, Math.min(15, Math.round(raw.lightMinutes))) : fallback.lightMinutes,
+    schoolMode: typeof raw.schoolMode === "boolean" ? raw.schoolMode : fallback.schoolMode,
+    libraryAfterSession: typeof raw.libraryAfterSession === "boolean" ? raw.libraryAfterSession : fallback.libraryAfterSession,
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : fallback.updatedAt,
   };
 }
