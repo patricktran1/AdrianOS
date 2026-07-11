@@ -4,7 +4,6 @@ name: Fix Guess Who School Mode
 on:
   workflow_dispatch:
   push:
-    paths: [.github/workflows/fix-guess-who-school-mode.yml]
 
 permissions:
   contents: write
