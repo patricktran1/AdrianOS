@@ -1,332 +1,263 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { useAdrianProgress } from "@/lib/adrian-progress";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-const WORDS = [
-  { word: "PLANET", hint: "A world that travels around a star." },
-  { word: "ROCKET", hint: "It blasts into space." },
-  { word: "JUNGLE", hint: "A thick, wild forest." },
-  { word: "PUZZLE", hint: "Something you solve." },
-  { word: "THUNDER", hint: "The sound that follows lightning." },
-  { word: "VOLCANO", hint: "A mountain that can erupt." },
-  { word: "OCEAN", hint: "A giant body of salt water." },
-  { word: "ROBOT", hint: "A machine that can follow instructions." },
+type Difficulty = "Easy" | "Medium" | "Hard";
+type Category = "All" | "Animals" | "Space" | "Science" | "Everyday";
+type WordCard = { word: string; hint: string; category: Exclude<Category, "All"> };
+
+const WORDS: WordCard[] = [
+  { word: "BEAR", hint: "A large animal that can hibernate.", category: "Animals" },
+  { word: "FROG", hint: "An animal that hops and says ribbit.", category: "Animals" },
+  { word: "TIGER", hint: "A striped big cat.", category: "Animals" },
+  { word: "WHALE", hint: "A giant mammal that lives in the ocean.", category: "Animals" },
+  { word: "PENGUIN", hint: "A bird that waddles and swims.", category: "Animals" },
+  { word: "ELEPHANT", hint: "A huge animal with a trunk.", category: "Animals" },
+  { word: "MOON", hint: "It shines in the night sky.", category: "Space" },
+  { word: "MARS", hint: "The red planet.", category: "Space" },
+  { word: "COMET", hint: "An icy object with a glowing tail.", category: "Space" },
+  { word: "PLANET", hint: "A world that travels around a star.", category: "Space" },
+  { word: "ROCKET", hint: "It blasts into space.", category: "Space" },
+  { word: "ASTRONAUT", hint: "A person trained to travel in space.", category: "Space" },
+  { word: "ATOM", hint: "A tiny building block of matter.", category: "Science" },
+  { word: "LIGHT", hint: "It helps your eyes see.", category: "Science" },
+  { word: "ENERGY", hint: "It makes things move or change.", category: "Science" },
+  { word: "THUNDER", hint: "The sound that follows lightning.", category: "Science" },
+  { word: "VOLCANO", hint: "A mountain that can erupt.", category: "Science" },
+  { word: "GRAVITY", hint: "It pulls objects toward Earth.", category: "Science" },
+  { word: "CHAIR", hint: "You sit on it.", category: "Everyday" },
+  { word: "PIZZA", hint: "A cheesy food cut into slices.", category: "Everyday" },
+  { word: "SCHOOL", hint: "A place where students learn.", category: "Everyday" },
+  { word: "PUZZLE", hint: "Something you solve piece by piece.", category: "Everyday" },
+  { word: "KITCHEN", hint: "The room where food is prepared.", category: "Everyday" },
+  { word: "COMPUTER", hint: "A machine that follows digital instructions.", category: "Everyday" },
 ];
 
-function shuffleWord(word: string): string[] {
+const SESSION_LENGTH = 8;
+
+function shuffled<T>(items: T[]): T[] {
+  return [...items].sort(() => Math.random() - 0.5);
+}
+
+function scramble(word: string): string[] {
   let letters = word.split("");
   let attempts = 0;
-
   do {
-    letters = [...letters].sort(() => Math.random() - 0.5);
+    letters = shuffled(letters);
     attempts += 1;
-  } while (letters.join("") === word && attempts < 10);
-
+  } while (letters.join("") === word && attempts < 12);
   return letters;
 }
 
+function matchesDifficulty(word: string, difficulty: Difficulty) {
+  if (difficulty === "Easy") return word.length <= 5;
+  if (difficulty === "Medium") return word.length >= 5 && word.length <= 7;
+  return word.length >= 7;
+}
+
 export default function WordBuilderPage() {
+  const { recordPlay, award, progress } = useAdrianProgress();
+  const [difficulty, setDifficulty] = useState<Difficulty>("Easy");
+  const [category, setCategory] = useState<Category>("All");
+  const [session, setSession] = useState<WordCard[]>([]);
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<number[]>([]);
   const [score, setScore] = useState(0);
-  const [message, setMessage] = useState("Tap letters to build the word.");
+  const [attempts, setAttempts] = useState(0);
+  const [hintUsed, setHintUsed] = useState(false);
+  const [message, setMessage] = useState("Choose a category and difficulty.");
+  const [playing, setPlaying] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [locked, setLocked] = useState(false);
 
-  const current = WORDS[index];
-  const scrambled = useMemo(() => shuffleWord(current.word), [current.word]);
-  const built = picked.map((letterIndex) => scrambled[letterIndex]).join("");
+  const current = session[index];
+  const letters = useMemo(() => current ? scramble(current.word) : [], [current, index]);
+  const built = picked.map((letterIndex) => letters[letterIndex]).join("");
+  const bestScore = progress.games["word-builder"]?.bestScore ?? 0;
 
-  function pickLetter(letterIndex: number) {
-    if (picked.includes(letterIndex)) return;
-    setPicked((currentPicked) => [...currentPicked, letterIndex]);
+  useEffect(() => {
+    setMessage("Choose a category and difficulty.");
+  }, []);
+
+  function startGame() {
+    const eligible = WORDS.filter((item) =>
+      matchesDifficulty(item.word, difficulty) &&
+      (category === "All" || item.category === category)
+    );
+    const fallback = WORDS.filter((item) => matchesDifficulty(item.word, difficulty));
+    const pool = eligible.length >= 4 ? eligible : fallback;
+    const selected = shuffled(pool).slice(0, Math.min(SESSION_LENGTH, pool.length));
+
+    setSession(selected);
+    setIndex(0);
+    setPicked([]);
+    setScore(0);
+    setAttempts(0);
+    setHintUsed(false);
+    setMessage("Tap letters to build the word.");
+    setPlaying(true);
+    setFinished(false);
+    setLocked(false);
+    recordPlay("word-builder");
   }
 
-  function removeLast() {
-    setPicked((currentPicked) => currentPicked.slice(0, -1));
+  function pickLetter(letterIndex: number) {
+    if (locked || picked.includes(letterIndex)) return;
+    setPicked((value) => [...value, letterIndex]);
   }
 
   function resetWord() {
+    if (locked) return;
     setPicked([]);
-    setMessage("Tap letters to build the word.");
+    setMessage("Try a new letter order.");
+  }
+
+  function useHint() {
+    if (!current || hintUsed || locked) return;
+    setHintUsed(true);
+    setMessage(`Hint: the word starts with ${current.word[0]}.`);
   }
 
   function checkWord() {
+    if (!current || locked) return;
     if (built !== current.word) {
-      setMessage("Almost. Try moving the letters around.");
+      setAttempts((value) => value + 1);
+      setMessage("Almost. Rearrange the letters and try again.");
       return;
     }
 
-    const nextScore = score + 1;
+    setLocked(true);
+    const wordPoints = Math.max(4, 12 - attempts * 2 - (hintUsed ? 3 : 0));
+    const nextScore = score + wordPoints;
     setScore(nextScore);
-
-    if (index === WORDS.length - 1) {
-      setMessage("You completed every word.");
-      window.setTimeout(() => {
-        setFinished(true);
-      }, 650);
-      return;
-    }
-
-    setMessage("Correct! New word unlocked.");
+    setMessage(`Correct! +${wordPoints} points`);
 
     window.setTimeout(() => {
-      setIndex((currentIndex) => currentIndex + 1);
+      if (index === session.length - 1) {
+        const xp = 30 + nextScore;
+        const coins = Math.max(4, Math.floor(nextScore / 8));
+        award("word-builder", { xp, coins, score: nextScore, completed: true });
+        setFinished(true);
+        setPlaying(false);
+        return;
+      }
+
+      setIndex((value) => value + 1);
       setPicked([]);
+      setAttempts(0);
+      setHintUsed(false);
       setMessage("Tap letters to build the word.");
-    }, 750);
+      setLocked(false);
+    }, 650);
   }
 
-  const secondaryButtonStyle: React.CSSProperties = {
-    minWidth: 120,
-    padding: "13px 20px",
-    border: "2px solid #ffffff",
-    borderRadius: 999,
-    color: "#10131b",
-    background: "#ffffff",
-    fontWeight: 950,
-    fontSize: 16,
-    cursor: "pointer",
-    boxShadow: "0 8px 22px rgba(0,0,0,.28)",
-  };
+  if (!playing && !finished) {
+    return (
+      <GameFrame title="Word Builder">
+        <section style={panelStyle}>
+          <div style={{ fontSize: 64 }}>🔤</div>
+          <span style={eyebrowStyle}>BUILD A NEW MISSION</span>
+          <h1 style={titleStyle}>Choose your word world.</h1>
+          <p style={mutedStyle}>Every game draws a different set of words.</p>
 
-  const primaryButtonStyle: React.CSSProperties = {
-    minWidth: 120,
-    padding: "13px 20px",
-    border: "2px solid #d9ff5b",
-    borderRadius: 999,
-    color: "#10131b",
-    background: "#d9ff5b",
-    fontWeight: 950,
-    fontSize: 16,
-    cursor: "pointer",
-    boxShadow: "0 8px 22px rgba(0,0,0,.28)",
-  };
+          <h3>Category</h3>
+          <div style={optionRowStyle}>
+            {(["All", "Animals", "Space", "Science", "Everyday"] as Category[]).map((item) => (
+              <button key={item} onClick={() => setCategory(item)} style={pillStyle(category === item)}>{item}</button>
+            ))}
+          </div>
+
+          <h3>Difficulty</h3>
+          <div style={optionRowStyle}>
+            {(["Easy", "Medium", "Hard"] as Difficulty[]).map((item) => (
+              <button key={item} onClick={() => setDifficulty(item)} style={pillStyle(difficulty === item)}>{item}</button>
+            ))}
+          </div>
+
+          <button onClick={startGame} style={primaryStyle}>Start Word Mission</button>
+          <p style={mutedStyle}>Personal best: {bestScore}</p>
+        </section>
+      </GameFrame>
+    );
+  }
 
   if (finished) {
     return (
       <GameFrame title="Word Builder">
-        <div
-          style={{
-            width: "min(720px, 100%)",
-            margin: "0 auto",
-          }}
-        >
-          <section
-            style={{
-              padding: "clamp(30px, 7vw, 68px)",
-              border: "1px solid rgba(255,255,255,.11)",
-              borderRadius: 30,
-              background: "#181d28",
-              boxShadow: "0 30px 70px rgba(0,0,0,.28)",
-              textAlign: "center",
-            }}
-          >
-            <div style={{ fontSize: 64, marginBottom: 18 }}>🏆</div>
-
-            <span
-              style={{
-                color: "#d9ff5b",
-                fontSize: 12,
-                fontWeight: 950,
-                letterSpacing: "0.18em",
-              }}
-            >
-              WORD BUILDER COMPLETE
-            </span>
-
-            <h1
-              style={{
-                margin: "14px 0 14px",
-                fontSize: "clamp(2.8rem, 8vw, 5.5rem)",
-                lineHeight: 0.95,
-                letterSpacing: "-0.065em",
-              }}
-            >
-              You built every word.
-            </h1>
-
-            <p
-              style={{
-                margin: "0 auto 28px",
-                color: "#aab1bf",
-                fontSize: 18,
-                lineHeight: 1.55,
-              }}
-            >
-              Final score: {score} out of {WORDS.length}
-            </p>
-
-            <Link
-              href="/"
-              style={{
-                display: "inline-block",
-                minWidth: 150,
-                padding: "14px 22px",
-                borderRadius: 999,
-                color: "#10131b",
-                background: "#d9ff5b",
-                fontWeight: 950,
-                textDecoration: "none",
-                boxShadow: "0 8px 22px rgba(0,0,0,.28)",
-              }}
-            >
-              Go Home
-            </Link>
-          </section>
-        </div>
+        <section style={panelStyle}>
+          <div style={{ fontSize: 70 }}>🏆</div>
+          <span style={eyebrowStyle}>MISSION COMPLETE</span>
+          <h1 style={titleStyle}>{score} points</h1>
+          <p style={mutedStyle}>You completed {session.length} randomized words and earned XP and coins.</p>
+          <div style={optionRowStyle}>
+            <button onClick={startGame} style={primaryStyle}>Play Another Round</button>
+            <Link href="/" style={secondaryLinkStyle}>Go Home</Link>
+          </div>
+        </section>
       </GameFrame>
     );
   }
 
   return (
     <GameFrame title="Word Builder">
-      <div
-        style={{
-          width: "min(820px, 100%)",
-          margin: "0 auto",
-        }}
-      >
-        <section
-          style={{
-            padding: "clamp(24px, 5vw, 50px)",
-            border: "1px solid rgba(255,255,255,.11)",
-            borderRadius: 30,
-            background: "#181d28",
-            boxShadow: "0 30px 70px rgba(0,0,0,.28)",
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: 22,
-              color: "#aab1bf",
-              fontSize: 13,
-              fontWeight: 800,
-            }}
-          >
-            <span>Word {index + 1} of {WORDS.length}</span>
-            <span>Score {score}</span>
-          </div>
+      <div style={{ width: "min(860px,100%)", margin: "0 auto" }}>
+        <div style={statsStyle}>
+          <span>Word {index + 1} of {session.length}</span>
+          <span>{current.category}</span>
+          <span>Score {score}</span>
+        </div>
+        <section style={panelStyle}>
+          <span style={eyebrowStyle}>{difficulty.toUpperCase()} WORD</span>
+          <h1 style={{ ...titleStyle, fontSize: "clamp(1.8rem,5vw,3.5rem)" }}>{current.hint}</h1>
 
-          <span
-            style={{
-              color: "#d9ff5b",
-              fontSize: 12,
-              fontWeight: 950,
-              letterSpacing: "0.18em",
-            }}
-          >
-            WORD BUILDER
-          </span>
+          {hintUsed && <p style={{ color: "#d9ff5b", fontWeight: 900 }}>Starts with: {current.word[0]}</p>}
 
-          <h1
-            style={{
-              margin: "12px auto 26px",
-              maxWidth: 640,
-              fontSize: "clamp(1.8rem, 5vw, 3.4rem)",
-              lineHeight: 1.05,
-              letterSpacing: "-0.05em",
-            }}
-          >
-            {current.hint}
-          </h1>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              gap: 8,
-              marginBottom: 28,
-            }}
-          >
+          <div style={answerRowStyle}>
             {current.word.split("").map((_, answerIndex) => (
-              <div
-                key={answerIndex}
-                style={{
-                  width: 46,
-                  height: 56,
-                  display: "grid",
-                  placeItems: "center",
-                  borderBottom: "4px solid #c6b8ff",
-                  fontSize: 32,
-                  fontWeight: 950,
-                }}
-              >
-                {built[answerIndex] ?? ""}
-              </div>
+              <div key={answerIndex} style={answerSlotStyle}>{built[answerIndex] ?? ""}</div>
             ))}
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              gap: 10,
-            }}
-          >
-            {scrambled.map((letter, letterIndex) => (
+          <div style={letterRowStyle}>
+            {letters.map((letter, letterIndex) => (
               <button
                 key={`${letter}-${letterIndex}`}
+                disabled={picked.includes(letterIndex) || locked}
                 onClick={() => pickLetter(letterIndex)}
-                disabled={picked.includes(letterIndex)}
-                style={{
-                  width: 58,
-                  height: 58,
-                  border: "1px solid rgba(255,255,255,.24)",
-                  borderRadius: 16,
-                  color: "#ffffff",
-                  background: "#2b3444",
-                  fontSize: 26,
-                  fontWeight: 950,
-                  cursor: "pointer",
-                  opacity: picked.includes(letterIndex) ? 0.2 : 1,
-                }}
+                style={{ ...letterStyle, opacity: picked.includes(letterIndex) ? 0.2 : 1 }}
               >
                 {letter}
               </button>
             ))}
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              gap: 12,
-              marginTop: 26,
-            }}
-          >
-            <button onClick={removeLast} style={secondaryButtonStyle}>
-              Undo
-            </button>
-
-            <button onClick={resetWord} style={secondaryButtonStyle}>
-              Reset
-            </button>
-
-            <button onClick={checkWord} style={primaryButtonStyle}>
-              Check
-            </button>
+          <div style={optionRowStyle}>
+            <button onClick={() => setPicked((value) => value.slice(0, -1))} style={secondaryStyle}>Undo</button>
+            <button onClick={resetWord} style={secondaryStyle}>Reset</button>
+            <button onClick={useHint} disabled={hintUsed} style={secondaryStyle}>Hint</button>
+            <button onClick={checkWord} style={primaryStyle}>Check</button>
           </div>
-
-          <p
-            style={{
-              minHeight: 25,
-              marginTop: 18,
-              color: "#c6b8ff",
-              fontWeight: 850,
-            }}
-          >
-            {message}
-          </p>
+          <p style={{ minHeight: 24, color: "#c6b8ff", fontWeight: 850 }}>{message}</p>
         </section>
       </div>
     </GameFrame>
   );
 }
+
+const panelStyle: React.CSSProperties = { width: "min(820px,100%)", margin: "0 auto", padding: "clamp(24px,5vw,52px)", borderRadius: 30, background: "#181d28", border: "1px solid rgba(255,255,255,.11)", textAlign: "center", boxShadow: "0 28px 70px rgba(0,0,0,.25)" };
+const eyebrowStyle: React.CSSProperties = { color: "#d9ff5b", fontSize: 12, fontWeight: 950, letterSpacing: ".18em" };
+const titleStyle: React.CSSProperties = { margin: "14px 0", fontSize: "clamp(2.5rem,7vw,5rem)", lineHeight: .96, letterSpacing: "-.06em" };
+const mutedStyle: React.CSSProperties = { color: "#aab1bf", lineHeight: 1.55 };
+const statsStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14, color: "#aab1bf", fontWeight: 850 };
+const optionRowStyle: React.CSSProperties = { display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap", margin: "18px 0" };
+const primaryStyle: React.CSSProperties = { padding: "13px 20px", border: "2px solid #d9ff5b", borderRadius: 999, background: "#d9ff5b", color: "#10131b", fontWeight: 950, cursor: "pointer" };
+const secondaryStyle: React.CSSProperties = { padding: "13px 18px", border: "2px solid #fff", borderRadius: 999, background: "#fff", color: "#10131b", fontWeight: 950, cursor: "pointer" };
+const secondaryLinkStyle: React.CSSProperties = { ...secondaryStyle, display: "inline-block" };
+const pillStyle = (active: boolean): React.CSSProperties => ({ padding: "11px 15px", borderRadius: 999, border: active ? "2px solid #d9ff5b" : "1px solid rgba(255,255,255,.15)", background: active ? "rgba(217,255,91,.12)" : "#222936", color: "#fff", fontWeight: 850, cursor: "pointer" });
+const answerRowStyle: React.CSSProperties = { display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 8, margin: "26px 0" };
+const answerSlotStyle: React.CSSProperties = { width: 44, height: 56, display: "grid", placeItems: "center", borderBottom: "4px solid #c6b8ff", fontSize: 30, fontWeight: 950 };
+const letterRowStyle: React.CSSProperties = { display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 10 };
+const letterStyle: React.CSSProperties = { width: 58, height: 58, border: "1px solid rgba(255,255,255,.2)", borderRadius: 16, background: "#2b3444", color: "#fff", fontSize: 25, fontWeight: 950, cursor: "pointer" };
