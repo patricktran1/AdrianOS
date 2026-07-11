@@ -604,6 +604,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["wellbeing-conflict-boundaries"],
   },
   {
+    id: "health-daily-care",
+    label: "Daily body care",
+    subject: "Health",
+    description: "Use sleep, hydration, varied food, movement, and recovery to care for the body each day.",
+    prerequisites: [],
+    gameSlug: "health-safety-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["health-daily-care"],
+  },
+  {
+    id: "health-hygiene-germs",
+    label: "Hygiene and germ prevention",
+    subject: "Health",
+    description: "Use handwashing, cough habits, sun protection, and food-safety reasoning to reduce preventable exposure.",
+    prerequisites: ["health-daily-care"],
+    gameSlug: "health-safety-lab",
+    minAge: 4,
+    order: 2,
+    evidenceSkillIds: ["health-hygiene-germs"],
+  },
+  {
+    id: "health-body-signals-help",
+    label: "Body signals and asking for help",
+    subject: "Health",
+    description: "Notice important body signals, stop unsafe activity, describe patterns, and involve a trusted adult.",
+    prerequisites: ["health-daily-care"],
+    gameSlug: "health-safety-lab",
+    minAge: 4,
+    order: 3,
+    evidenceSkillIds: ["health-body-signals-help"],
+  },
+  {
+    id: "health-medicine-poison",
+    label: "Medicine and poison safety",
+    subject: "Health",
+    description: "Avoid unknown substances, never share medicine, check labels and ingredients, and use trusted expert help.",
+    prerequisites: ["health-body-signals-help"],
+    gameSlug: "health-safety-lab",
+    minAge: 4,
+    order: 4,
+    evidenceSkillIds: ["health-medicine-poison"],
+  },
+  {
+    id: "health-injury-emergency",
+    label: "Injury and emergency response",
+    subject: "Health",
+    description: "Choose protective gear, get adult help, recognize urgent danger, and contact emergency or poison services appropriately.",
+    prerequisites: ["health-body-signals-help"],
+    gameSlug: "health-safety-lab",
+    minAge: 4,
+    order: 5,
+    evidenceSkillIds: ["health-injury-emergency"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -843,6 +898,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "health-safety-lab") {
+    const level = node.id === "health-daily-care" || node.id === "health-hygiene-germs"
+      ? "Healthy Helper"
+      : node.id === "health-medicine-poison" || node.id === "health-injury-emergency"
+        ? "Safety Strategist"
+        : "Body Steward";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "feelings-friendship-lab") {
     const level = node.id === "wellbeing-emotional-awareness" || node.id === "wellbeing-self-regulation"
