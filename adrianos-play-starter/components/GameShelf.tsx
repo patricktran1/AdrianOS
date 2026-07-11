@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Game } from "@/lib/games";
 import ProgressPill from "@/components/ProgressPill";
+import PlacementBanner from "@/components/PlacementBanner";
 import TodaysAdventure from "@/components/TodaysAdventure";
 import SkillMap from "@/components/SkillMap";
 import HomeHub from "@/components/HomeHub";
@@ -61,6 +62,7 @@ export default function GameShelf({ games }: { games: Game[] }) {
         </div>
       </section>
 
+      <PlacementBanner />
       <TodaysAdventure games={games} />
       <SkillMap games={games} />
       <HomeHub games={games} />
