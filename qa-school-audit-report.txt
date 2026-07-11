@@ -1,0 +1,95 @@
+=== GAME DIRECTORIES ===
+app/games/art-design-lab
+app/games/civic-lab
+app/games/digital-citizenship-lab
+app/games/dinosaur-detective
+app/games/economics-lab
+app/games/engineering-lab
+app/games/feelings-friendship-lab
+app/games/guess-who
+app/games/health-safety-lab
+app/games/history-lab
+app/games/human-body-explorer
+app/games/life-skills-lab
+app/games/math-blast
+app/games/memory-match
+app/games/money-math
+app/games/movement-lab
+app/games/music-lab
+app/games/music-maker
+app/games/nature-environment-lab
+app/games/pattern-master
+app/games/placement-adventure
+app/games/question-quest
+app/games/reading-lab
+app/games/robot-commands
+app/games/science-quest
+app/games/solar-system-explorer
+app/games/study-skills-lab
+app/games/treasure-map-math
+app/games/word-builder
+app/games/world-explorer
+app/games/writing-studio
+
+=== FIXED OR STICKY CONTROL CANDIDATES ===
+
+--- app/games/guess-who/guess-who.module.css:433 ---
+430: }
+431: 
+432: .bottomBar {
+433:   position: fixed;
+434:   z-index: 30;
+435:   left: 50%;
+436:   bottom: 14px;
+437:   display: flex;
+438:   justify-content: center;
+439:   gap: 9px;
+440:   width: min(720px, calc(100% - 28px));
+441:   padding: 10px;
+
+--- app/games/guess-who/guess-who.module.css:544 ---
+541: }
+542: 
+543: .overlay {
+544:   position: fixed;
+545:   z-index: 70;
+546:   inset: 0;
+547:   display: grid;
+548:   place-items: center;
+549:   padding: 16px;
+550:   background: rgba(7, 9, 13, 0.86);
+551:   backdrop-filter: blur(14px);
+552: }
+
+=== COMPLETION SIGNAL AUDIT ===
+art-design-lab: metadata=True; signals=award completed, award call, record completion, game frame
+civic-lab: metadata=True; signals=award call, record completion, game frame
+digital-citizenship-lab: metadata=True; signals=award call, record completion, game frame
+dinosaur-detective: metadata=True; signals=record completion, game frame
+economics-lab: metadata=True; signals=award call, record completion, game frame
+engineering-lab: metadata=True; signals=award call, record completion, game frame
+feelings-friendship-lab: metadata=True; signals=award call, record completion, game frame
+guess-who: metadata=True; signals=record completion, game frame
+health-safety-lab: metadata=True; signals=award call, record completion, game frame
+history-lab: metadata=True; signals=award call, record completion, game frame
+human-body-explorer: metadata=True; signals=record completion, game frame
+life-skills-lab: metadata=True; signals=award call, record completion, game frame
+math-blast: metadata=True; signals=award call, record completion, game frame
+memory-match: metadata=True; signals=award call, record completion, game frame
+money-math: metadata=True; signals=record completion, game frame
+movement-lab: metadata=True; signals=award call, record completion, game frame
+music-lab: metadata=True; signals=award call, record completion, game frame
+music-maker: metadata=True; signals=record completion, game frame
+nature-environment-lab: metadata=True; signals=award call, record completion, game frame
+pattern-master: metadata=True; signals=award call, record completion, game frame
+placement-adventure: metadata=True; signals=award completed, award call, record completion, game frame
+question-quest: metadata=True; signals=record completion, game frame
+reading-lab: metadata=True; signals=award call, record completion, game frame
+robot-commands: metadata=True; signals=award call, record completion, game frame
+science-quest: metadata=True; signals=award call, record completion, game frame
+solar-system-explorer: metadata=True; signals=record completion, game frame
+study-skills-lab: metadata=True; signals=award call, record completion, game frame
+treasure-map-math: metadata=True; signals=record completion, game frame
+word-builder: metadata=True; signals=award call, record completion, game frame
+world-explorer: metadata=True; signals=award call, record completion, game frame
+writing-studio: metadata=True; signals=award completed, award call, record completion, game frame
