@@ -74,7 +74,6 @@ export default function ProjectsPage() {
     setMakeText(next.makeText);
     setExplainText(next.explainText);
     setParentNote(next.parentNote);
-    setMessage("");
   }, [activeProfile.id, activeProfile.age, profilesReady, progressReady, parentMode, revision]);
 
   const template = useMemo(
@@ -119,7 +118,7 @@ export default function ProjectsPage() {
   }
 
   function answerDiscovery(option: string) {
-    const correct = option === template.answer;
+    const correct = option === template.discover.answer;
     setAnswer(option);
     const updated = updateProject(activeProfile.id, project.id, {
       discoverAnswer: option,
