@@ -1,5 +1,6 @@
 name: Fix Guess Who School Mode
 
+# One-time patch runner for the School Mode action-bar overlap.
 on:
   workflow_dispatch:
   push:
