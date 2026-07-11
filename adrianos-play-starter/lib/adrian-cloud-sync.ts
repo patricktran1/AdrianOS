@@ -16,6 +16,9 @@ import {
 const SNAPSHOT_TABLE = "adrianos_family_snapshots";
 const CLOUD_EVENT = "adrianos-cloud-status";
 
+type UnknownRecord = Record<string, unknown>;
+type CloudRow = { payload: FamilyBackup; updated_at: string };
+
 export type CloudSyncPhase =
   | "not-configured"
   | "signed-out"
@@ -31,13 +34,6 @@ export type CloudSyncStatus = {
   userEmail: string | null;
   lastSyncedAt: string | null;
 };
-
-type CloudRow = {
-  payload: FamilyBackup;
-  updated_at: string;
-};
-
-type UnknownRecord = Record<string, unknown>;
 
 let currentStatus: CloudSyncStatus = {
   phase: isSupabaseConfigured() ? "signed-out" : "not-configured",
@@ -63,24 +59,21 @@ export function getCloudSyncStatus(): CloudSyncStatus {
 }
 
 export function useCloudSyncStatus(): CloudSyncStatus {
-  const [status, setStatus] = useState<CloudSyncStatus>(currentStatus);
-
+  const [status, setStatus] = useState(currentStatus);
   useEffect(() => {
     const refresh = (event: Event) => {
-      const detail = (event as CustomEvent<CloudSyncStatus>).detail;
-      setStatus(detail ?? currentStatus);
+      setStatus((event as CustomEvent<CloudSyncStatus>).detail ?? currentStatus);
     };
     window.addEventListener(CLOUD_EVENT, refresh);
     setStatus(currentStatus);
     return () => window.removeEventListener(CLOUD_EVENT, refresh);
   }, []);
-
   return status;
 }
 
 function asRecord(value: unknown): UnknownRecord {
   return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as UnknownRecord)
+    ? value as UnknownRecord
     : {};
 }
 
@@ -101,10 +94,7 @@ function mergeGameProgress(left: unknown, right: unknown): UnknownRecord {
   const b = asRecord(right);
   return {
     plays: Math.max(safeNumber(a.plays), safeNumber(b.plays)),
-    completions: Math.max(
-      safeNumber(a.completions),
-      safeNumber(b.completions)
-    ),
+    completions: Math.max(safeNumber(a.completions), safeNumber(b.completions)),
     bestScore: Math.max(safeNumber(a.bestScore), safeNumber(b.bestScore)),
     lastPlayed: latestString(a.lastPlayed, b.lastPlayed),
   };
@@ -112,22 +102,19 @@ function mergeGameProgress(left: unknown, right: unknown): UnknownRecord {
 
 function mergeActivity(left: unknown, right: unknown): UnknownRecord[] {
   const rows = new Map<string, UnknownRecord>();
-  const add = (value: unknown) => {
-    if (!Array.isArray(value)) return;
-    for (const item of value) {
-      const row = asRecord(item);
+  const add = (source: unknown) => {
+    if (!Array.isArray(source)) return;
+    for (const value of source) {
+      const row = asRecord(value);
       const date = typeof row.date === "string" ? row.date : "";
       if (!date) continue;
-      const existing = rows.get(date) ?? {};
+      const current = rows.get(date) ?? {};
       rows.set(date, {
         date,
-        plays: Math.max(safeNumber(existing.plays), safeNumber(row.plays)),
-        completions: Math.max(
-          safeNumber(existing.completions),
-          safeNumber(row.completions)
-        ),
-        xp: Math.max(safeNumber(existing.xp), safeNumber(row.xp)),
-        coins: Math.max(safeNumber(existing.coins), safeNumber(row.coins)),
+        plays: Math.max(safeNumber(current.plays), safeNumber(row.plays)),
+        completions: Math.max(safeNumber(current.completions), safeNumber(row.completions)),
+        xp: Math.max(safeNumber(current.xp), safeNumber(row.xp)),
+        coins: Math.max(safeNumber(current.coins), safeNumber(row.coins)),
       });
     }
   };
@@ -165,68 +152,59 @@ function mergeHub(left: unknown, right: unknown): UnknownRecord {
   const newest = dayB > dayA ? b : a;
   const claimed = new Set<string>();
   const unlocked = new Set<string>(["rocket"]);
-
   for (const source of [a.claimedMissions, b.claimedMissions]) {
-    if (Array.isArray(source)) {
-      source.forEach((item) => {
-        if (typeof item === "string") claimed.add(item);
-      });
-    }
+    if (Array.isArray(source)) source.forEach((item) => typeof item === "string" && claimed.add(item));
   }
   for (const source of [a.unlockedAvatars, b.unlockedAvatars]) {
-    if (Array.isArray(source)) {
-      source.forEach((item) => {
-        if (typeof item === "string") unlocked.add(item);
-      });
-    }
+    if (Array.isArray(source)) source.forEach((item) => typeof item === "string" && unlocked.add(item));
   }
-
-  const localAvatar = typeof a.avatarId === "string" ? a.avatarId : null;
-  const cloudAvatar = typeof b.avatarId === "string" ? b.avatarId : null;
   return {
     ...newest,
     day: dayA > dayB ? dayA : dayB,
-    baselinePlays: Math.max(
-      safeNumber(a.baselinePlays),
-      safeNumber(b.baselinePlays)
-    ),
-    baselineCompletions: Math.max(
-      safeNumber(a.baselineCompletions),
-      safeNumber(b.baselineCompletions)
-    ),
+    baselinePlays: Math.max(safeNumber(a.baselinePlays), safeNumber(b.baselinePlays)),
+    baselineCompletions: Math.max(safeNumber(a.baselineCompletions), safeNumber(b.baselineCompletions)),
     claimedMissions: [...claimed],
     unlockedAvatars: [...unlocked],
-    avatarId: localAvatar ?? cloudAvatar ?? "rocket",
+    avatarId:
+      (typeof a.avatarId === "string" ? a.avatarId : null) ??
+      (typeof b.avatarId === "string" ? b.avatarId : null) ??
+      "rocket",
   };
+}
+
+function mergeLearning(left: unknown, right: unknown): unknown {
+  const a = asRecord(left);
+  const b = asRecord(right);
+  const updatedA = typeof a.updatedAt === "string" ? a.updatedAt : "";
+  const updatedB = typeof b.updatedAt === "string" ? b.updatedAt : "";
+  if (!updatedA) return Object.keys(b).length ? b : a;
+  if (!updatedB) return a;
+  return updatedB > updatedA ? b : a;
 }
 
 function mergeProfiles(cloud: ChildProfile[], local: ChildProfile[]): ChildProfile[] {
   const profiles = new Map<string, ChildProfile>();
   cloud.forEach((profile) => profiles.set(profile.id, profile));
-  local.forEach((profile) => {
-    if (!profiles.has(profile.id)) profiles.set(profile.id, profile);
-  });
+  local.forEach((profile) => profiles.set(profile.id, profile));
   return [...profiles.values()];
 }
 
-function hasMeaningfulProgress(backup: FamilyBackup): boolean {
-  return Object.values(backup.progressByProfile).some((value) => {
-    const progress = asRecord(value);
-    return (
-      safeNumber(progress.xp) > 0 ||
-      safeNumber(progress.coins) > 0 ||
-      Object.keys(asRecord(progress.games)).length > 0
-    );
+function hasMeaningfulData(backup: FamilyBackup): boolean {
+  const progress = Object.values(backup.progressByProfile).some((value) => {
+    const row = asRecord(value);
+    return safeNumber(row.xp) > 0 || safeNumber(row.coins) > 0 || Object.keys(asRecord(row.games)).length > 0;
   });
+  const learning = Object.values(backup.learningByProfile ?? {}).some((value) => {
+    const row = asRecord(value);
+    return Object.keys(asRecord(row.skills)).length > 0 || (Array.isArray(row.reviewQueue) && row.reviewQueue.length > 0);
+  });
+  return progress || learning;
 }
 
 function sanitizeForCloud(backup: FamilyBackup): FamilyBackup {
   return {
     ...backup,
-    family: {
-      ...backup.family,
-      parentPinHash: null,
-    },
+    family: { ...backup.family, parentPinHash: null },
   };
 }
 
@@ -234,27 +212,19 @@ function preserveLocalPin(backup: FamilyBackup): FamilyBackup {
   const local = exportFamilyBackup();
   return {
     ...backup,
-    family: {
-      ...backup.family,
-      parentPinHash: local.family.parentPinHash,
-    },
+    family: { ...backup.family, parentPinHash: local.family.parentPinHash },
   };
 }
 
 function mergeBackups(local: FamilyBackup, cloud: FamilyBackup): FamilyBackup {
-  if (!hasMeaningfulProgress(local)) {
-    return preserveLocalPin(cloud);
-  }
-
+  if (!hasMeaningfulData(local)) return preserveLocalPin(cloud);
   const profiles = mergeProfiles(cloud.family.profiles, local.family.profiles);
-  const validActive = profiles.some(
-    (profile) => profile.id === local.family.activeProfileId
-  )
+  const activeProfileId = profiles.some((profile) => profile.id === local.family.activeProfileId)
     ? local.family.activeProfileId
     : cloud.family.activeProfileId;
   const progressByProfile: Record<string, unknown> = {};
   const hubByProfile: Record<string, unknown> = {};
-
+  const learningByProfile: Record<string, unknown> = {};
   for (const profile of profiles) {
     progressByProfile[profile.id] = mergeProgress(
       local.progressByProfile[profile.id],
@@ -264,18 +234,22 @@ function mergeBackups(local: FamilyBackup, cloud: FamilyBackup): FamilyBackup {
       local.hubByProfile[profile.id],
       cloud.hubByProfile[profile.id]
     );
+    learningByProfile[profile.id] = mergeLearning(
+      local.learningByProfile?.[profile.id],
+      cloud.learningByProfile?.[profile.id]
+    );
   }
-
   return {
     version: 1,
     exportedAt: new Date().toISOString(),
     family: {
-      activeProfileId: validActive,
+      activeProfileId,
       profiles,
       parentPinHash: local.family.parentPinHash,
     },
     progressByProfile,
     hubByProfile,
+    learningByProfile,
   };
 }
 
@@ -295,7 +269,7 @@ async function fetchCloudRow(user: User): Promise<CloudRow | null> {
     .eq("user_id", user.id)
     .maybeSingle();
   if (error) throw error;
-  return data ? (data as CloudRow) : null;
+  return data ? data as CloudRow : null;
 }
 
 async function writeCloudRow(user: User, payload: FamilyBackup): Promise<string> {
@@ -318,15 +292,10 @@ export async function sendCloudMagicLink(email: string): Promise<boolean> {
   const client = getSupabaseBrowserClient();
   const cleanEmail = email.trim();
   if (!client || !cleanEmail) return false;
-  publishStatus({
-    phase: "sending-link",
-    message: "Sending a secure sign-in link…",
-  });
+  publishStatus({ phase: "sending-link", message: "Sending a secure sign-in link…" });
   const { error } = await client.auth.signInWithOtp({
     email: cleanEmail,
-    options: {
-      emailRedirectTo: `${window.location.origin}/parent`,
-    },
+    options: { emailRedirectTo: `${window.location.origin}/parent` },
   });
   if (error) {
     publishStatus({ phase: "error", message: error.message });
@@ -352,33 +321,19 @@ export async function signOutCloud(): Promise<void> {
 
 export async function syncCloudNow(): Promise<boolean> {
   if (!isSupabaseConfigured()) {
-    publishStatus({
-      phase: "not-configured",
-      message: "Supabase environment variables have not been added yet.",
-    });
+    publishStatus({ phase: "not-configured", message: "Supabase environment variables have not been added yet." });
     return false;
   }
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     publishStatus({ phase: "offline", message: "Offline. Changes remain saved locally." });
     return false;
   }
-
   const session = await currentSession();
   if (!session) {
-    publishStatus({
-      phase: "signed-out",
-      message: "Sign in to turn on cloud sync.",
-      userEmail: null,
-    });
+    publishStatus({ phase: "signed-out", message: "Sign in to turn on cloud sync.", userEmail: null });
     return false;
   }
-
-  publishStatus({
-    phase: "syncing",
-    message: "Syncing family progress…",
-    userEmail: session.user.email ?? null,
-  });
-
+  publishStatus({ phase: "syncing", message: "Syncing family learning…", userEmail: session.user.email ?? null });
   try {
     const local = exportFamilyBackup();
     const cloudRow = await fetchCloudRow(session.user);
@@ -393,10 +348,7 @@ export async function syncCloudNow(): Promise<boolean> {
     });
     return true;
   } catch (error) {
-    publishStatus({
-      phase: "error",
-      message: error instanceof Error ? error.message : "Cloud sync failed.",
-    });
+    publishStatus({ phase: "error", message: error instanceof Error ? error.message : "Cloud sync failed." });
     return false;
   }
 }
@@ -404,33 +356,23 @@ export async function syncCloudNow(): Promise<boolean> {
 export async function pullCloudNow(): Promise<boolean> {
   const session = await currentSession();
   if (!session) return false;
-  publishStatus({
-    phase: "syncing",
-    message: "Downloading cloud progress…",
-    userEmail: session.user.email ?? null,
-  });
+  publishStatus({ phase: "syncing", message: "Downloading cloud learning…", userEmail: session.user.email ?? null });
   try {
     const cloudRow = await fetchCloudRow(session.user);
     if (!cloudRow) {
-      publishStatus({
-        phase: "error",
-        message: "No cloud backup exists for this account yet.",
-      });
+      publishStatus({ phase: "error", message: "No cloud backup exists for this account yet." });
       return false;
     }
     importFamilyBackup(preserveLocalPin(cloudRow.payload));
     publishStatus({
       phase: "synced",
-      message: "Cloud progress downloaded to this device.",
+      message: "Cloud learning downloaded to this device.",
       userEmail: session.user.email ?? null,
       lastSyncedAt: cloudRow.updated_at,
     });
     return true;
   } catch (error) {
-    publishStatus({
-      phase: "error",
-      message: error instanceof Error ? error.message : "Cloud download failed.",
-    });
+    publishStatus({ phase: "error", message: error instanceof Error ? error.message : "Cloud download failed." });
     return false;
   }
 }
@@ -439,16 +381,8 @@ export async function refreshCloudAuthStatus(): Promise<void> {
   if (!isSupabaseConfigured()) return;
   const session = await currentSession();
   if (!session) {
-    publishStatus({
-      phase: "signed-out",
-      message: "Sign in to turn on cloud sync.",
-      userEmail: null,
-    });
+    publishStatus({ phase: "signed-out", message: "Sign in to turn on cloud sync.", userEmail: null });
     return;
   }
-  publishStatus({
-    phase: "syncing",
-    message: "Connecting to cloud sync…",
-    userEmail: session.user.email ?? null,
-  });
+  publishStatus({ phase: "syncing", message: "Connecting to cloud sync…", userEmail: session.user.email ?? null });
 }
