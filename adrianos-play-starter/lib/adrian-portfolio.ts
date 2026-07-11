@@ -31,6 +31,7 @@ import { readArtToolkit, type ArtToolkit } from "@/lib/adrian-art-toolkit";
 import { readEngineeringToolkit, type EngineeringToolkit } from "@/lib/adrian-engineering-toolkit";
 import { readMovementToolkit, type MovementToolkit } from "@/lib/adrian-movement-toolkit";
 import { readLifeSkillsToolkit, type LifeSkillsToolkit } from "@/lib/adrian-life-skills-toolkit";
+import { readEnvironmentToolkit, type EnvironmentToolkit } from "@/lib/adrian-environment-toolkit";
 import { readWorldPassport, type WorldPassport } from "@/lib/adrian-world-passport";
 import { readWeeklyReports, type WeeklyReport } from "@/lib/adrian-weekly-report";
 import type { Game } from "@/lib/games";
@@ -238,10 +239,25 @@ function buildHighlights(
   artToolkit: ArtToolkit,
   engineeringToolkit: EngineeringToolkit,
   movementToolkit: MovementToolkit,
-  lifeSkillsToolkit: LifeSkillsToolkit
+  lifeSkillsToolkit: LifeSkillsToolkit,
+  environmentToolkit: EnvironmentToolkit
 ): PortfolioHighlight[] {
   const highlights = new Map<string, PortfolioHighlight>();
   const now = new Date().toISOString();
+
+  if (environmentToolkit.cards.length > 0) {
+    const latest = environmentToolkit.cards[environmentToolkit.cards.length - 1];
+    addHighlight(highlights, {
+      id: "environment-toolkit",
+      kind: "achievement",
+      emoji: "🌿",
+      title: "Nature & Environment Toolkit",
+      detail: `${environmentToolkit.cards.length} systems tool${environmentToolkit.cards.length === 1 ? "" : "s"} earned across ${environmentToolkit.missions} environment mission${environmentToolkit.missions === 1 ? "" : "s"}. Recent tools: ${environmentToolkit.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+      date: latest?.earnedAt ?? environmentToolkit.updatedAt,
+      subject: "Environment",
+      value: `${environmentToolkit.cards.length} TOOLS`,
+    });
+  }
 
   if (lifeSkillsToolkit.tools.length > 0) {
     const latest = lifeSkillsToolkit.tools[lifeSkillsToolkit.tools.length - 1];
@@ -543,7 +559,8 @@ export function buildLearningPortfolio(
   const engineeringToolkit = readEngineeringToolkit(profile.id);
   const movementToolkit = readMovementToolkit(profile.id);
   const lifeSkillsToolkit = readLifeSkillsToolkit(profile.id);
-  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit, lifeSkillsToolkit);
+  const environmentToolkit = readEnvironmentToolkit(profile.id);
+  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit, lifeSkillsToolkit, environmentToolkit);
   const selected = readPortfolioShowcase(profile.id);
   const defaultIds = highlights.slice(0, 6).map((item) => item.id);
   const showcaseIds = selected ?? defaultIds;
@@ -567,7 +584,8 @@ export function buildLearningPortfolio(
   const engineeringSubjects = engineeringToolkit.cards.length > 0 ? ["Engineering" as const] : [];
   const movementSubjects = movementToolkit.cards.length > 0 ? ["Movement" as const] : [];
   const lifeSkillsSubjects = lifeSkillsToolkit.tools.length > 0 ? ["Life Skills" as const] : [];
-  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects, ...lifeSkillsSubjects]).size;
+  const environmentSubjects = environmentToolkit.cards.length > 0 ? ["Environment" as const] : [];
+  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects, ...lifeSkillsSubjects, ...environmentSubjects]).size;
   const totalCompletions = Object.values(progress.games).reduce((sum, row) => sum + row.completions, 0);
   const projectText = projects.length > 0
     ? `, ${projects.length} completed project${projects.length === 1 ? "" : "s"}`
