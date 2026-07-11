@@ -1,0 +1,152 @@
+name: Art & Design Integration Patch
+
+on:
+  push:
+    branches: [feature/art-design-lab]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event_name == 'pull_request' || github.event.head_commit.message != 'Integrate Art & Design across AdrianOS'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/art-design-lab
+      - name: Wire skills and portfolio
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          skills = Path('adrianos-play-starter/lib/adrian-skill-graph.ts')
+          text = skills.read_text()
+          nodes = '''  {
+              id: "art-color-relationships",
+              label: "Color relationships",
+              subject: "Art",
+              description: "Use warm and cool colors, contrast, value, and palette choices intentionally.",
+              prerequisites: [],
+              gameSlug: "art-design-lab",
+              minAge: 4,
+              order: 1,
+              evidenceSkillIds: ["art-color-relationships"],
+            },
+            {
+              id: "art-shape-form",
+              label: "Shape and form",
+              subject: "Art",
+              description: "Recognize geometric and organic shapes and use overlap, planes, and shading to suggest form.",
+              prerequisites: [],
+              gameSlug: "art-design-lab",
+              minAge: 4,
+              order: 2,
+              evidenceSkillIds: ["art-shape-form"],
+            },
+            {
+              id: "art-composition",
+              label: "Composition and balance",
+              subject: "Art",
+              description: "Create focal points, visual balance, hierarchy, and purposeful use of space.",
+              prerequisites: ["art-shape-form"],
+              gameSlug: "art-design-lab",
+              minAge: 5,
+              order: 3,
+              evidenceSkillIds: ["art-composition"],
+            },
+            {
+              id: "art-observation",
+              label: "Visual observation",
+              subject: "Art",
+              description: "Look closely, notice evidence, compare details, and explain visual effects precisely.",
+              prerequisites: [],
+              gameSlug: "art-design-lab",
+              minAge: 4,
+              order: 4,
+              evidenceSkillIds: ["art-observation"],
+            },
+            {
+              id: "art-visual-storytelling",
+              label: "Visual storytelling",
+              subject: "Art",
+              description: "Use sequence, symbols, setting, and design choices to communicate an idea without relying only on words.",
+              prerequisites: ["art-composition", "art-observation"],
+              gameSlug: "art-design-lab",
+              minAge: 5,
+              order: 5,
+              evidenceSkillIds: ["art-visual-storytelling"],
+            },
+          '''
+          marker = '  {\n    id: "coding-sequences",'
+          if 'id: "art-color-relationships"' not in text:
+              text = text.replace(marker, nodes + marker, 1)
+          route = '''  if (node.gameSlug === "art-design-lab") {
+              const level = node.id === "art-color-relationships" || node.id === "art-shape-form"
+                ? "Color Explorer"
+                : node.id === "art-composition" || node.id === "art-visual-storytelling"
+                  ? "Design Detective"
+                  : "Picture Maker";
+              params.set("level", level);
+              params.set("focus", node.id);
+            }
+          '''
+          route_marker = '  if (node.gameSlug === "music-lab") {'
+          if 'node.gameSlug === "art-design-lab"' not in text:
+              text = text.replace(route_marker, route + route_marker, 1)
+          skills.write_text(text)
+
+          portfolio = Path('adrianos-play-starter/lib/adrian-portfolio.ts')
+          text = portfolio.read_text()
+          if 'from "@/lib/adrian-art-toolkit"' not in text:
+              text = text.replace(
+                  'import { readMusicToolkit, type MusicToolkit } from "@/lib/adrian-music-toolkit";',
+                  'import { readMusicToolkit, type MusicToolkit } from "@/lib/adrian-music-toolkit";\nimport { readArtToolkit, type ArtToolkit } from "@/lib/adrian-art-toolkit";',
+                  1,
+              )
+          text = text.replace(
+              '  digitalToolkit: DigitalToolkit,\n  musicToolkit: MusicToolkit\n): PortfolioHighlight[] {',
+              '  digitalToolkit: DigitalToolkit,\n  musicToolkit: MusicToolkit,\n  artToolkit: ArtToolkit\n): PortfolioHighlight[] {',
+              1,
+          )
+          block = '''  if (artToolkit.cards.length > 0 || artToolkit.artworks > 0) {
+              const latest = artToolkit.cards[artToolkit.cards.length - 1];
+              addHighlight(highlights, {
+                id: "art-toolkit",
+                kind: "achievement",
+                emoji: "🎨",
+                title: "Art & Design Portfolio",
+                detail: `${artToolkit.artworks} original artwork${artToolkit.artworks === 1 ? "" : "s"} published and ${artToolkit.cards.length} visual design tool${artToolkit.cards.length === 1 ? "" : "s"} earned. Recent tools: ${artToolkit.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+                date: latest?.earnedAt ?? artToolkit.updatedAt,
+                subject: "Art",
+                value: `${artToolkit.artworks} ARTWORKS`,
+              });
+            }
+
+          '''
+          marker2 = '  if (musicToolkit.cards.length > 0) {'
+          if 'id: "art-toolkit"' not in text:
+              text = text.replace(marker2, block + marker2, 1)
+          text = text.replace(
+              '  const musicToolkit = readMusicToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit);',
+              '  const musicToolkit = readMusicToolkit(profile.id);\n  const artToolkit = readArtToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit);',
+              1,
+          )
+          text = text.replace(
+              '  const musicSubjects = musicToolkit.cards.length > 0 ? ["Music" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects]).size;',
+              '  const musicSubjects = musicToolkit.cards.length > 0 ? ["Music" as const] : [];\n  const artSubjects = artToolkit.cards.length > 0 || artToolkit.artworks > 0 ? ["Art" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects]).size;',
+              1,
+          )
+          portfolio.write_text(text)
+          PY
+      - name: Commit integration
+        run: |
+          git config user.name "AdrianOS Build Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add adrianos-play-starter/lib/adrian-skill-graph.ts adrianos-play-starter/lib/adrian-portfolio.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "Integrate Art & Design across AdrianOS"
+            git push origin HEAD:feature/art-design-lab
+          fi
