@@ -186,6 +186,50 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["reading-spelling-hard"],
   },
   {
+    id: "reading-comprehension-detail",
+    label: "Finding story details",
+    subject: "Reading",
+    description: "Locate important facts and answer directly from a passage.",
+    prerequisites: ["reading-spelling-easy"],
+    gameSlug: "reading-lab",
+    minAge: 5,
+    order: 4,
+    evidenceSkillIds: ["reading-comprehension-detail"],
+  },
+  {
+    id: "reading-sequencing",
+    label: "Story sequencing",
+    subject: "Reading",
+    description: "Put events and ideas in the order shown by a passage.",
+    prerequisites: ["reading-comprehension-detail"],
+    gameSlug: "reading-lab",
+    minAge: 6,
+    order: 5,
+    evidenceSkillIds: ["reading-sequencing"],
+  },
+  {
+    id: "reading-vocabulary",
+    label: "Vocabulary in context",
+    subject: "Reading",
+    description: "Use nearby words and events to understand unfamiliar vocabulary.",
+    prerequisites: ["reading-comprehension-detail"],
+    gameSlug: "reading-lab",
+    minAge: 6,
+    order: 6,
+    evidenceSkillIds: ["reading-vocabulary"],
+  },
+  {
+    id: "reading-inference",
+    label: "Reading inference",
+    subject: "Reading",
+    description: "Combine passage clues with reasoning to understand what is implied.",
+    prerequisites: ["reading-comprehension-detail", "reading-sequencing"],
+    gameSlug: "reading-lab",
+    minAge: 7,
+    order: 7,
+    evidenceSkillIds: ["reading-inference"],
+  },
+  {
     id: "science-earth",
     label: "Earth science",
     subject: "Science",
@@ -461,6 +505,14 @@ export function skillHref(node: SkillNode): string {
         ? "Medium"
         : "Easy";
     params.set("difficulty", difficulty);
+  }
+  if (node.gameSlug === "reading-lab") {
+    const level = node.id === "reading-inference"
+      ? "Challenge"
+      : node.id === "reading-comprehension-detail"
+        ? "Starter"
+        : "Growing";
+    params.set("level", level);
   }
   if (node.gameSlug === "science-quest") {
     const topic = node.id.replace("science-", "");
