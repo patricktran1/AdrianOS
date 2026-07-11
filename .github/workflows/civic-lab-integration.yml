@@ -1,0 +1,152 @@
+name: Civic Lab Integration Patch
+
+on:
+  push:
+    branches: [feature/civic-lab]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event_name == 'pull_request' || github.event.head_commit.message != 'Integrate Civic Lab across AdrianOS'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/civic-lab
+      - name: Wire skills and portfolio
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          skills = Path('adrianos-play-starter/lib/adrian-skill-graph.ts')
+          text = skills.read_text()
+          nodes = '''  {
+              id: "civics-rules-responsibilities",
+              label: "Rules and responsibilities",
+              subject: "Civics",
+              description: "Connect shared rules to their purposes and balance participation with responsibility.",
+              prerequisites: [],
+              gameSlug: "civic-lab",
+              minAge: 4,
+              order: 1,
+              evidenceSkillIds: ["civics-rules-responsibilities"],
+            },
+            {
+              id: "civics-public-services",
+              label: "Public services and institutions",
+              subject: "Civics",
+              description: "Match community needs to public services, institutions, budgets, and accessible delivery.",
+              prerequisites: ["civics-rules-responsibilities"],
+              gameSlug: "civic-lab",
+              minAge: 5,
+              order: 2,
+              evidenceSkillIds: ["civics-public-services"],
+            },
+            {
+              id: "civics-rights-fairness",
+              label: "Rights, fairness, and inclusion",
+              subject: "Civics",
+              description: "Reason about fair process, participation, access, expression, safety, and minority needs.",
+              prerequisites: ["civics-rules-responsibilities"],
+              gameSlug: "civic-lab",
+              minAge: 5,
+              order: 3,
+              evidenceSkillIds: ["civics-rights-fairness"],
+            },
+            {
+              id: "civics-decision-making",
+              label: "Community decision-making",
+              subject: "Civics",
+              description: "Use evidence, discussion, voting, compromise, pilots, and transparent trade-offs to make decisions.",
+              prerequisites: ["civics-rules-responsibilities", "civics-rights-fairness"],
+              gameSlug: "civic-lab",
+              minAge: 6,
+              order: 4,
+              evidenceSkillIds: ["civics-decision-making"],
+            },
+            {
+              id: "civics-information-literacy",
+              label: "Civic information literacy",
+              subject: "Civics",
+              description: "Check claims, context, source quality, samples, original records, and emotional manipulation.",
+              prerequisites: ["civics-rules-responsibilities"],
+              gameSlug: "civic-lab",
+              minAge: 6,
+              order: 5,
+              evidenceSkillIds: ["civics-information-literacy"],
+            },
+          '''
+          marker = '  {\n    id: "coding-sequences",'
+          if 'id: "civics-rules-responsibilities"' not in text:
+              text = text.replace(marker, nodes + marker, 1)
+          route = '''  if (node.gameSlug === "civic-lab") {
+              const level = node.id === "civics-rules-responsibilities"
+                ? "Community Helper"
+                : node.id === "civics-information-literacy" || node.id === "civics-decision-making"
+                  ? "Civic Designer"
+                  : "Citizen";
+              params.set("level", level);
+              params.set("focus", node.id);
+            }
+          '''
+          route_marker = '  if (node.gameSlug === "history-lab") {'
+          if 'node.gameSlug === "civic-lab"' not in text:
+              text = text.replace(route_marker, route + route_marker, 1)
+          skills.write_text(text)
+
+          portfolio = Path('adrianos-play-starter/lib/adrian-portfolio.ts')
+          text = portfolio.read_text()
+          if 'from "@/lib/adrian-civic-toolbox"' not in text:
+              text = text.replace(
+                  'import { readHistoryArchive, type HistoryArchive } from "@/lib/adrian-history-archive";',
+                  'import { readHistoryArchive, type HistoryArchive } from "@/lib/adrian-history-archive";\nimport { readCivicToolbox, type CivicToolbox } from "@/lib/adrian-civic-toolbox";',
+                  1,
+              )
+          text = text.replace(
+              '  passport: WorldPassport,\n  historyArchive: HistoryArchive\n): PortfolioHighlight[] {',
+              '  passport: WorldPassport,\n  historyArchive: HistoryArchive,\n  civicToolbox: CivicToolbox\n): PortfolioHighlight[] {',
+              1,
+          )
+          civic_block = '''  if (civicToolbox.cards.length > 0) {
+              const latest = civicToolbox.cards[civicToolbox.cards.length - 1];
+              addHighlight(highlights, {
+                id: "civic-toolbox",
+                kind: "achievement",
+                emoji: "🏙️",
+                title: "Civic Toolbox",
+                detail: `${civicToolbox.cards.length} civic tool${civicToolbox.cards.length === 1 ? "" : "s"} earned across ${civicToolbox.missions} mission${civicToolbox.missions === 1 ? "" : "s"}. Recent tools: ${civicToolbox.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+                date: latest?.earnedAt ?? civicToolbox.updatedAt,
+                subject: "Civics",
+                value: `${civicToolbox.cards.length} TOOLS`,
+              });
+            }
+
+          '''
+          history_marker = '  if (historyArchive.cards.length > 0) {'
+          if 'id: "civic-toolbox"' not in text:
+              text = text.replace(history_marker, civic_block + history_marker, 1)
+          text = text.replace(
+              '  const historyArchive = readHistoryArchive(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive);',
+              '  const historyArchive = readHistoryArchive(profile.id);\n  const civicToolbox = readCivicToolbox(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox);',
+              1,
+          )
+          text = text.replace(
+              '  const historySubjects = historyArchive.cards.length > 0 ? ["History" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects]).size;',
+              '  const historySubjects = historyArchive.cards.length > 0 ? ["History" as const] : [];\n  const civicSubjects = civicToolbox.cards.length > 0 ? ["Civics" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects]).size;',
+              1,
+          )
+          portfolio.write_text(text)
+          PY
+      - name: Commit integration
+        run: |
+          git config user.name "AdrianOS Build Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add adrianos-play-starter/lib/adrian-skill-graph.ts adrianos-play-starter/lib/adrian-portfolio.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "Integrate Civic Lab across AdrianOS"
+            git push origin HEAD:feature/civic-lab
+          fi
