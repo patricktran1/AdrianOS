@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Game } from "@/lib/games";
+import ProgressPill from "@/components/ProgressPill";
+import { useAdrianProgress } from "@/lib/adrian-progress";
 
 const RECENT_KEY = "adrianos-recent-games";
 
@@ -17,6 +19,7 @@ function getRecent(): string[] {
 export default function GameShelf({ games }: { games: Game[] }) {
   const [recent, setRecent] = useState<string[]>([]);
   const [filter, setFilter] = useState("All");
+  const { progress } = useAdrianProgress();
 
   useEffect(() => {
     setRecent(getRecent());
@@ -46,6 +49,9 @@ export default function GameShelf({ games }: { games: Game[] }) {
             A private game shelf for logic, memory, curiosity, and whatever we
             dream up next.
           </p>
+          <div style={{ marginTop: 22 }}>
+            <ProgressPill large />
+          </div>
         </div>
         <div className="hero-orb" aria-hidden="true">
           <span>PLAY</span>
@@ -102,6 +108,7 @@ export default function GameShelf({ games }: { games: Game[] }) {
         <div className="game-grid">
           {visibleGames.map((game) => {
             const playable = game.status === "playable";
+            const bestScore = progress.games[game.slug]?.bestScore ?? 0;
             const card = (
               <article className={`game-card ${!playable ? "disabled" : ""}`}>
                 <div className="game-icon" aria-hidden="true">{game.emoji}</div>
@@ -111,6 +118,11 @@ export default function GameShelf({ games }: { games: Game[] }) {
                 </div>
                 <h3>{game.title}</h3>
                 <p>{game.description}</p>
+                {bestScore > 0 && (
+                  <div style={{ marginTop: 14, color: "#c6b8ff", fontWeight: 850, fontSize: 13 }}>
+                    Personal best: {bestScore}
+                  </div>
+                )}
                 <div className="card-footer">
                   <span className="play-label">
                     {playable ? "PLAY NOW" : "ADD EXISTING GAME"}
