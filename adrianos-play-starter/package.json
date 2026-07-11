@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "generate:games": "node scripts/generate-games.mjs",
+    "dev": "npm run generate:games && next dev",
+    "build": "npm run generate:games && next build",
     "start": "next start"
   },
   "dependencies": {
