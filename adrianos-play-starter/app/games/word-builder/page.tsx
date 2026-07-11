@@ -2,8 +2,10 @@
 
 import GameFrame from "@/components/GameFrame";
 import { useAdrianProgress } from "@/lib/adrian-progress";
+import { getActiveProfile } from "@/lib/adrian-profiles";
+import { getDueReviewItems, recordLearningAttempt } from "@/lib/adrian-learning";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Difficulty = "Easy" | "Medium" | "Hard";
 type Category = "All" | "Animals" | "Space" | "Science" | "Everyday";
@@ -58,6 +60,12 @@ function matchesDifficulty(word: string, difficulty: Difficulty) {
   return word.length >= 7;
 }
 
+function difficultyForWord(word: string): Difficulty {
+  if (word.length <= 5) return "Easy";
+  if (word.length <= 7) return "Medium";
+  return "Hard";
+}
+
 export default function WordBuilderPage() {
   const { recordPlay, award, progress } = useAdrianProgress();
   const [difficulty, setDifficulty] = useState<Difficulty>("Easy");
@@ -72,6 +80,11 @@ export default function WordBuilderPage() {
   const [playing, setPlaying] = useState(false);
   const [finished, setFinished] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [recordedMiss, setRecordedMiss] = useState(false);
+  const autoStarted = useRef(false);
+  const profileId = getActiveProfile().id;
+  const dueReviews = getDueReviewItems(profileId, "word-builder");
 
   const current = session[index];
   const letters = useMemo(() => current ? scramble(current.word) : [], [current, index]);
@@ -79,17 +92,43 @@ export default function WordBuilderPage() {
   const bestScore = progress.games["word-builder"]?.bestScore ?? 0;
 
   useEffect(() => {
-    setMessage("Choose a category and difficulty.");
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get("difficulty");
+    if (["Easy", "Medium", "Hard"].includes(requested ?? "")) {
+      setDifficulty(requested as Difficulty);
+    }
+    if (params.get("review") === "1" && dueReviews.length > 0 && !autoStarted.current) {
+      autoStarted.current = true;
+      startGame(true);
+    }
   }, []);
 
-  function startGame() {
+  function reviewWords(): WordCard[] {
+    return getDueReviewItems(profileId, "word-builder")
+      .map((item) => {
+        const word = typeof item.data?.word === "string" ? item.data.word : "";
+        const hint = typeof item.data?.hint === "string" ? item.data.hint : item.prompt;
+        const categoryValue = typeof item.data?.category === "string" ? item.data.category : "Everyday";
+        const validCategory = ["Animals", "Space", "Science", "Everyday"].includes(categoryValue)
+          ? categoryValue as Exclude<Category, "All">
+          : "Everyday";
+        return word ? { word, hint, category: validCategory } : null;
+      })
+      .filter((item): item is WordCard => Boolean(item));
+  }
+
+  function startGame(useReview = false) {
     const eligible = WORDS.filter((item) =>
       matchesDifficulty(item.word, difficulty) &&
       (category === "All" || item.category === category)
     );
     const fallback = WORDS.filter((item) => matchesDifficulty(item.word, difficulty));
-    const pool = eligible.length >= 4 ? eligible : fallback;
-    const selected = shuffled(pool).slice(0, Math.min(SESSION_LENGTH, pool.length));
+    const normalPool = eligible.length >= 4 ? eligible : fallback;
+    const reviewPool = reviewWords();
+    const pool = useReview && reviewPool.length > 0 ? reviewPool : normalPool;
+    const selected = useReview
+      ? pool.slice(0, SESSION_LENGTH)
+      : shuffled(pool).slice(0, Math.min(SESSION_LENGTH, pool.length));
 
     setSession(selected);
     setIndex(0);
@@ -101,6 +140,8 @@ export default function WordBuilderPage() {
     setPlaying(true);
     setFinished(false);
     setLocked(false);
+    setReviewMode(useReview && reviewPool.length > 0);
+    setRecordedMiss(false);
     recordPlay("word-builder");
   }
 
@@ -121,14 +162,40 @@ export default function WordBuilderPage() {
     setMessage(`Hint: the word starts with ${current.word[0]}.`);
   }
 
+  function saveAttempt(correct: boolean) {
+    if (!current) return;
+    const wordDifficulty = difficultyForWord(current.word);
+    recordLearningAttempt({
+      gameSlug: "word-builder",
+      subject: "Reading",
+      skillId: `reading-spelling-${wordDifficulty.toLowerCase()}`,
+      skillLabel: `${wordDifficulty} spelling`,
+      prompt: current.hint,
+      correctAnswer: current.word,
+      correct,
+      review: reviewMode,
+      data: {
+        word: current.word,
+        hint: current.hint,
+        category: current.category,
+        difficulty: wordDifficulty,
+      },
+    }, profileId);
+  }
+
   function checkWord() {
     if (!current || locked) return;
     if (built !== current.word) {
+      if (!recordedMiss) {
+        saveAttempt(false);
+        setRecordedMiss(true);
+      }
       setAttempts((value) => value + 1);
       setMessage("Almost. Rearrange the letters and try again.");
       return;
     }
 
+    saveAttempt(true);
     setLocked(true);
     const wordPoints = Math.max(4, 12 - attempts * 2 - (hintUsed ? 3 : 0));
     const nextScore = score + wordPoints;
@@ -137,9 +204,9 @@ export default function WordBuilderPage() {
 
     window.setTimeout(() => {
       if (index === session.length - 1) {
-        const xp = 30 + nextScore;
-        const coins = Math.max(4, Math.floor(nextScore / 8));
-        award("word-builder", { xp, coins, score: nextScore, completed: true });
+        const xp = reviewMode ? 12 + nextScore : 30 + nextScore;
+        const coins = reviewMode ? 2 : Math.max(4, Math.floor(nextScore / 8));
+        award("word-builder", { xp, coins, score: nextScore, completed: !reviewMode });
         setFinished(true);
         setPlaying(false);
         return;
@@ -149,6 +216,7 @@ export default function WordBuilderPage() {
       setPicked([]);
       setAttempts(0);
       setHintUsed(false);
+      setRecordedMiss(false);
       setMessage("Tap letters to build the word.");
       setLocked(false);
     }, 650);
@@ -177,7 +245,12 @@ export default function WordBuilderPage() {
             ))}
           </div>
 
-          <button onClick={startGame} style={primaryStyle}>Start Word Mission</button>
+          <button onClick={() => startGame(false)} style={primaryStyle}>Start Word Mission</button>
+          {dueReviews.length > 0 && (
+            <button onClick={() => startGame(true)} style={{ ...primaryStyle, marginLeft: 10, background: "#c6b8ff", borderColor: "#c6b8ff" }}>
+              Review {dueReviews.length} Due
+            </button>
+          )}
           <p style={mutedStyle}>Personal best: {bestScore}</p>
         </section>
       </GameFrame>
@@ -188,12 +261,12 @@ export default function WordBuilderPage() {
     return (
       <GameFrame title="Word Builder">
         <section style={panelStyle}>
-          <div style={{ fontSize: 70 }}>🏆</div>
-          <span style={eyebrowStyle}>MISSION COMPLETE</span>
+          <div style={{ fontSize: 70 }}>{reviewMode ? "🧠" : "🏆"}</div>
+          <span style={eyebrowStyle}>{reviewMode ? "REVIEW COMPLETE" : "MISSION COMPLETE"}</span>
           <h1 style={titleStyle}>{score} points</h1>
-          <p style={mutedStyle}>You completed {session.length} randomized words and earned XP and coins.</p>
+          <p style={mutedStyle}>{reviewMode ? "Those words are now scheduled by the learning engine." : `You completed ${session.length} randomized words and earned XP and coins.`}</p>
           <div style={optionRowStyle}>
-            <button onClick={startGame} style={primaryStyle}>Play Another Round</button>
+            <button onClick={() => startGame(reviewMode)} style={primaryStyle}>Play Another Round</button>
             <Link href="/" style={secondaryLinkStyle}>Go Home</Link>
           </div>
         </section>
@@ -205,12 +278,12 @@ export default function WordBuilderPage() {
     <GameFrame title="Word Builder">
       <div style={{ width: "min(860px,100%)", margin: "0 auto" }}>
         <div style={statsStyle}>
-          <span>Word {index + 1} of {session.length}</span>
+          <span>{reviewMode ? "Spaced Review" : `Word ${index + 1} of ${session.length}`}</span>
           <span>{current.category}</span>
           <span>Score {score}</span>
         </div>
         <section style={panelStyle}>
-          <span style={eyebrowStyle}>{difficulty.toUpperCase()} WORD</span>
+          <span style={eyebrowStyle}>{difficultyForWord(current.word).toUpperCase()} WORD</span>
           <h1 style={{ ...titleStyle, fontSize: "clamp(1.8rem,5vw,3.5rem)" }}>{current.hint}</h1>
 
           {hintUsed && <p style={{ color: "#d9ff5b", fontWeight: 900 }}>Starts with: {current.word[0]}</p>}
@@ -258,6 +331,6 @@ const secondaryStyle: React.CSSProperties = { padding: "13px 18px", border: "2px
 const secondaryLinkStyle: React.CSSProperties = { ...secondaryStyle, display: "inline-block" };
 const pillStyle = (active: boolean): React.CSSProperties => ({ padding: "11px 15px", borderRadius: 999, border: active ? "2px solid #d9ff5b" : "1px solid rgba(255,255,255,.15)", background: active ? "rgba(217,255,91,.12)" : "#222936", color: "#fff", fontWeight: 850, cursor: "pointer" });
 const answerRowStyle: React.CSSProperties = { display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 8, margin: "26px 0" };
-const answerSlotStyle: React.CSSProperties = { width: 44, height: 56, display: "grid", placeItems: "center", borderBottom: "4px solid #c6b8ff", fontSize: 30, fontWeight: 950 };
-const letterRowStyle: React.CSSProperties = { display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 10 };
-const letterStyle: React.CSSProperties = { width: 58, height: 58, border: "1px solid rgba(255,255,255,.2)", borderRadius: 16, background: "#2b3444", color: "#fff", fontSize: 25, fontWeight: 950, cursor: "pointer" };
+const answerSlotStyle: React.CSSProperties = { width: 44, height: 56, display: "grid", placeItems: "center", borderBottom: "4px solid #d9ff5b", fontSize: 28, fontWeight: 950 };
+const letterRowStyle: React.CSSProperties = { display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 9, marginBottom: 20 };
+const letterStyle: React.CSSProperties = { width: 50, height: 50, borderRadius: 14, border: "1px solid rgba(255,255,255,.15)", background: "#222936", color: "#fff", fontSize: 22, fontWeight: 950, cursor: "pointer" };
