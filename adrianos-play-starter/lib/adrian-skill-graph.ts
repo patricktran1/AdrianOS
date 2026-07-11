@@ -439,6 +439,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["history-perspective"],
   },
   {
+    id: "civics-rules-responsibilities",
+    label: "Rules and responsibilities",
+    subject: "Civics",
+    description: "Connect shared rules to their purposes and balance participation with responsibility.",
+    prerequisites: [],
+    gameSlug: "civic-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["civics-rules-responsibilities"],
+  },
+  {
+    id: "civics-public-services",
+    label: "Public services and institutions",
+    subject: "Civics",
+    description: "Match community needs to public services, institutions, budgets, and accessible delivery.",
+    prerequisites: ["civics-rules-responsibilities"],
+    gameSlug: "civic-lab",
+    minAge: 5,
+    order: 2,
+    evidenceSkillIds: ["civics-public-services"],
+  },
+  {
+    id: "civics-rights-fairness",
+    label: "Rights, fairness, and inclusion",
+    subject: "Civics",
+    description: "Reason about fair process, participation, access, expression, safety, and minority needs.",
+    prerequisites: ["civics-rules-responsibilities"],
+    gameSlug: "civic-lab",
+    minAge: 5,
+    order: 3,
+    evidenceSkillIds: ["civics-rights-fairness"],
+  },
+  {
+    id: "civics-decision-making",
+    label: "Community decision-making",
+    subject: "Civics",
+    description: "Use evidence, discussion, voting, compromise, pilots, and transparent trade-offs to make decisions.",
+    prerequisites: ["civics-rules-responsibilities", "civics-rights-fairness"],
+    gameSlug: "civic-lab",
+    minAge: 6,
+    order: 4,
+    evidenceSkillIds: ["civics-decision-making"],
+  },
+  {
+    id: "civics-information-literacy",
+    label: "Civic information literacy",
+    subject: "Civics",
+    description: "Check claims, context, source quality, samples, original records, and emotional manipulation.",
+    prerequisites: ["civics-rules-responsibilities"],
+    gameSlug: "civic-lab",
+    minAge: 6,
+    order: 5,
+    evidenceSkillIds: ["civics-information-literacy"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -678,6 +733,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "civic-lab") {
+    const level = node.id === "civics-rules-responsibilities"
+      ? "Community Helper"
+      : node.id === "civics-information-literacy" || node.id === "civics-decision-making"
+        ? "Civic Designer"
+        : "Citizen";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "history-lab") {
     const level = node.id === "history-chronology"
