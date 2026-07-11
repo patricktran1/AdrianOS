@@ -1,8 +1,11 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { useAdrianProgress } from "@/lib/adrian-progress";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const GAME_SLUG = "dinosaur-detective";
 
 const DINOSAURS = [
   { name: "Tyrannosaurus rex", emoji: "🦖", clues: ["I was a meat eater.", "I walked on two legs.", "I had huge teeth and tiny arms."] },
@@ -14,47 +17,95 @@ const DINOSAURS = [
 ];
 
 export default function DinosaurDetectivePage() {
+  const { recordPlay, award } = useAdrianProgress();
   const [index, setIndex] = useState(0);
   const [clueCount, setClueCount] = useState(1);
   const [choice, setChoice] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  const completionRecorded = useRef(false);
   const current = DINOSAURS[index];
   const choices = useMemo(() => [...DINOSAURS].sort(() => Math.random() - 0.5).slice(0, 4), [current]);
   if (!choices.some((d) => d.name === current.name)) choices[0] = current;
 
+  useEffect(() => {
+    recordPlay(GAME_SLUG);
+  }, [recordPlay]);
+
   function choose(name: string) {
     if (choice) return;
     setChoice(name);
-    if (name === current.name) setScore((s) => s + 1);
+    if (name === current.name) setScore((value) => value + 1);
+  }
+
+  function finishGame() {
+    if (!completionRecorded.current) {
+      completionRecorded.current = true;
+      award(GAME_SLUG, {
+        xp: 20 + score * 5,
+        coins: 5 + score,
+        score,
+        completed: true,
+      });
+    }
+    setFinished(true);
   }
 
   function next() {
-    if (index === DINOSAURS.length - 1) return setFinished(true);
-    setIndex((i) => i + 1);
+    if (index === DINOSAURS.length - 1) {
+      finishGame();
+      return;
+    }
+    setIndex((value) => value + 1);
     setClueCount(1);
     setChoice(null);
   }
 
-  if (finished) {
-    return <GameFrame title="Dinosaur Detective"><section style={finish}><div style={{fontSize:72}}>🦖</div><h1 style={finishTitle}>Case Closed</h1><p style={muted}>Score: {score} out of {DINOSAURS.length}</p><Link href="/" style={home}>Go Home</Link></section></GameFrame>;
+  function replay() {
+    completionRecorded.current = false;
+    setIndex(0);
+    setClueCount(1);
+    setChoice(null);
+    setScore(0);
+    setFinished(false);
+    recordPlay(GAME_SLUG);
   }
 
-  return <GameFrame title="Dinosaur Detective"><main style={wrap}>
-    <div style={stats}><span>Case {index + 1} of {DINOSAURS.length}</span><span>Score {score}</span></div>
-    <section style={card}>
-      <span style={eyebrow}>IDENTIFY THE DINOSAUR</span>
-      <div style={{fontSize:88, margin:"18px 0"}}>🦴</div>
-      <div style={clueBox}>{current.clues.slice(0, clueCount).map((clue, i) => <p key={i} style={{margin:"8px 0"}}>Clue {i + 1}: {clue}</p>)}</div>
-      {clueCount < current.clues.length && !choice && <button style={secondary} onClick={() => setClueCount((n) => n + 1)}>Reveal another clue</button>}
-      <div style={grid}>{choices.map((d) => {
-        const correct = choice && d.name === current.name;
-        const wrong = choice === d.name && d.name !== current.name;
-        return <button key={d.name} onClick={() => choose(d.name)} style={{...answer, background: correct ? "#d9ff5b" : wrong ? "#ffb5bf" : "#222936", color: correct || wrong ? "#10131b" : "#fff"}}><span style={{fontSize:42}}>{d.emoji}</span><strong>{d.name}</strong></button>;
-      })}</div>
-      {choice && <div style={feedback}><strong>{choice === current.name ? "Correct." : `The dinosaur was ${current.name}.`}</strong><button style={primary} onClick={next}>{index === DINOSAURS.length - 1 ? "See results" : "Next case"}</button></div>}
-    </section>
-  </main></GameFrame>;
+  if (finished) {
+    return (
+      <GameFrame title="Dinosaur Detective">
+        <section style={finish}>
+          <div style={{ fontSize: 72 }}>🦖</div>
+          <h1 style={finishTitle}>Case Closed</h1>
+          <p style={muted}>Score: {score} out of {DINOSAURS.length}</p>
+          <div style={finishActions}>
+            <button type="button" onClick={replay} style={primary}>Play again</button>
+            <Link href="/" style={home}>Go Home</Link>
+          </div>
+        </section>
+      </GameFrame>
+    );
+  }
+
+  return (
+    <GameFrame title="Dinosaur Detective">
+      <main style={wrap}>
+        <div style={stats}><span>Case {index + 1} of {DINOSAURS.length}</span><span>Score {score}</span></div>
+        <section style={card}>
+          <span style={eyebrow}>IDENTIFY THE DINOSAUR</span>
+          <div style={{ fontSize: 88, margin: "18px 0" }}>🦴</div>
+          <div style={clueBox}>{current.clues.slice(0, clueCount).map((clue, clueIndex) => <p key={clueIndex} style={{ margin: "8px 0" }}>Clue {clueIndex + 1}: {clue}</p>)}</div>
+          {clueCount < current.clues.length && !choice && <button type="button" style={secondary} onClick={() => setClueCount((value) => value + 1)}>Reveal another clue</button>}
+          <div style={grid}>{choices.map((dinosaur) => {
+            const correct = choice && dinosaur.name === current.name;
+            const wrong = choice === dinosaur.name && dinosaur.name !== current.name;
+            return <button type="button" key={dinosaur.name} onClick={() => choose(dinosaur.name)} style={{ ...answer, background: correct ? "#d9ff5b" : wrong ? "#ffb5bf" : "#222936", color: correct || wrong ? "#10131b" : "#fff" }}><span style={{ fontSize: 42 }}>{dinosaur.emoji}</span><strong>{dinosaur.name}</strong></button>;
+          })}</div>
+          {choice && <div style={feedback}><strong>{choice === current.name ? "Correct." : `The dinosaur was ${current.name}.`}</strong><button type="button" style={primary} onClick={next}>{index === DINOSAURS.length - 1 ? "See results" : "Next case"}</button></div>}
+        </section>
+      </main>
+    </GameFrame>
+  );
 }
 
 const wrap: React.CSSProperties = { width: "min(860px,100%)", margin: "0 auto" };
@@ -70,4 +121,5 @@ const feedback: React.CSSProperties = { display: "flex", justifyContent: "space-
 const finish: React.CSSProperties = { width: "min(720px,100%)", margin: "0 auto", padding: "clamp(30px,7vw,70px)", borderRadius: 30, background: "#181d28", border: "1px solid rgba(255,255,255,.11)", textAlign: "center" };
 const finishTitle: React.CSSProperties = { fontSize: "clamp(3rem,8vw,5.5rem)", letterSpacing: "-.06em", margin: "14px 0" };
 const muted: React.CSSProperties = { color: "#aab1bf", fontSize: 18, marginBottom: 26 };
-const home: React.CSSProperties = { display: "inline-block", padding: "13px 20px", borderRadius: 999, background: "#d9ff5b", color: "#10131b", fontWeight: 950, textDecoration: "none" };
+const finishActions: React.CSSProperties = { display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" };
+const home: React.CSSProperties = { display: "inline-block", padding: "13px 20px", borderRadius: 999, background: "#222936", color: "#fff", fontWeight: 950, textDecoration: "none" };
