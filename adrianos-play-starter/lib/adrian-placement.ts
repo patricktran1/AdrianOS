@@ -3,27 +3,21 @@
 import type { AdrianProgress } from "@/lib/adrian-progress";
 import type { ChildProfile } from "@/lib/adrian-profiles";
 import {
-  getRecommendedSkill,
-  getSkillGraph,
-  setSkillGoal,
-  SKILL_CATALOG,
-} from "@/lib/adrian-skill-graph";
-import {
   readLearningForProfile,
   writeLearningForProfile,
   type ReviewItem,
   type SkillProgress,
 } from "@/lib/adrian-learning";
-import type { Game } from "@/lib/games";
 
 export type PlacementDomain = "Math" | "Reading" | "Science" | "Memory" | "Logic";
+export type PlacementSubject = PlacementDomain;
 
 export type PlacementAnswer = {
   questionId: string;
   domain: PlacementDomain;
   skillId: string;
   skillLabel: string;
-  subject: Game["subject"];
+  subject: PlacementSubject;
   level: 1 | 2 | 3;
   correct: boolean;
 };
@@ -50,41 +44,70 @@ export type PlacementReport = {
   plan: PlacementPlanDay[];
 };
 
+type SkillInfo = {
+  label: string;
+  subject: PlacementSubject;
+  prerequisites: string[];
+};
+
+const SKILLS: Record<string, SkillInfo> = {
+  "memory-matching": { label: "Visual matching", subject: "Memory", prerequisites: [] },
+  "memory-working-memory": { label: "Working memory", subject: "Memory", prerequisites: ["memory-matching"] },
+  "logic-patterns": { label: "Recognizing patterns", subject: "Logic", prerequisites: [] },
+  "logic-multi-step": { label: "Multi-step reasoning", subject: "Logic", prerequisites: ["logic-patterns"] },
+  "math-addition": { label: "Addition", subject: "Math", prerequisites: [] },
+  "math-subtraction": { label: "Subtraction", subject: "Math", prerequisites: ["math-addition"] },
+  "math-money": { label: "Money math", subject: "Math", prerequisites: ["math-addition"] },
+  "reading-spelling-easy": { label: "Short-word spelling", subject: "Reading", prerequisites: [] },
+  "reading-spelling-medium": { label: "Medium-word spelling", subject: "Reading", prerequisites: ["reading-spelling-easy"] },
+  "reading-spelling-hard": { label: "Advanced spelling", subject: "Reading", prerequisites: ["reading-spelling-medium"] },
+  "science-earth": { label: "Earth science", subject: "Science", prerequisites: [] },
+  "science-body": { label: "Human body", subject: "Science", prerequisites: [] },
+  "science-space": { label: "Space science", subject: "Science", prerequisites: [] },
+  "science-technology": { label: "Technology systems", subject: "Science", prerequisites: [] },
+};
+
 export const PLACEMENT_EVENT = "adrianos-placement-updated";
 const REPORT_ID = "placement-report";
 const REPORT_GAME_SLUG = "placement-adventure-report";
+const GOAL_GAME_SLUG = "adrianos-skill-goal";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function safeStringArray(value: unknown): string[] {
+function parseStringArray(value: string | number | boolean | undefined): string[] {
   if (typeof value !== "string") return [];
   try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is string => typeof item === "string");
   } catch {
     return [];
   }
 }
 
-function safePlan(value: unknown): PlacementPlanDay[] {
+function parsePlan(value: string | number | boolean | undefined): PlacementPlanDay[] {
   if (typeof value !== "string") return [];
   try {
-    const parsed = JSON.parse(value);
+    const parsed: unknown = JSON.parse(value);
     if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter((item) => item && typeof item === "object")
-      .map((item) => {
-        const row = item as Partial<PlacementPlanDay>;
-        return {
-          day: typeof row.day === "number" ? row.day : 1,
-          skillId: typeof row.skillId === "string" ? row.skillId : "",
-          minutes: typeof row.minutes === "number" ? row.minutes : 10,
-          activity: row.activity === "review" || row.activity === "practice" ? row.activity : "learn",
-        };
-      })
-      .filter((item) => item.skillId);
+    const plan: PlacementPlanDay[] = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== "object") continue;
+      const row = item as Record<string, unknown>;
+      const skillId = typeof row.skillId === "string" ? row.skillId : "";
+      if (!skillId) continue;
+      const activity: PlacementPlanDay["activity"] =
+        row.activity === "practice" || row.activity === "review" ? row.activity : "learn";
+      plan.push({
+        day: typeof row.day === "number" ? row.day : plan.length + 1,
+        skillId,
+        minutes: typeof row.minutes === "number" ? row.minutes : 10,
+        activity,
+      });
+    }
+    return plan;
   } catch {
     return [];
   }
@@ -100,12 +123,12 @@ function reportFromItem(item: ReviewItem | undefined): PlacementReport | null {
     totalQuestions: typeof data.totalQuestions === "number" ? data.totalQuestions : 0,
     correctAnswers: typeof data.correctAnswers === "number" ? data.correctAnswers : 0,
     accuracy: typeof data.accuracy === "number" ? data.accuracy : 0,
-    strengths: safeStringArray(data.strengthsJson),
-    building: safeStringArray(data.buildingJson),
+    strengths: parseStringArray(data.strengthsJson),
+    building: parseStringArray(data.buildingJson),
     nextSkillId: typeof data.nextSkillId === "string" && data.nextSkillId ? data.nextSkillId : null,
-    planSkillIds: safeStringArray(data.planSkillIdsJson),
+    planSkillIds: parseStringArray(data.planSkillIdsJson),
     recommendedMinutes: typeof data.recommendedMinutes === "number" ? data.recommendedMinutes : 12,
-    plan: safePlan(data.planJson),
+    plan: parsePlan(data.planJson),
   };
 }
 
@@ -115,171 +138,184 @@ export function readPlacementReport(profileId: string): PlacementReport | null {
 }
 
 export function hasCompletedPlacement(profileId: string): boolean {
-  return Boolean(readPlacementReport(profileId));
+  return readPlacementReport(profileId) !== null;
 }
 
-function masterySignal(answer: PlacementAnswer): number {
-  const correctByLevel = { 1: 58, 2: 74, 3: 89 } as const;
-  const missByLevel = { 1: 18, 2: 34, 3: 48 } as const;
-  return answer.correct ? correctByLevel[answer.level] : missByLevel[answer.level];
+function answerSignal(answer: PlacementAnswer): number {
+  if (answer.correct) {
+    if (answer.level === 3) return 89;
+    if (answer.level === 2) return 74;
+    return 58;
+  }
+  if (answer.level === 3) return 48;
+  if (answer.level === 2) return 34;
+  return 18;
 }
 
-function seedWeight(level: 1 | 2 | 3): number {
-  return level === 3 ? 5 : level === 2 ? 4 : 3;
+function answerWeight(answer: PlacementAnswer): number {
+  return answer.level === 3 ? 5 : answer.level === 2 ? 4 : 3;
 }
 
-function mergePlacementEvidence(
-  previous: SkillProgress | undefined,
-  skillId: string,
-  skillLabel: string,
-  subject: Game["subject"],
-  answers: PlacementAnswer[]
-): SkillProgress {
-  const totalWeight = answers.reduce((sum, answer) => sum + seedWeight(answer.level), 0);
-  const placementMastery = Math.round(
-    answers.reduce((sum, answer) => sum + masterySignal(answer) * seedWeight(answer.level), 0) /
-      Math.max(1, totalWeight)
-  );
-  const placementCorrect = answers.filter((answer) => answer.correct).length;
-  const placementAttempts = answers.length;
+function mergeEvidence(previous: SkillProgress | undefined, rows: PlacementAnswer[]): SkillProgress {
+  const first = rows[0];
+  let weightedScore = 0;
+  let totalWeight = 0;
+  let correctAnswers = 0;
+  for (const answer of rows) {
+    const weight = answerWeight(answer);
+    weightedScore += answerSignal(answer) * weight;
+    totalWeight += weight;
+    if (answer.correct) correctAnswers += 1;
+  }
+  const placementMastery = Math.round(weightedScore / Math.max(1, totalWeight));
+  const now = new Date().toISOString();
 
   if (!previous || previous.attempts === 0) {
-    const attempts = Math.max(totalWeight, placementAttempts);
+    const attempts = Math.max(totalWeight, rows.length);
     return {
-      id: skillId,
-      label: skillLabel,
-      subject,
+      id: first.skillId,
+      label: first.skillLabel,
+      subject: first.subject,
       attempts,
       correct: clamp(Math.round((placementMastery / 100) * attempts), 0, attempts),
-      streak: placementCorrect === placementAttempts ? placementAttempts : 0,
+      streak: correctAnswers === rows.length ? rows.length : 0,
       mastery: placementMastery,
-      lastPracticed: new Date().toISOString(),
+      lastPracticed: now,
     };
   }
 
   const combinedWeight = previous.attempts + totalWeight;
-  const mastery = Math.round(
-    (previous.mastery * previous.attempts + placementMastery * totalWeight) /
-      Math.max(1, combinedWeight)
-  );
   return {
     ...previous,
-    label: skillLabel,
-    subject,
-    attempts: previous.attempts + placementAttempts,
-    correct: clamp(previous.correct + placementCorrect, 0, previous.attempts + placementAttempts),
-    streak: placementCorrect === placementAttempts ? previous.streak + placementAttempts : 0,
-    mastery,
-    lastPracticed: new Date().toISOString(),
+    label: first.skillLabel,
+    subject: first.subject,
+    attempts: previous.attempts + rows.length,
+    correct: clamp(previous.correct + correctAnswers, 0, previous.attempts + rows.length),
+    streak: correctAnswers === rows.length ? previous.streak + rows.length : 0,
+    mastery: Math.round(
+      (previous.mastery * previous.attempts + placementMastery * totalWeight) /
+        Math.max(1, combinedWeight)
+    ),
+    lastPracticed: now,
   };
 }
 
 function inferPrerequisites(skills: Record<string, SkillProgress>): Record<string, SkillProgress> {
-  const next = { ...skills };
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const definition of SKILL_CATALOG) {
-      const skill = next[definition.id];
-      if (!skill || skill.mastery < 70) continue;
-      for (const prerequisiteId of definition.prerequisites) {
-        const prerequisiteDefinition = SKILL_CATALOG.find((item) => item.id === prerequisiteId);
-        if (!prerequisiteDefinition) continue;
-        const previous = next[prerequisiteId];
-        const inferredMastery = Math.min(82, Math.max(58, skill.mastery - 14));
-        if (previous && previous.mastery >= inferredMastery) continue;
-        const attempts = Math.max(previous?.attempts ?? 0, 4);
-        next[prerequisiteId] = {
-          id: prerequisiteId,
-          label: prerequisiteDefinition.label,
-          subject: prerequisiteDefinition.subject,
-          attempts,
-          correct: Math.max(previous?.correct ?? 0, Math.round((inferredMastery / 100) * attempts)),
-          streak: previous?.streak ?? 0,
-          mastery: inferredMastery,
-          lastPracticed: skill.lastPracticed,
-        };
-        changed = true;
-      }
+  const next: Record<string, SkillProgress> = { ...skills };
+  for (const [skillId, skill] of Object.entries(skills)) {
+    if (skill.mastery < 70) continue;
+    const info = SKILLS[skillId];
+    if (!info) continue;
+    for (const prerequisiteId of info.prerequisites) {
+      const prerequisiteInfo = SKILLS[prerequisiteId];
+      if (!prerequisiteInfo) continue;
+      const previous = next[prerequisiteId];
+      const mastery = Math.min(82, Math.max(58, skill.mastery - 14));
+      if (previous && previous.mastery >= mastery) continue;
+      const attempts = Math.max(previous?.attempts ?? 0, 4);
+      next[prerequisiteId] = {
+        id: prerequisiteId,
+        label: prerequisiteInfo.label,
+        subject: prerequisiteInfo.subject,
+        attempts,
+        correct: Math.round((mastery / 100) * attempts),
+        streak: previous?.streak ?? 0,
+        mastery,
+        lastPracticed: skill.lastPracticed,
+      };
     }
   }
   return next;
 }
 
-function uniqueAcrossSubjects(skillIds: string[]): string[] {
-  const subjects = new Set<string>();
+function choosePlanSkills(skills: Record<string, SkillProgress>, profile: ChildProfile): string[] {
+  const preferred = Object.values(skills)
+    .filter((skill) => skill.mastery < 80)
+    .sort((a, b) => a.mastery - b.mastery)
+    .map((skill) => skill.id);
+  const fallback = profile.age <= 4
+    ? ["memory-matching", "logic-patterns", "math-addition"]
+    : ["math-addition", "reading-spelling-easy", "science-earth", "memory-working-memory", "logic-multi-step"];
+  const candidates = [...preferred, ...fallback];
+  const subjects = new Set<PlacementSubject>();
   const selected: string[] = [];
-  for (const skillId of skillIds) {
-    const definition = SKILL_CATALOG.find((item) => item.id === skillId);
-    if (!definition || subjects.has(definition.subject)) continue;
-    subjects.add(definition.subject);
+
+  for (const skillId of candidates) {
+    const info = SKILLS[skillId];
+    if (!info || subjects.has(info.subject) || selected.includes(skillId)) continue;
+    subjects.add(info.subject);
     selected.push(skillId);
     if (selected.length >= 3) break;
   }
   return selected;
 }
 
-function buildSevenDayPlan(skillIds: string[], minutes: number): PlacementPlanDay[] {
-  const fallback = skillIds[0] ?? "math-addition";
-  const ids = skillIds.length > 0 ? skillIds : [fallback];
-  return Array.from({ length: 7 }, (_, index) => ({
-    day: index + 1,
-    skillId: ids[index % ids.length],
-    minutes,
-    activity: index === 6 ? "review" : index >= 3 ? "practice" : "learn",
-  }));
+function makePlan(skillIds: string[], minutes: number): PlacementPlanDay[] {
+  const ids = skillIds.length > 0 ? skillIds : ["math-addition"];
+  const plan: PlacementPlanDay[] = [];
+  for (let index = 0; index < 7; index += 1) {
+    plan.push({
+      day: index + 1,
+      skillId: ids[index % ids.length],
+      minutes,
+      activity: index === 6 ? "review" : index >= 3 ? "practice" : "learn",
+    });
+  }
+  return plan;
+}
+
+function goalItem(skillId: string, completedAt: string): ReviewItem | null {
+  const info = SKILLS[skillId];
+  if (!info) return null;
+  const due = new Date(new Date(completedAt).getTime() + 7 * 24 * 60 * 60 * 1000);
+  const dueDate = due.toISOString().slice(0, 10);
+  return {
+    id: `goal:${skillId}`,
+    gameSlug: GOAL_GAME_SLUG,
+    skillId,
+    subject: info.subject,
+    prompt: `Placement goal: ${info.label}`,
+    correctAnswer: "",
+    dueAt: `${dueDate}T23:59:59.999Z`,
+    updatedAt: completedAt,
+    successes: 0,
+    status: "resolved",
+    data: {
+      goal: true,
+      targetMastery: 80,
+      dueDate,
+      createdAt: completedAt,
+    },
+  };
 }
 
 export function savePlacementReport(
   profile: ChildProfile,
-  progress: AdrianProgress,
+  _progress: AdrianProgress,
   answers: PlacementAnswer[],
   durationSeconds: number
 ): PlacementReport {
   const current = readLearningForProfile(profile.id);
-  const grouped = new Map<string, PlacementAnswer[]>();
+  const groups = new Map<string, PlacementAnswer[]>();
   for (const answer of answers) {
-    const rows = grouped.get(answer.skillId) ?? [];
+    const rows = groups.get(answer.skillId) ?? [];
     rows.push(answer);
-    grouped.set(answer.skillId, rows);
+    groups.set(answer.skillId, rows);
   }
 
-  const seeded = { ...current.skills };
-  for (const [skillId, rows] of grouped) {
-    const first = rows[0];
-    seeded[skillId] = mergePlacementEvidence(
-      seeded[skillId],
-      skillId,
-      first.skillLabel,
-      first.subject,
-      rows
-    );
+  const seeded: Record<string, SkillProgress> = { ...current.skills };
+  for (const [skillId, rows] of groups.entries()) {
+    seeded[skillId] = mergeEvidence(seeded[skillId], rows);
   }
-
   const skills = inferPrerequisites(seeded);
-  writeLearningForProfile(profile.id, {
-    ...current,
-    skills,
-    dailyAdventure: null,
-  });
-
-  const graph = getSkillGraph(profile, progress);
-  const recommended = getRecommendedSkill(graph);
-  const ranked = graph
-    .filter((node) => !node.locked && node.stage !== "Mastered")
-    .sort((a, b) => {
-      if (recommended && a.id === recommended.id) return -1;
-      if (recommended && b.id === recommended.id) return 1;
-      if (a.mastery !== b.mastery) return a.mastery - b.mastery;
-      return a.order - b.order;
-    });
-  const planSkillIds = uniqueAcrossSubjects(ranked.map((node) => node.id));
-  if (planSkillIds.length === 0 && recommended) planSkillIds.push(recommended.id);
-
-  const tested = Object.values(skills)
-    .filter((skill) => grouped.has(skill.id))
-    .sort((a, b) => b.mastery - a.mastery);
-  const strengths = tested.filter((skill) => skill.mastery >= 70).slice(0, 4).map((skill) => skill.id);
+  const planSkillIds = choosePlanSkills(skills, profile);
+  const nextSkillId = planSkillIds[0] ?? null;
+  const tested = Object.values(skills).filter((skill) => groups.has(skill.id));
+  const strengths = tested
+    .filter((skill) => skill.mastery >= 70)
+    .sort((a, b) => b.mastery - a.mastery)
+    .slice(0, 4)
+    .map((skill) => skill.id);
   const building = tested
     .filter((skill) => skill.mastery < 70)
     .sort((a, b) => a.mastery - b.mastery)
@@ -288,8 +324,8 @@ export function savePlacementReport(
   const recommendedMinutes = profile.age <= 4 ? 8 : profile.age <= 8 ? 12 : 15;
   const correctAnswers = answers.filter((answer) => answer.correct).length;
   const accuracy = answers.length > 0 ? Math.round((correctAnswers / answers.length) * 100) : 0;
-  const plan = buildSevenDayPlan(planSkillIds, recommendedMinutes);
   const completedAt = new Date().toISOString();
+  const plan = makePlan(planSkillIds, recommendedMinutes);
 
   const report: PlacementReport = {
     completedAt,
@@ -300,21 +336,17 @@ export function savePlacementReport(
     accuracy,
     strengths,
     building,
-    nextSkillId: recommended?.id ?? planSkillIds[0] ?? null,
+    nextSkillId,
     planSkillIds,
     recommendedMinutes,
     plan,
   };
 
-  const latest = readLearningForProfile(profile.id);
-  const definition = recommended
-    ? SKILL_CATALOG.find((item) => item.id === recommended.id)
-    : undefined;
   const reportItem: ReviewItem = {
     id: REPORT_ID,
     gameSlug: REPORT_GAME_SLUG,
-    skillId: recommended?.id ?? "placement-starting-map",
-    subject: definition?.subject ?? "Logic",
+    skillId: nextSkillId ?? "placement-starting-map",
+    subject: nextSkillId && SKILLS[nextSkillId] ? SKILLS[nextSkillId].subject : "Logic",
     prompt: `${profile.name} placement starting map`,
     correctAnswer: "",
     dueAt: completedAt,
@@ -331,32 +363,34 @@ export function savePlacementReport(
       accuracy,
       strengthsJson: JSON.stringify(strengths),
       buildingJson: JSON.stringify(building),
-      nextSkillId: report.nextSkillId ?? "",
+      nextSkillId: nextSkillId ?? "",
       planSkillIdsJson: JSON.stringify(planSkillIds),
       recommendedMinutes,
       planJson: JSON.stringify(plan),
     },
   };
 
+  const placementGoals = planSkillIds
+    .slice(0, 2)
+    .map((skillId) => goalItem(skillId, completedAt))
+    .filter((item): item is ReviewItem => item !== null);
+  const replaceIds = new Set<string>([REPORT_ID, ...placementGoals.map((item) => item.id)]);
+
   writeLearningForProfile(profile.id, {
-    ...latest,
+    ...current,
+    skills,
     dailyAdventure: null,
     reviewQueue: [
-      ...latest.reviewQueue.filter((item) => item.id !== REPORT_ID),
+      ...current.reviewQueue.filter((item) => !replaceIds.has(item.id)),
       reportItem,
+      ...placementGoals,
     ].slice(-100),
   });
 
-  for (const skillId of planSkillIds.slice(0, 2)) {
-    setSkillGoal(profile.id, skillId, 80);
-  }
-
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(PLACEMENT_EVENT));
-  }
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(PLACEMENT_EVENT));
   return report;
 }
 
 export function skillLabel(skillId: string): string {
-  return SKILL_CATALOG.find((skill) => skill.id === skillId)?.label ?? skillId;
+  return SKILLS[skillId]?.label ?? skillId;
 }
