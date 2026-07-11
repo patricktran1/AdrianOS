@@ -12,6 +12,7 @@ const allowedSubjects = new Set([
   "Reading",
   "Science",
   "Geography",
+  "History",
   "Coding",
   "Creativity",
 ]);
