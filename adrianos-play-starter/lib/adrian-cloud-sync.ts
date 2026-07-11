@@ -172,7 +172,7 @@ function mergeHub(left: unknown, right: unknown): UnknownRecord {
   };
 }
 
-function mergeLearning(left: unknown, right: unknown): unknown {
+function mergeNewestState(left: unknown, right: unknown): unknown {
   const a = asRecord(left);
   const b = asRecord(right);
   const updatedA = typeof a.updatedAt === "string" ? a.updatedAt : "";
@@ -198,7 +198,11 @@ function hasMeaningfulData(backup: FamilyBackup): boolean {
     const row = asRecord(value);
     return Object.keys(asRecord(row.skills)).length > 0 || (Array.isArray(row.reviewQueue) && row.reviewQueue.length > 0);
   });
-  return progress || learning;
+  const coach = Object.values(backup.coachByProfile ?? {}).some((value) => {
+    const row = asRecord(value);
+    return Array.isArray(row.interactions) && row.interactions.length > 0;
+  });
+  return progress || learning || coach;
 }
 
 function sanitizeForCloud(backup: FamilyBackup): FamilyBackup {
@@ -225,6 +229,7 @@ function mergeBackups(local: FamilyBackup, cloud: FamilyBackup): FamilyBackup {
   const progressByProfile: Record<string, unknown> = {};
   const hubByProfile: Record<string, unknown> = {};
   const learningByProfile: Record<string, unknown> = {};
+  const coachByProfile: Record<string, unknown> = {};
   for (const profile of profiles) {
     progressByProfile[profile.id] = mergeProgress(
       local.progressByProfile[profile.id],
@@ -234,9 +239,13 @@ function mergeBackups(local: FamilyBackup, cloud: FamilyBackup): FamilyBackup {
       local.hubByProfile[profile.id],
       cloud.hubByProfile[profile.id]
     );
-    learningByProfile[profile.id] = mergeLearning(
+    learningByProfile[profile.id] = mergeNewestState(
       local.learningByProfile?.[profile.id],
       cloud.learningByProfile?.[profile.id]
+    );
+    coachByProfile[profile.id] = mergeNewestState(
+      local.coachByProfile?.[profile.id],
+      cloud.coachByProfile?.[profile.id]
     );
   }
   return {
@@ -250,6 +259,7 @@ function mergeBackups(local: FamilyBackup, cloud: FamilyBackup): FamilyBackup {
     progressByProfile,
     hubByProfile,
     learningByProfile,
+    coachByProfile,
   };
 }
 
