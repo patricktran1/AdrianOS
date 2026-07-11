@@ -1,0 +1,10 @@
+{
+  "slug": "robot-commands",
+  "title": "Robot Commands",
+  "description": "Build simple programs to guide a robot.",
+  "emoji": "🤖",
+  "subject": "Coding",
+  "age": "Ages 6+",
+  "status": "playable",
+  "order": 9
+}
