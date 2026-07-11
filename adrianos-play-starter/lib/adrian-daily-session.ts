@@ -23,6 +23,7 @@ import type { Game } from "@/lib/games";
 export type DailySessionMissionStatus = "pending" | "active" | "complete";
 
 export type DailySessionMission = AdventureItem & {
+  baselineCompletions: number;
   status: DailySessionMissionStatus;
   startedAt: string | null;
   completedAt: string | null;
@@ -73,6 +74,7 @@ function parseMission(value: unknown): DailySessionMission | null {
     difficulty: typeof raw.difficulty === "string" ? raw.difficulty : "Adaptive",
     href: String(raw.href),
     baselinePlays: typeof raw.baselinePlays === "number" ? raw.baselinePlays : 0,
+    baselineCompletions: typeof raw.baselineCompletions === "number" ? raw.baselineCompletions : 0,
     status,
     startedAt: typeof raw.startedAt === "string" ? raw.startedAt : null,
     completedAt: typeof raw.completedAt === "string" ? raw.completedAt : null,
@@ -219,6 +221,7 @@ export function ensureDailySession(
     recommendedMinutes: plan.minutes,
     missions: selectedItems.map((item) => ({
       ...item,
+      baselineCompletions: progress.games[item.gameSlug]?.completions ?? 0,
       status: "pending",
       startedAt: null,
       completedAt: null,
@@ -291,6 +294,7 @@ export function guidedMissionHref(
   const [path, query = ""] = mission.href.split("?");
   const params = new URLSearchParams(query);
   params.set("guided", "1");
+  params.set("school", "1");
   params.set("guidedProfile", profileId);
   params.set("guidedMission", String(missionIndex));
   params.set("guidedTotal", String(total));
