@@ -1,0 +1,106 @@
+name: World Explorer Skill Graph Patch
+
+on:
+  push:
+    branches: [feature/world-explorer]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Wire World Explorer into skill graph'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/world-explorer
+      - name: Add geography nodes and focused routes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('adrianos-play-starter/lib/adrian-skill-graph.ts')
+          text = path.read_text()
+          nodes = '''  {
+              id: "geography-map-skills",
+              label: "Map skills and directions",
+              subject: "Geography",
+              description: "Use directions, symbols, scale, coordinates, and terrain clues to read maps.",
+              prerequisites: [],
+              gameSlug: "world-explorer",
+              minAge: 4,
+              order: 1,
+              evidenceSkillIds: ["geography-map-skills"],
+            },
+            {
+              id: "geography-land-water",
+              label: "Landforms and water",
+              subject: "Geography",
+              description: "Understand rivers, islands, coasts, watersheds, mountains, and other physical features.",
+              prerequisites: ["geography-map-skills"],
+              gameSlug: "world-explorer",
+              minAge: 5,
+              order: 2,
+              evidenceSkillIds: ["geography-land-water"],
+            },
+            {
+              id: "geography-places-regions",
+              label: "Places and regions",
+              subject: "Geography",
+              description: "Compare climates, settlements, population patterns, and connected regions.",
+              prerequisites: ["geography-map-skills"],
+              gameSlug: "world-explorer",
+              minAge: 6,
+              order: 3,
+              evidenceSkillIds: ["geography-places-regions"],
+            },
+            {
+              id: "geography-communities-culture",
+              label: "Communities and culture",
+              subject: "Geography",
+              description: "Understand public places, traditions, perspectives, and how communities organize life.",
+              prerequisites: ["geography-map-skills"],
+              gameSlug: "world-explorer",
+              minAge: 6,
+              order: 4,
+              evidenceSkillIds: ["geography-communities-culture"],
+            },
+            {
+              id: "geography-human-environment",
+              label: "People and environments",
+              subject: "Geography",
+              description: "Reason about adaptation, resources, risk, sustainability, and how places shape human choices.",
+              prerequisites: ["geography-land-water", "geography-communities-culture"],
+              gameSlug: "world-explorer",
+              minAge: 7,
+              order: 5,
+              evidenceSkillIds: ["geography-human-environment"],
+            },
+          '''
+          marker = '  {\n    id: "coding-sequences",'
+          if 'id: "geography-map-skills"' not in text:
+              text = text.replace(marker, nodes + marker, 1)
+          route = '''  if (node.gameSlug === "world-explorer") {
+              const level = node.id === "geography-map-skills"
+                ? "Navigator"
+                : node.id === "geography-human-environment"
+                  ? "World Builder"
+                  : "Explorer";
+              params.set("level", level);
+              params.set("focus", node.id);
+            }
+          '''
+          route_marker = '  if (node.gameSlug === "science-quest") {'
+          if 'node.gameSlug === "world-explorer"' not in text:
+              text = text.replace(route_marker, route + route_marker, 1)
+          path.write_text(text)
+          PY
+      - name: Commit integration
+        run: |
+          git config user.name "AdrianOS Build Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add adrianos-play-starter/lib/adrian-skill-graph.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "Wire World Explorer into skill graph"
+            git push origin HEAD:feature/world-explorer
+          fi
