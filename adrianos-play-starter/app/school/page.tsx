@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import ProjectStudioCard from "@/components/ProjectStudioCard";
 import { useAdrianProgress } from "@/lib/adrian-progress";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import {
@@ -163,6 +164,8 @@ export default function SchoolPage() {
           </div>
         </section>
       )}
+
+      <ProjectStudioCard />
 
       {!schedule.schoolMode && (
         <div style={notice}>
