@@ -769,6 +769,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["music-composition"],
   },
   {
+    id: "art-color-relationships",
+    label: "Color relationships",
+    subject: "Art",
+    description: "Use warm and cool colors, contrast, value, and palette choices intentionally.",
+    prerequisites: [],
+    gameSlug: "art-design-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["art-color-relationships"],
+  },
+  {
+    id: "art-shape-form",
+    label: "Shape and form",
+    subject: "Art",
+    description: "Recognize geometric and organic shapes and use overlap, planes, and shading to suggest form.",
+    prerequisites: [],
+    gameSlug: "art-design-lab",
+    minAge: 4,
+    order: 2,
+    evidenceSkillIds: ["art-shape-form"],
+  },
+  {
+    id: "art-composition",
+    label: "Composition and balance",
+    subject: "Art",
+    description: "Create focal points, visual balance, hierarchy, and purposeful use of space.",
+    prerequisites: ["art-shape-form"],
+    gameSlug: "art-design-lab",
+    minAge: 5,
+    order: 3,
+    evidenceSkillIds: ["art-composition"],
+  },
+  {
+    id: "art-observation",
+    label: "Visual observation",
+    subject: "Art",
+    description: "Look closely, notice evidence, compare details, and explain visual effects precisely.",
+    prerequisites: [],
+    gameSlug: "art-design-lab",
+    minAge: 4,
+    order: 4,
+    evidenceSkillIds: ["art-observation"],
+  },
+  {
+    id: "art-visual-storytelling",
+    label: "Visual storytelling",
+    subject: "Art",
+    description: "Use sequence, symbols, setting, and design choices to communicate an idea without relying only on words.",
+    prerequisites: ["art-composition", "art-observation"],
+    gameSlug: "art-design-lab",
+    minAge: 5,
+    order: 5,
+    evidenceSkillIds: ["art-visual-storytelling"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -1008,6 +1063,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "art-design-lab") {
+    const level = node.id === "art-color-relationships" || node.id === "art-shape-form"
+      ? "Color Explorer"
+      : node.id === "art-composition" || node.id === "art-visual-storytelling"
+        ? "Design Detective"
+        : "Picture Maker";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "music-lab") {
     const level = node.id === "music-steady-beat" || node.id === "music-pitch-direction"
