@@ -1,0 +1,499 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import type { AdrianProgress } from "@/lib/adrian-progress";
+import type { ChildProfile } from "@/lib/adrian-profiles";
+import type { Game } from "@/lib/games";
+import {
+  readLearningForProfile,
+  stageForMastery,
+  writeLearningForProfile,
+  type LearningStage,
+  type ReviewItem,
+} from "@/lib/adrian-learning";
+
+export type SkillDefinition = {
+  id: string;
+  label: string;
+  subject: Game["subject"];
+  description: string;
+  prerequisites: string[];
+  gameSlug: string;
+  minAge: number;
+  order: number;
+  evidenceSkillIds?: string[];
+};
+
+export type SkillGoal = {
+  id: string;
+  skillId: string;
+  targetMastery: number;
+  dueDate: string;
+  createdAt: string;
+};
+
+export type SkillNode = SkillDefinition & {
+  mastery: number;
+  attempts: number;
+  correct: number;
+  stage: LearningStage;
+  locked: boolean;
+  dueReviews: number;
+  goal: SkillGoal | null;
+  goalComplete: boolean;
+};
+
+const GOAL_GAME_SLUG = "adrianos-skill-goal";
+const LEARNING_EVENT = "adrianos-learning-updated";
+const PROGRESS_EVENT = "adrianos-progress-updated";
+const FAMILY_EVENT = "adrianos-family-updated";
+
+export const SKILL_CATALOG: SkillDefinition[] = [
+  {
+    id: "memory-matching",
+    label: "Visual matching",
+    subject: "Memory",
+    description: "Notice which pictures are the same and remember where they are.",
+    prerequisites: [],
+    gameSlug: "memory-match",
+    minAge: 3,
+    order: 1,
+  },
+  {
+    id: "memory-working-memory",
+    label: "Working memory",
+    subject: "Memory",
+    description: "Hold several locations or ideas in mind while solving a task.",
+    prerequisites: ["memory-matching"],
+    gameSlug: "memory-match",
+    minAge: 5,
+    order: 2,
+  },
+  {
+    id: "creativity-rhythm",
+    label: "Rhythm patterns",
+    subject: "Creativity",
+    description: "Hear, copy, and create short musical patterns.",
+    prerequisites: [],
+    gameSlug: "music-maker",
+    minAge: 3,
+    order: 1,
+  },
+  {
+    id: "creativity-composition",
+    label: "Musical composition",
+    subject: "Creativity",
+    description: "Combine rhythm and sound into a longer original idea.",
+    prerequisites: ["creativity-rhythm"],
+    gameSlug: "music-maker",
+    minAge: 5,
+    order: 2,
+  },
+  {
+    id: "logic-patterns",
+    label: "Recognizing patterns",
+    subject: "Logic",
+    description: "Find what repeats and predict what should come next.",
+    prerequisites: [],
+    gameSlug: "pattern-master",
+    minAge: 4,
+    order: 1,
+  },
+  {
+    id: "logic-multi-step",
+    label: "Multi-step reasoning",
+    subject: "Logic",
+    description: "Keep track of several clues or steps before choosing an answer.",
+    prerequisites: ["logic-patterns"],
+    gameSlug: "pattern-master",
+    minAge: 6,
+    order: 2,
+  },
+  {
+    id: "math-addition",
+    label: "Addition",
+    subject: "Math",
+    description: "Combine two quantities and find the total.",
+    prerequisites: [],
+    gameSlug: "math-blast",
+    minAge: 5,
+    order: 1,
+    evidenceSkillIds: ["math-addition"],
+  },
+  {
+    id: "math-subtraction",
+    label: "Subtraction",
+    subject: "Math",
+    description: "Find how many remain or how far apart two numbers are.",
+    prerequisites: ["math-addition"],
+    gameSlug: "math-blast",
+    minAge: 6,
+    order: 2,
+    evidenceSkillIds: ["math-subtraction"],
+  },
+  {
+    id: "math-money",
+    label: "Money math",
+    subject: "Math",
+    description: "Add and subtract amounts of money in everyday situations.",
+    prerequisites: ["math-addition"],
+    gameSlug: "math-blast",
+    minAge: 6,
+    order: 3,
+    evidenceSkillIds: ["math-money"],
+  },
+  {
+    id: "math-word-problems",
+    label: "Math word problems",
+    subject: "Math",
+    description: "Turn a short story into the correct math operation.",
+    prerequisites: ["math-addition", "math-subtraction"],
+    gameSlug: "treasure-map-math",
+    minAge: 7,
+    order: 4,
+  },
+  {
+    id: "reading-spelling-easy",
+    label: "Short-word spelling",
+    subject: "Reading",
+    description: "Build familiar words with four or five letters.",
+    prerequisites: [],
+    gameSlug: "word-builder",
+    minAge: 5,
+    order: 1,
+    evidenceSkillIds: ["reading-spelling-easy"],
+  },
+  {
+    id: "reading-spelling-medium",
+    label: "Medium-word spelling",
+    subject: "Reading",
+    description: "Build longer words and remember their letter order.",
+    prerequisites: ["reading-spelling-easy"],
+    gameSlug: "word-builder",
+    minAge: 6,
+    order: 2,
+    evidenceSkillIds: ["reading-spelling-medium"],
+  },
+  {
+    id: "reading-spelling-hard",
+    label: "Advanced spelling",
+    subject: "Reading",
+    description: "Build long science and everyday vocabulary words.",
+    prerequisites: ["reading-spelling-medium"],
+    gameSlug: "word-builder",
+    minAge: 7,
+    order: 3,
+    evidenceSkillIds: ["reading-spelling-hard"],
+  },
+  {
+    id: "science-earth",
+    label: "Earth science",
+    subject: "Science",
+    description: "Understand weather, rocks, water, and Earth’s motion.",
+    prerequisites: [],
+    gameSlug: "science-quest",
+    minAge: 6,
+    order: 1,
+    evidenceSkillIds: ["science-earth"],
+  },
+  {
+    id: "science-body",
+    label: "Human body",
+    subject: "Science",
+    description: "Understand how major body parts help us live and move.",
+    prerequisites: [],
+    gameSlug: "science-quest",
+    minAge: 6,
+    order: 2,
+    evidenceSkillIds: ["science-body"],
+  },
+  {
+    id: "science-space",
+    label: "Space science",
+    subject: "Science",
+    description: "Understand planets, stars, gravity, and orbits.",
+    prerequisites: [],
+    gameSlug: "science-quest",
+    minAge: 6,
+    order: 3,
+    evidenceSkillIds: ["science-space"],
+  },
+  {
+    id: "science-technology",
+    label: "Technology systems",
+    subject: "Science",
+    description: "Understand computers, energy, robots, and information.",
+    prerequisites: [],
+    gameSlug: "science-quest",
+    minAge: 6,
+    order: 4,
+    evidenceSkillIds: ["science-technology"],
+  },
+  {
+    id: "coding-sequences",
+    label: "Command sequences",
+    subject: "Coding",
+    description: "Put commands in the right order to reach a goal.",
+    prerequisites: [],
+    gameSlug: "robot-commands",
+    minAge: 6,
+    order: 1,
+  },
+  {
+    id: "coding-turns",
+    label: "Direction and turns",
+    subject: "Coding",
+    description: "Predict how left and right turns change direction.",
+    prerequisites: ["coding-sequences"],
+    gameSlug: "robot-commands",
+    minAge: 6,
+    order: 2,
+  },
+  {
+    id: "coding-loops",
+    label: "Loops",
+    subject: "Coding",
+    description: "Use repeated commands to solve a route efficiently.",
+    prerequisites: ["coding-turns"],
+    gameSlug: "robot-commands",
+    minAge: 7,
+    order: 3,
+  },
+  {
+    id: "coding-debugging",
+    label: "Debugging",
+    subject: "Coding",
+    description: "Find the command that caused a plan to fail and repair it.",
+    prerequisites: ["coding-loops"],
+    gameSlug: "robot-commands",
+    minAge: 7,
+    order: 4,
+  },
+];
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function localDateKey(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function goalFromReview(item: ReviewItem): SkillGoal | null {
+  if (item.gameSlug !== GOAL_GAME_SLUG || item.data?.goal !== true) return null;
+  const target = item.data.targetMastery;
+  const dueDate = item.data.dueDate;
+  const createdAt = item.data.createdAt;
+  return {
+    id: item.id,
+    skillId: item.skillId,
+    targetMastery: typeof target === "number" ? clamp(Math.round(target), 50, 100) : 80,
+    dueDate: typeof dueDate === "string" ? dueDate : item.dueAt,
+    createdAt: typeof createdAt === "string" ? createdAt : item.updatedAt,
+  };
+}
+
+export function readSkillGoals(profileId: string): SkillGoal[] {
+  return readLearningForProfile(profileId).reviewQueue
+    .map(goalFromReview)
+    .filter((goal): goal is SkillGoal => Boolean(goal));
+}
+
+export function setSkillGoal(
+  profileId: string,
+  skillId: string,
+  targetMastery = 80,
+  dueDate?: string
+): SkillGoal {
+  const state = readLearningForProfile(profileId);
+  const definition = SKILL_CATALOG.find((skill) => skill.id === skillId);
+  if (!definition) throw new Error("Unknown skill.");
+  const now = new Date();
+  const due = dueDate ?? localDateKey(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000));
+  const id = `goal:${skillId}`;
+  const goal: SkillGoal = {
+    id,
+    skillId,
+    targetMastery: clamp(Math.round(targetMastery), 50, 100),
+    dueDate: due,
+    createdAt: now.toISOString(),
+  };
+  const item: ReviewItem = {
+    id,
+    gameSlug: GOAL_GAME_SLUG,
+    skillId,
+    subject: definition.subject,
+    prompt: `Parent goal: ${definition.label}`,
+    correctAnswer: "",
+    dueAt: `${due}T23:59:59.999Z`,
+    updatedAt: now.toISOString(),
+    successes: 0,
+    status: "resolved",
+    data: {
+      goal: true,
+      targetMastery: goal.targetMastery,
+      dueDate: goal.dueDate,
+      createdAt: goal.createdAt,
+    },
+  };
+  const reviewQueue = [
+    ...state.reviewQueue.filter((row) => row.id !== id),
+    item,
+  ].slice(-100);
+  writeLearningForProfile(profileId, { ...state, reviewQueue });
+  return goal;
+}
+
+export function removeSkillGoal(profileId: string, skillId: string): void {
+  const state = readLearningForProfile(profileId);
+  writeLearningForProfile(profileId, {
+    ...state,
+    reviewQueue: state.reviewQueue.filter(
+      (item) => !(item.gameSlug === GOAL_GAME_SLUG && item.skillId === skillId)
+    ),
+  });
+}
+
+function explicitEvidence(definition: SkillDefinition, profileId: string) {
+  const state = readLearningForProfile(profileId);
+  const ids = definition.evidenceSkillIds ?? [definition.id];
+  const skills = ids
+    .map((id) => state.skills[id])
+    .filter((skill) => Boolean(skill));
+  if (skills.length === 0) return { mastery: 0, attempts: 0, correct: 0 };
+  const attempts = skills.reduce((sum, skill) => sum + skill.attempts, 0);
+  const correct = skills.reduce((sum, skill) => sum + skill.correct, 0);
+  const mastery = Math.round(
+    skills.reduce((sum, skill) => sum + skill.mastery, 0) / skills.length
+  );
+  return { mastery, attempts, correct };
+}
+
+function broadGameSignal(definition: SkillDefinition, progress: AdrianProgress): number {
+  const game = progress.games[definition.gameSlug];
+  if (!game) return 0;
+  const raw = game.plays * 5 + game.completions * 13 + (game.bestScore > 0 ? 7 : 0);
+  return clamp(raw - Math.max(0, definition.order - 1) * 7, 0, 55);
+}
+
+export function getSkillGraph(
+  profile: ChildProfile,
+  progress: AdrianProgress
+): SkillNode[] {
+  const state = readLearningForProfile(profile.id);
+  const goals = readSkillGoals(profile.id);
+  const now = new Date().toISOString();
+  const appropriate = SKILL_CATALOG.filter((skill) => skill.minAge <= profile.age + 1);
+  const base = new Map<string, Omit<SkillNode, "locked">>();
+
+  for (const definition of appropriate) {
+    const evidence = explicitEvidence(definition, profile.id);
+    const broad = broadGameSignal(definition, progress);
+    const mastery = evidence.attempts > 0
+      ? evidence.mastery
+      : broad;
+    const dueReviews = state.reviewQueue.filter(
+      (item) =>
+        item.gameSlug !== GOAL_GAME_SLUG &&
+        item.skillId === definition.id &&
+        item.status === "due" &&
+        item.dueAt <= now
+    ).length;
+    const goal = goals.find((item) => item.skillId === definition.id) ?? null;
+    base.set(definition.id, {
+      ...definition,
+      mastery,
+      attempts: evidence.attempts,
+      correct: evidence.correct,
+      stage: stageForMastery(mastery, evidence.attempts),
+      dueReviews,
+      goal,
+      goalComplete: Boolean(goal && mastery >= goal.targetMastery),
+    });
+  }
+
+  return appropriate.map((definition) => {
+    const node = base.get(definition.id)!;
+    const hasDirectEvidence = node.attempts > 0 || node.mastery > 0;
+    const locked = !hasDirectEvidence && definition.prerequisites.some((id) => {
+      const prerequisite = base.get(id);
+      return !prerequisite || prerequisite.mastery < 35;
+    });
+    return { ...node, locked };
+  });
+}
+
+export function getRecommendedSkill(nodes: SkillNode[]): SkillNode | null {
+  const available = nodes.filter((node) => !node.locked && node.stage !== "Mastered");
+  const activeGoal = available
+    .filter((node) => node.goal && !node.goalComplete)
+    .sort((a, b) => a.goal!.dueDate.localeCompare(b.goal!.dueDate))[0];
+  if (activeGoal) return activeGoal;
+  const review = available
+    .filter((node) => node.dueReviews > 0)
+    .sort((a, b) => b.dueReviews - a.dueReviews)[0];
+  if (review) return review;
+  return available.sort((a, b) => {
+    if (a.subject !== b.subject) return a.mastery - b.mastery;
+    return a.order - b.order;
+  })[0] ?? null;
+}
+
+export function skillHref(node: SkillNode): string {
+  const params = new URLSearchParams();
+  if (node.dueReviews > 0) params.set("review", "1");
+  if (node.gameSlug === "math-blast") {
+    const topic = node.id === "math-money"
+      ? "money"
+      : node.id === "math-subtraction"
+        ? "subtraction"
+        : "addition";
+    params.set("topic", topic);
+    params.set("difficulty", String(node.mastery >= 78 ? 5 : node.mastery >= 38 ? 3 : 1));
+  }
+  if (node.gameSlug === "word-builder") {
+    const difficulty = node.id.endsWith("hard")
+      ? "Hard"
+      : node.id.endsWith("medium")
+        ? "Medium"
+        : "Easy";
+    params.set("difficulty", difficulty);
+  }
+  if (node.gameSlug === "science-quest") {
+    const topic = node.id.replace("science-", "");
+    params.set("topic", topic.charAt(0).toUpperCase() + topic.slice(1));
+  }
+  const query = params.toString();
+  return `/games/${node.gameSlug}${query ? `?${query}` : ""}`;
+}
+
+export function useSkillGraph(profile: ChildProfile, progress: AdrianProgress) {
+  const [revision, setRevision] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setRevision((value) => value + 1);
+    window.addEventListener(LEARNING_EVENT, refresh);
+    window.addEventListener(PROGRESS_EVENT, refresh);
+    window.addEventListener(FAMILY_EVENT, refresh);
+    return () => {
+      window.removeEventListener(LEARNING_EVENT, refresh);
+      window.removeEventListener(PROGRESS_EVENT, refresh);
+      window.removeEventListener(FAMILY_EVENT, refresh);
+    };
+  }, []);
+
+  const nodes = useMemo(
+    () => getSkillGraph(profile, progress),
+    [profile.id, profile.age, progress, revision]
+  );
+  const goals = useMemo(
+    () => readSkillGoals(profile.id),
+    [profile.id, revision]
+  );
+  const recommended = useMemo(() => getRecommendedSkill(nodes), [nodes]);
+
+  return { nodes, goals, recommended };
+}
