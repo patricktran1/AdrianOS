@@ -989,6 +989,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["life-help-communication"],
   },
   {
+    id: "environment-ecosystems",
+    label: "Ecosystems and living relationships",
+    subject: "Environment",
+    description: "Trace habitats, food webs, pollination, and indirect effects among living things.",
+    prerequisites: [],
+    gameSlug: "nature-environment-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["environment-ecosystems"],
+  },
+  {
+    id: "environment-resources",
+    label: "Natural resources and conservation",
+    subject: "Environment",
+    description: "Reason about water, forests, regeneration, shared supplies, and conservation trade-offs.",
+    prerequisites: [],
+    gameSlug: "nature-environment-lab",
+    minAge: 4,
+    order: 2,
+    evidenceSkillIds: ["environment-resources"],
+  },
+  {
+    id: "environment-waste-cycles",
+    label: "Waste, reuse, and material cycles",
+    subject: "Environment",
+    description: "Use reuse, composting, repair, and life-cycle thinking to reduce unnecessary waste.",
+    prerequisites: ["environment-resources"],
+    gameSlug: "nature-environment-lab",
+    minAge: 4,
+    order: 3,
+    evidenceSkillIds: ["environment-waste-cycles"],
+  },
+  {
+    id: "environment-energy",
+    label: "Energy choices and efficiency",
+    subject: "Environment",
+    description: "Reduce wasted energy and reason about insulation, generation, storage, and reliable systems.",
+    prerequisites: [],
+    gameSlug: "nature-environment-lab",
+    minAge: 4,
+    order: 4,
+    evidenceSkillIds: ["environment-energy"],
+  },
+  {
+    id: "environment-climate-action",
+    label: "Weather, climate, and practical action",
+    subject: "Environment",
+    description: "Separate weather from climate and choose layered, evidence-based adaptation strategies.",
+    prerequisites: ["environment-ecosystems", "environment-energy"],
+    gameSlug: "nature-environment-lab",
+    minAge: 6,
+    order: 5,
+    evidenceSkillIds: ["environment-climate-action"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -1228,6 +1283,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "nature-environment-lab") {
+    const level = node.id === "environment-ecosystems" || node.id === "environment-resources"
+      ? "Nature Helper"
+      : node.id === "environment-climate-action"
+        ? "Systems Steward"
+        : "Eco Explorer";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "life-skills-lab") {
     const level = node.id === "life-routines-time" || node.id === "life-organization"
