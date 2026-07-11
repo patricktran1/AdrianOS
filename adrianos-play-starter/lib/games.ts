@@ -19,6 +19,7 @@ export type Game = {
     | "Music"
     | "Art"
     | "Engineering"
+    | "Movement"
     | "Coding"
     | "Creativity";
   age: string;
