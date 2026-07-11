@@ -879,6 +879,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["engineering-iteration"],
   },
   {
+    id: "movement-balance",
+    label: "Balance and body control",
+    subject: "Movement",
+    description: "Use visual focus, base of support, and controlled body position to stay steady.",
+    prerequisites: [],
+    gameSlug: "movement-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["movement-balance"],
+  },
+  {
+    id: "movement-coordination",
+    label: "Coordination and rhythm",
+    subject: "Movement",
+    description: "Coordinate opposite sides, repeat movement patterns, and combine actions with rhythm.",
+    prerequisites: [],
+    gameSlug: "movement-lab",
+    minAge: 4,
+    order: 2,
+    evidenceSkillIds: ["movement-coordination"],
+  },
+  {
+    id: "movement-mobility",
+    label: "Mobility and range of motion",
+    subject: "Movement",
+    description: "Explore comfortable, controlled movement ranges without forcing or bouncing.",
+    prerequisites: [],
+    gameSlug: "movement-lab",
+    minAge: 4,
+    order: 3,
+    evidenceSkillIds: ["movement-mobility"],
+  },
+  {
+    id: "movement-strength",
+    label: "Strength and stability",
+    subject: "Movement",
+    description: "Use controlled body angles, stable equipment, and varied movements to build strength safely.",
+    prerequisites: ["movement-balance"],
+    gameSlug: "movement-lab",
+    minAge: 4,
+    order: 4,
+    evidenceSkillIds: ["movement-strength"],
+  },
+  {
+    id: "movement-spatial-awareness",
+    label: "Spatial awareness and safe movement",
+    subject: "Movement",
+    description: "Scan the environment, understand personal reach, and plan safe direction changes.",
+    prerequisites: ["movement-balance"],
+    gameSlug: "movement-lab",
+    minAge: 4,
+    order: 5,
+    evidenceSkillIds: ["movement-spatial-awareness"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -1118,6 +1173,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "movement-lab") {
+    const level = node.id === "movement-balance" || node.id === "movement-mobility"
+      ? "Mover"
+      : node.id === "movement-strength"
+        ? "Movement Strategist"
+        : "Coordinator";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "engineering-lab") {
     const level = node.id === "engineering-structures" || node.id === "engineering-forces"
