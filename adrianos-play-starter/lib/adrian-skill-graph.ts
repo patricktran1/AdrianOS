@@ -494,6 +494,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["civics-information-literacy"],
   },
   {
+    id: "economics-needs-scarcity",
+    label: "Needs, wants, and scarcity",
+    subject: "Economics",
+    description: "Distinguish needs from wants and reason about limited time, money, space, and resources.",
+    prerequisites: [],
+    gameSlug: "economics-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["economics-needs-scarcity"],
+  },
+  {
+    id: "economics-budget-saving",
+    label: "Budgeting and saving",
+    subject: "Economics",
+    description: "Build balanced plans, save toward goals, prepare for surprises, and adapt when costs change.",
+    prerequisites: ["economics-needs-scarcity"],
+    gameSlug: "economics-lab",
+    minAge: 5,
+    order: 2,
+    evidenceSkillIds: ["economics-budget-saving"],
+  },
+  {
+    id: "economics-tradeoffs",
+    label: "Trade-offs and opportunity cost",
+    subject: "Economics",
+    description: "Identify what a choice gives up and compare immediate and future benefits and costs.",
+    prerequisites: ["economics-needs-scarcity"],
+    gameSlug: "economics-lab",
+    minAge: 5,
+    order: 3,
+    evidenceSkillIds: ["economics-tradeoffs"],
+  },
+  {
+    id: "economics-markets-prices",
+    label: "Markets, prices, and exchange",
+    subject: "Economics",
+    description: "Interpret supply, demand, price signals, voluntary exchange, competition, and value.",
+    prerequisites: ["economics-needs-scarcity", "economics-tradeoffs"],
+    gameSlug: "economics-lab",
+    minAge: 6,
+    order: 4,
+    evidenceSkillIds: ["economics-markets-prices"],
+  },
+  {
+    id: "economics-work-enterprise",
+    label: "Work, value, and enterprise",
+    subject: "Economics",
+    description: "Understand costs, profit, productivity, entrepreneurship, reinvestment, and incentives.",
+    prerequisites: ["economics-budget-saving"],
+    gameSlug: "economics-lab",
+    minAge: 6,
+    order: 5,
+    evidenceSkillIds: ["economics-work-enterprise"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -733,6 +788,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "economics-lab") {
+    const level = node.id === "economics-needs-scarcity"
+      ? "Money Explorer"
+      : node.id === "economics-markets-prices" || node.id === "economics-work-enterprise"
+        ? "Market Thinker"
+        : "Budget Builder";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "civic-lab") {
     const level = node.id === "civics-rules-responsibilities"

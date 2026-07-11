@@ -22,6 +22,7 @@ import {
 import { getSkillGraph, type SkillNode } from "@/lib/adrian-skill-graph";
 import { readHistoryArchive, type HistoryArchive } from "@/lib/adrian-history-archive";
 import { readCivicToolbox, type CivicToolbox } from "@/lib/adrian-civic-toolbox";
+import { readEconomicsLedger, type EconomicsLedger } from "@/lib/adrian-economics-ledger";
 import { readWorldPassport, type WorldPassport } from "@/lib/adrian-world-passport";
 import { readWeeklyReports, type WeeklyReport } from "@/lib/adrian-weekly-report";
 import type { Game } from "@/lib/games";
@@ -220,10 +221,25 @@ function buildHighlights(
   writings: WritingPiece[],
   passport: WorldPassport,
   historyArchive: HistoryArchive,
-  civicToolbox: CivicToolbox
+  civicToolbox: CivicToolbox,
+  economicsLedger: EconomicsLedger
 ): PortfolioHighlight[] {
   const highlights = new Map<string, PortfolioHighlight>();
   const now = new Date().toISOString();
+
+  if (economicsLedger.cards.length > 0) {
+    const latest = economicsLedger.cards[economicsLedger.cards.length - 1];
+    addHighlight(highlights, {
+      id: "economics-ledger",
+      kind: "achievement",
+      emoji: "💡",
+      title: "Economics Decision Ledger",
+      detail: `${economicsLedger.cards.length} decision tool${economicsLedger.cards.length === 1 ? "" : "s"} earned across ${economicsLedger.missions} mission${economicsLedger.missions === 1 ? "" : "s"}. Recent tools: ${economicsLedger.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+      date: latest?.earnedAt ?? economicsLedger.updatedAt,
+      subject: "Economics",
+      value: `${economicsLedger.cards.length} TOOLS`,
+    });
+  }
 
   if (civicToolbox.cards.length > 0) {
     const latest = civicToolbox.cards[civicToolbox.cards.length - 1];
@@ -390,7 +406,8 @@ export function buildLearningPortfolio(
   const passport = readWorldPassport(profile.id);
   const historyArchive = readHistoryArchive(profile.id);
   const civicToolbox = readCivicToolbox(profile.id);
-  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox);
+  const economicsLedger = readEconomicsLedger(profile.id);
+  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger);
   const selected = readPortfolioShowcase(profile.id);
   const defaultIds = highlights.slice(0, 6).map((item) => item.id);
   const showcaseIds = selected ?? defaultIds;
@@ -405,7 +422,8 @@ export function buildLearningPortfolio(
   const passportSubjects = passport.stamps.length > 0 ? ["Geography" as const] : [];
   const historySubjects = historyArchive.cards.length > 0 ? ["History" as const] : [];
   const civicSubjects = civicToolbox.cards.length > 0 ? ["Civics" as const] : [];
-  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects]).size;
+  const economicsSubjects = economicsLedger.cards.length > 0 ? ["Economics" as const] : [];
+  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects]).size;
   const totalCompletions = Object.values(progress.games).reduce((sum, row) => sum + row.completions, 0);
   const projectText = projects.length > 0
     ? `, ${projects.length} completed project${projects.length === 1 ? "" : "s"}`
