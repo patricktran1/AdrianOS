@@ -23,6 +23,7 @@ export type FamilyBackup = {
   progressByProfile: Record<string, unknown>;
   hubByProfile: Record<string, unknown>;
   learningByProfile?: Record<string, unknown>;
+  coachByProfile?: Record<string, unknown>;
 };
 
 const FAMILY_KEY = "adrianos-family-v1";
@@ -30,6 +31,7 @@ const FAMILY_EVENT = "adrianos-family-updated";
 const PROGRESS_PREFIX = "adrianos-progress-v2:";
 const HUB_PREFIX = "adrianos-home-hub-v2:";
 const LEARNING_PREFIX = "adrianos-learning-v1:";
+const COACH_PREFIX = "adrianos-coach-v1:";
 
 const DEFAULT_PROFILES: ChildProfile[] = [
   {
@@ -156,14 +158,17 @@ export function exportFamilyBackup(): FamilyBackup {
   const progressByProfile: Record<string, unknown> = {};
   const hubByProfile: Record<string, unknown> = {};
   const learningByProfile: Record<string, unknown> = {};
+  const coachByProfile: Record<string, unknown> = {};
 
   for (const profile of family.profiles) {
     const progress = readJsonStorage(`${PROGRESS_PREFIX}${profile.id}`);
     const hub = readJsonStorage(`${HUB_PREFIX}${profile.id}`);
     const learning = readJsonStorage(`${LEARNING_PREFIX}${profile.id}`);
+    const coach = readJsonStorage(`${COACH_PREFIX}${profile.id}`);
     if (progress) progressByProfile[profile.id] = progress;
     if (hub) hubByProfile[profile.id] = hub;
     if (learning) learningByProfile[profile.id] = learning;
+    if (coach) coachByProfile[profile.id] = coach;
   }
 
   return {
@@ -173,6 +178,7 @@ export function exportFamilyBackup(): FamilyBackup {
     progressByProfile,
     hubByProfile,
     learningByProfile,
+    coachByProfile,
   };
 }
 
@@ -187,6 +193,7 @@ export function importFamilyBackup(value: unknown): boolean {
     const progress = raw.progressByProfile?.[profile.id];
     const hub = raw.hubByProfile?.[profile.id];
     const learning = raw.learningByProfile?.[profile.id];
+    const coach = raw.coachByProfile?.[profile.id];
     if (progress && typeof progress === "object") {
       window.localStorage.setItem(
         `${PROGRESS_PREFIX}${profile.id}`,
@@ -202,11 +209,18 @@ export function importFamilyBackup(value: unknown): boolean {
         JSON.stringify(learning)
       );
     }
+    if (coach && typeof coach === "object") {
+      window.localStorage.setItem(
+        `${COACH_PREFIX}${profile.id}`,
+        JSON.stringify(coach)
+      );
+    }
   }
 
   window.dispatchEvent(new Event(FAMILY_EVENT));
   window.dispatchEvent(new Event("adrianos-progress-updated"));
   window.dispatchEvent(new Event("adrianos-learning-updated"));
+  window.dispatchEvent(new Event("adrianos-coach-updated"));
   return true;
 }
 
@@ -234,6 +248,7 @@ export function useFamilyProfiles() {
     setFamily(writeFamilyState({ ...current, activeProfileId: profileId }));
     window.dispatchEvent(new Event("adrianos-progress-updated"));
     window.dispatchEvent(new Event("adrianos-learning-updated"));
+    window.dispatchEvent(new Event("adrianos-coach-updated"));
     return true;
   }, []);
 
