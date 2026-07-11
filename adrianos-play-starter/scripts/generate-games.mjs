@@ -22,6 +22,7 @@ const allowedSubjects = new Set([
   "Art",
   "Engineering",
   "Movement",
+  "Life Skills",
   "Coding",
   "Creativity",
 ]);

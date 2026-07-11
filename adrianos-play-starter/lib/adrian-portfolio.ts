@@ -30,6 +30,7 @@ import { readMusicToolkit, type MusicToolkit } from "@/lib/adrian-music-toolkit"
 import { readArtToolkit, type ArtToolkit } from "@/lib/adrian-art-toolkit";
 import { readEngineeringToolkit, type EngineeringToolkit } from "@/lib/adrian-engineering-toolkit";
 import { readMovementToolkit, type MovementToolkit } from "@/lib/adrian-movement-toolkit";
+import { readLifeSkillsToolkit, type LifeSkillsToolkit } from "@/lib/adrian-life-skills-toolkit";
 import { readWorldPassport, type WorldPassport } from "@/lib/adrian-world-passport";
 import { readWeeklyReports, type WeeklyReport } from "@/lib/adrian-weekly-report";
 import type { Game } from "@/lib/games";
@@ -236,10 +237,25 @@ function buildHighlights(
   musicToolkit: MusicToolkit,
   artToolkit: ArtToolkit,
   engineeringToolkit: EngineeringToolkit,
-  movementToolkit: MovementToolkit
+  movementToolkit: MovementToolkit,
+  lifeSkillsToolkit: LifeSkillsToolkit
 ): PortfolioHighlight[] {
   const highlights = new Map<string, PortfolioHighlight>();
   const now = new Date().toISOString();
+
+  if (lifeSkillsToolkit.tools.length > 0) {
+    const latest = lifeSkillsToolkit.tools[lifeSkillsToolkit.tools.length - 1];
+    addHighlight(highlights, {
+      id: "life-skills-toolkit",
+      kind: "achievement",
+      emoji: "🧭",
+      title: "Independence Toolkit",
+      detail: `${lifeSkillsToolkit.tools.length} practical tool${lifeSkillsToolkit.tools.length === 1 ? "" : "s"} earned across ${lifeSkillsToolkit.missions} life-skills mission${lifeSkillsToolkit.missions === 1 ? "" : "s"}. Recent tools: ${lifeSkillsToolkit.tools.slice(-4).map((tool) => tool.label).join(", ")}.`,
+      date: latest?.earnedAt ?? lifeSkillsToolkit.updatedAt,
+      subject: "Life Skills",
+      value: `${lifeSkillsToolkit.tools.length} TOOLS`,
+    });
+  }
 
   if (movementToolkit.cards.length > 0) {
     const latest = movementToolkit.cards[movementToolkit.cards.length - 1];
@@ -526,7 +542,8 @@ export function buildLearningPortfolio(
   const artToolkit = readArtToolkit(profile.id);
   const engineeringToolkit = readEngineeringToolkit(profile.id);
   const movementToolkit = readMovementToolkit(profile.id);
-  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit);
+  const lifeSkillsToolkit = readLifeSkillsToolkit(profile.id);
+  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit, lifeSkillsToolkit);
   const selected = readPortfolioShowcase(profile.id);
   const defaultIds = highlights.slice(0, 6).map((item) => item.id);
   const showcaseIds = selected ?? defaultIds;
@@ -549,7 +566,8 @@ export function buildLearningPortfolio(
   const artSubjects = artToolkit.cards.length > 0 || artToolkit.artworks > 0 ? ["Art" as const] : [];
   const engineeringSubjects = engineeringToolkit.cards.length > 0 ? ["Engineering" as const] : [];
   const movementSubjects = movementToolkit.cards.length > 0 ? ["Movement" as const] : [];
-  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects]).size;
+  const lifeSkillsSubjects = lifeSkillsToolkit.tools.length > 0 ? ["Life Skills" as const] : [];
+  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects, ...lifeSkillsSubjects]).size;
   const totalCompletions = Object.values(progress.games).reduce((sum, row) => sum + row.completions, 0);
   const projectText = projects.length > 0
     ? `, ${projects.length} completed project${projects.length === 1 ? "" : "s"}`
