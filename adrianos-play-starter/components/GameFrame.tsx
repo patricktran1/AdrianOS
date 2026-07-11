@@ -1,4 +1,5 @@
 import Link from "next/link";
+import DailySessionBar from "@/components/DailySessionBar";
 import ProgressPill from "@/components/ProgressPill";
 import UniversalCoach from "@/components/UniversalCoach";
 
@@ -22,6 +23,7 @@ export default function GameFrame({
       </header>
       <section className="game-stage">{children}</section>
       <UniversalCoach />
+      <DailySessionBar />
     </main>
   );
 }
