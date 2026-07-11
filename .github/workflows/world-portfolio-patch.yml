@@ -1,0 +1,73 @@
+name: World Passport Portfolio Patch
+
+on:
+  push:
+    branches: [feature/world-explorer]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Add World Passport to portfolio'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/world-explorer
+      - name: Add passport artifact to portfolio
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('adrianos-play-starter/lib/adrian-portfolio.ts')
+          text = path.read_text()
+          if 'from "@/lib/adrian-world-passport"' not in text:
+              text = text.replace(
+                  'import { getSkillGraph, type SkillNode } from "@/lib/adrian-skill-graph";',
+                  'import { getSkillGraph, type SkillNode } from "@/lib/adrian-skill-graph";\nimport { readWorldPassport, type WorldPassport } from "@/lib/adrian-world-passport";',
+                  1,
+              )
+          text = text.replace(
+              '  projects: ProjectWork[],\n  writings: WritingPiece[]\n): PortfolioHighlight[] {',
+              '  projects: ProjectWork[],\n  writings: WritingPiece[],\n  passport: WorldPassport\n): PortfolioHighlight[] {',
+              1,
+          )
+          marker = '  for (const piece of writings.slice(0, 10)) {'
+          passport_block = '''  if (passport.stamps.length > 0) {
+              const latest = passport.stamps[passport.stamps.length - 1];
+              addHighlight(highlights, {
+                id: "world-passport",
+                kind: "achievement",
+                emoji: "🌍",
+                title: "World Explorer Passport",
+                detail: `${passport.stamps.length} geography stamp${passport.stamps.length === 1 ? "" : "s"} earned across ${passport.expeditions} expedition${passport.expeditions === 1 ? "" : "s"}. Recent stamps: ${passport.stamps.slice(-4).map((stamp) => stamp.label).join(", ")}.`,
+                date: latest?.earnedAt ?? passport.updatedAt,
+                subject: "Geography",
+                value: `${passport.stamps.length} STAMPS`,
+              });
+            }
+
+          '''
+          if 'id: "world-passport"' not in text:
+              text = text.replace(marker, passport_block + marker, 1)
+          text = text.replace(
+              '  const writings = readWritingHistory(profile.id).filter((piece) => Boolean(piece.completedAt));\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings);',
+              '  const writings = readWritingHistory(profile.id).filter((piece) => Boolean(piece.completedAt));\n  const passport = readWorldPassport(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport);',
+              1,
+          )
+          text = text.replace(
+              '  const writingSubjects = writings.length > 0 ? ["Reading" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects]).size;',
+              '  const writingSubjects = writings.length > 0 ? ["Reading" as const] : [];\n  const passportSubjects = passport.stamps.length > 0 ? ["Geography" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects]).size;',
+              1,
+          )
+          path.write_text(text)
+          PY
+      - name: Commit portfolio integration
+        run: |
+          git config user.name "AdrianOS Build Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add adrianos-play-starter/lib/adrian-portfolio.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "Add World Passport to portfolio"
+            git push origin HEAD:feature/world-explorer
+          fi
