@@ -13,6 +13,10 @@ import {
   useFamilyProfiles,
   type ChildProfile,
 } from "@/lib/adrian-profiles";
+import {
+  getSubjectMastery,
+  readLearningForProfile,
+} from "@/lib/adrian-learning";
 
 type ProfileReport = {
   profile: ChildProfile;
@@ -57,9 +61,11 @@ export default function ParentDashboard({ games }: { games: Game[] }) {
     const refresh = () => setRefreshKey((value) => value + 1);
     window.addEventListener("adrianos-progress-updated", refresh);
     window.addEventListener("adrianos-family-updated", refresh);
+    window.addEventListener("adrianos-learning-updated", refresh);
     return () => {
       window.removeEventListener("adrianos-progress-updated", refresh);
       window.removeEventListener("adrianos-family-updated", refresh);
+      window.removeEventListener("adrianos-learning-updated", refresh);
     };
   }, []);
 
@@ -192,7 +198,7 @@ export default function ParentDashboard({ games }: { games: Game[] }) {
           <Link href="/" style={backLink}>← Back to AdrianOS</Link>
           <span style={{ ...eyebrow, display: "block", marginTop: 18 }}>PARENT DASHBOARD</span>
           <h1 style={title}>Learning cockpit</h1>
-          <p style={muted}>Private, local reports for Adrian and Elliot.</p>
+          <p style={muted}>Private reports, adaptive mastery, and review signals for each child.</p>
         </div>
         <button onClick={() => setUnlocked(false)} style={secondaryButton}>Lock dashboard</button>
       </header>
@@ -227,7 +233,7 @@ export default function ParentDashboard({ games }: { games: Game[] }) {
         <h2 style={sectionTitle}>Backup and restore</h2>
         <p style={muted}>
           Download one family backup and import it on another device. It contains profiles,
-          progress, coins, badges, and avatar purchases. Keep it private.
+          progress, mastery, review queues, coins, badges, and avatar purchases. Keep it private.
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
           <button onClick={downloadBackup} style={primaryButton}>Download family backup</button>
@@ -240,8 +246,7 @@ export default function ParentDashboard({ games }: { games: Game[] }) {
           style={backupArea}
         />
         <p style={{ ...muted, marginBottom: 0 }}>
-          Automatic cloud sync is not connected yet. This transfer tool works now without
-          sending the children’s data to an outside service.
+          Supabase cloud sync runs automatically when the parent account is signed in. Manual backups remain available as a second safety net.
         </p>
       </section>
     </main>
@@ -270,6 +275,18 @@ function ProfileReportCard({
     return [...subjects.entries()].sort((a, b) => b[1].plays - a[1].plays).slice(0, 4);
   }, [games, report.progress.games]);
 
+  const masteryRows = getSubjectMastery(report.profile.id, games, report.progress)
+    .filter((row) => row.attempts > 0 || row.gamesPlayed > 0)
+    .sort((a, b) => b.mastery - a.mastery)
+    .slice(0, 5);
+  const learning = readLearningForProfile(report.profile.id);
+  const dueReviews = learning.reviewQueue.filter(
+    (item) => item.status === "due" && item.dueAt <= new Date().toISOString()
+  ).length;
+  const totalAttempts = Object.values(learning.skills).reduce((sum, skill) => sum + skill.attempts, 0);
+  const totalCorrect = Object.values(learning.skills).reduce((sum, skill) => sum + skill.correct, 0);
+  const accuracy = totalAttempts > 0 ? Math.round(totalCorrect / totalAttempts * 100) : 0;
+
   const week = lastSevenDays().map((date) => {
     const activity = report.progress.activity.find((item) => item.date === date);
     return activity?.plays ?? 0;
@@ -290,8 +307,8 @@ function ProfileReportCard({
       <div style={statsGrid}>
         <Metric label="Plays" value={report.totalPlays} />
         <Metric label="Completed" value={report.totalCompletions} />
-        <Metric label="Games tried" value={report.gamesTried} />
-        <Metric label="Coins" value={report.progress.coins} />
+        <Metric label="Accuracy" value={accuracy} suffix="%" />
+        <Metric label="Reviews due" value={dueReviews} />
       </div>
 
       <div style={{ marginTop: 20 }}>
@@ -299,19 +316,40 @@ function ProfileReportCard({
         <p style={muted}>{favorite ? `${favorite.emoji} ${favorite.title}` : "Not enough play data yet."}</p>
       </div>
 
-      <strong>Activity-based strengths</strong>
-      {subjectRows.length === 0 ? (
-        <p style={muted}>Strength patterns will appear after a few games.</p>
+      <strong>Adaptive mastery</strong>
+      {masteryRows.length === 0 ? (
+        <p style={muted}>Mastery estimates will appear after a few learning games.</p>
       ) : (
-        <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-          {subjectRows.map(([subject, row]) => (
-            <div key={subject} style={subjectRow}>
-              <span>{subject}</span>
-              <span>{row.plays} plays · {row.completions} completed</span>
+        <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+          {masteryRows.map((row) => (
+            <div key={row.subject} style={masteryRow}>
+              <div style={masteryLabels}>
+                <strong>{row.subject}</strong>
+                <span>{row.stage} · {row.mastery}%</span>
+              </div>
+              <div style={masteryTrack}>
+                <div style={{ ...masteryFill, width: `${row.mastery}%` }} />
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      <div style={{ marginTop: 20 }}>
+        <strong>Activity-based interests</strong>
+        {subjectRows.length === 0 ? (
+          <p style={muted}>Interest patterns will appear after a few games.</p>
+        ) : (
+          <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+            {subjectRows.map(([subject, row]) => (
+              <div key={subject} style={subjectRow}>
+                <span>{subject}</span>
+                <span>{row.plays} plays · {row.completions} completed</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div style={{ marginTop: 20 }}>
         <strong>Last seven days</strong>
@@ -357,8 +395,8 @@ function ProfileEditor({
   );
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
-  return <div style={metric}><small>{label}</small><strong>{value}</strong></div>;
+function Metric({ label, value, suffix = "" }: { label: string; value: number; suffix?: string }) {
+  return <div style={metric}><small>{label}</small><strong>{value}{suffix}</strong></div>;
 }
 
 const page: React.CSSProperties = { width: "min(1180px,calc(100% - 28px))", margin: "0 auto", padding: "28px 0 60px", minHeight: "100vh" };
@@ -375,6 +413,10 @@ const avatar: React.CSSProperties = { width: 76, height: 76, display: "grid", pl
 const statsGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10, marginTop: 20 };
 const metric: React.CSSProperties = { display: "grid", gap: 5, padding: 14, borderRadius: 17, background: "#222936", border: "1px solid rgba(255,255,255,.08)" };
 const subjectRow: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 12px", borderRadius: 14, background: "#222936", color: "#aab1bf", fontSize: 13, fontWeight: 800 };
+const masteryRow: React.CSSProperties = { padding: 12, borderRadius: 15, background: "#222936", border: "1px solid rgba(255,255,255,.07)" };
+const masteryLabels: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 8, color: "#aab1bf", fontSize: 13 };
+const masteryTrack: React.CSSProperties = { height: 8, borderRadius: 999, background: "#10131b", overflow: "hidden" };
+const masteryFill: React.CSSProperties = { height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#7fdcff,#c6b8ff,#d9ff5b)" };
 const miniChart: React.CSSProperties = { height: 90, display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 7, alignItems: "end", marginTop: 12 };
 const miniBar: React.CSSProperties = { minHeight: 6, borderRadius: "7px 7px 2px 2px", background: "#d9ff5b" };
 const editorCard: React.CSSProperties = { display: "grid", gridTemplateColumns: "66px 1fr 80px auto", gap: 9, alignItems: "center", padding: 14, borderRadius: 18, background: "#222936" };
