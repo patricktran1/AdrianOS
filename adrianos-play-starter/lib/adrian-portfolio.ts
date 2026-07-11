@@ -20,6 +20,7 @@ import {
   type WritingPiece,
 } from "@/lib/adrian-writing";
 import { getSkillGraph, type SkillNode } from "@/lib/adrian-skill-graph";
+import { readHistoryArchive, type HistoryArchive } from "@/lib/adrian-history-archive";
 import { readWorldPassport, type WorldPassport } from "@/lib/adrian-world-passport";
 import { readWeeklyReports, type WeeklyReport } from "@/lib/adrian-weekly-report";
 import type { Game } from "@/lib/games";
@@ -216,10 +217,25 @@ function buildHighlights(
   sessions: ReturnType<typeof completedSessionRows>,
   projects: ProjectWork[],
   writings: WritingPiece[],
-  passport: WorldPassport
+  passport: WorldPassport,
+  historyArchive: HistoryArchive
 ): PortfolioHighlight[] {
   const highlights = new Map<string, PortfolioHighlight>();
   const now = new Date().toISOString();
+
+  if (historyArchive.cards.length > 0) {
+    const latest = historyArchive.cards[historyArchive.cards.length - 1];
+    addHighlight(highlights, {
+      id: "history-archive",
+      kind: "achievement",
+      emoji: "🏛️",
+      title: "History Lab Archive",
+      detail: `${historyArchive.cards.length} evidence card${historyArchive.cards.length === 1 ? "" : "s"} collected across ${historyArchive.investigations} investigation${historyArchive.investigations === 1 ? "" : "s"}. Recent cards: ${historyArchive.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+      date: latest?.earnedAt ?? historyArchive.updatedAt,
+      subject: "History",
+      value: `${historyArchive.cards.length} CARDS`,
+    });
+  }
 
   if (passport.stamps.length > 0) {
     const latest = passport.stamps[passport.stamps.length - 1];
@@ -356,7 +372,8 @@ export function buildLearningPortfolio(
   const projects = readProjectHistory(profile.id).filter((project) => Boolean(project.completedAt));
   const writings = readWritingHistory(profile.id).filter((piece) => Boolean(piece.completedAt));
   const passport = readWorldPassport(profile.id);
-  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport);
+  const historyArchive = readHistoryArchive(profile.id);
+  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive);
   const selected = readPortfolioShowcase(profile.id);
   const defaultIds = highlights.slice(0, 6).map((item) => item.id);
   const showcaseIds = selected ?? defaultIds;
@@ -369,7 +386,8 @@ export function buildLearningPortfolio(
   const projectSubjects = projects.flatMap((project) => getProjectTemplate(project.templateId)?.subjects ?? []);
   const writingSubjects = writings.length > 0 ? ["Reading" as const] : [];
   const passportSubjects = passport.stamps.length > 0 ? ["Geography" as const] : [];
-  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects]).size;
+  const historySubjects = historyArchive.cards.length > 0 ? ["History" as const] : [];
+  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects]).size;
   const totalCompletions = Object.values(progress.games).reduce((sum, row) => sum + row.completions, 0);
   const projectText = projects.length > 0
     ? `, ${projects.length} completed project${projects.length === 1 ? "" : "s"}`

@@ -384,6 +384,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["geography-human-environment"],
   },
   {
+    id: "history-chronology",
+    label: "Chronology and timelines",
+    subject: "History",
+    description: "Place events in order, compare dates, and reason about overlapping timelines.",
+    prerequisites: [],
+    gameSlug: "history-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["history-chronology"],
+  },
+  {
+    id: "history-change-continuity",
+    label: "Change and continuity",
+    subject: "History",
+    description: "Identify what changed over time and what continued beneath new tools or institutions.",
+    prerequisites: ["history-chronology"],
+    gameSlug: "history-lab",
+    minAge: 5,
+    order: 2,
+    evidenceSkillIds: ["history-change-continuity"],
+  },
+  {
+    id: "history-cause-effect",
+    label: "Historical cause and effect",
+    subject: "History",
+    description: "Separate causes, effects, triggers, and longer-term conditions in historical change.",
+    prerequisites: ["history-chronology"],
+    gameSlug: "history-lab",
+    minAge: 6,
+    order: 3,
+    evidenceSkillIds: ["history-cause-effect"],
+  },
+  {
+    id: "history-sources-evidence",
+    label: "Historical sources and evidence",
+    subject: "History",
+    description: "Use artifacts, documents, corroboration, source purpose, and direct evidence to test claims.",
+    prerequisites: ["history-chronology"],
+    gameSlug: "history-lab",
+    minAge: 6,
+    order: 4,
+    evidenceSkillIds: ["history-sources-evidence"],
+  },
+  {
+    id: "history-perspective",
+    label: "Historical perspective",
+    subject: "History",
+    description: "Compare viewpoints, connect accounts to roles, and notice whose voice is absent.",
+    prerequisites: ["history-sources-evidence"],
+    gameSlug: "history-lab",
+    minAge: 7,
+    order: 5,
+    evidenceSkillIds: ["history-perspective"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -623,6 +678,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "history-lab") {
+    const level = node.id === "history-chronology"
+      ? "Time Traveler"
+      : node.id === "history-perspective"
+        ? "Evidence Detective"
+        : "Historian";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "world-explorer") {
     const level = node.id === "geography-map-skills"
