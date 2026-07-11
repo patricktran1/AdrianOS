@@ -19,7 +19,7 @@ export default function ParentPortfolioLauncher() {
         <span style={eyebrow}>LEARNING PORTFOLIO</span>
         <h2 style={title}>Portfolio & mastery transcript</h2>
         <p style={muted}>
-          Review evidence skill by skill, choose the child-facing showcase, copy a summary, or print a clean transcript.
+          Review evidence skill by skill, choose the child-facing showcase, copy a summary, or print a clean transcript. Showcase choices sync with the family snapshot.
         </p>
       </div>
       <Link href="/portfolio?parent=1" style={button}>Open transcript →</Link>
