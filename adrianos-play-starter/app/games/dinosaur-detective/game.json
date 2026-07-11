@@ -1,0 +1,10 @@
+{
+  "slug": "dinosaur-detective",
+  "title": "Dinosaur Detective",
+  "description": "Identify dinosaurs using fossils, traits, and clues.",
+  "emoji": "🦖",
+  "subject": "Science",
+  "age": "Ages 6+",
+  "status": "playable",
+  "order": 10
+}
