@@ -934,6 +934,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["movement-spatial-awareness"],
   },
   {
+    id: "life-routines-time",
+    label: "Routines and time planning",
+    subject: "Life Skills",
+    description: "Sequence routines, plan backward, and choose priorities using deadlines and consequences.",
+    prerequisites: [],
+    gameSlug: "life-skills-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["life-routines-time"],
+  },
+  {
+    id: "life-organization",
+    label: "Organization and task setup",
+    subject: "Life Skills",
+    description: "Create homes for materials, prepare launch pads, order steps, and maintain simple systems.",
+    prerequisites: [],
+    gameSlug: "life-skills-lab",
+    minAge: 4,
+    order: 2,
+    evidenceSkillIds: ["life-organization"],
+  },
+  {
+    id: "life-food-prep",
+    label: "Simple food preparation",
+    subject: "Life Skills",
+    description: "Use clean preparation, age-safe tools, food stop checks, and recipe previews.",
+    prerequisites: [],
+    gameSlug: "life-skills-lab",
+    minAge: 4,
+    order: 3,
+    evidenceSkillIds: ["life-food-prep"],
+  },
+  {
+    id: "life-home-responsibility",
+    label: "Household responsibility",
+    subject: "Life Skills",
+    description: "Notice hazards, restore shared spaces, follow care instructions, and complete household steps responsibly.",
+    prerequisites: ["life-organization"],
+    gameSlug: "life-skills-lab",
+    minAge: 4,
+    order: 4,
+    evidenceSkillIds: ["life-home-responsibility"],
+  },
+  {
+    id: "life-help-communication",
+    label: "Asking for help and communicating needs",
+    subject: "Life Skills",
+    description: "Make specific help requests, give honest updates, and clarify instructions early.",
+    prerequisites: [],
+    gameSlug: "life-skills-lab",
+    minAge: 4,
+    order: 5,
+    evidenceSkillIds: ["life-help-communication"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -1173,6 +1228,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "life-skills-lab") {
+    const level = node.id === "life-routines-time" || node.id === "life-organization"
+      ? "Helper"
+      : node.id === "life-home-responsibility"
+        ? "Life Planner"
+        : "Independent Starter";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "movement-lab") {
     const level = node.id === "movement-balance" || node.id === "movement-mobility"
