@@ -1,5 +1,5 @@
-import Link from "next/link";
 import DailySessionBar from "@/components/DailySessionBar";
+import GameExitLink from "@/components/GameExitLink";
 import ProgressPill from "@/components/ProgressPill";
 import UniversalCoach from "@/components/UniversalCoach";
 
@@ -13,9 +13,7 @@ export default function GameFrame({
   return (
     <main className="game-page">
       <header className="game-topbar">
-        <Link href="/" className="home-button" aria-label="Back to game library">
-          ← Home
-        </Link>
+        <GameExitLink />
         <div className="game-title">{title}</div>
         <div className="topbar-spacer">
           <ProgressPill />
