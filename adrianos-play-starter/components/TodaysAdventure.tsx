@@ -80,7 +80,7 @@ export default function TodaysAdventure({ games }: { games: Game[] }) {
       <div style={learningStrip}>
         <div>
           <small style={stripLabel}>LEARNING MAP</small>
-          <strong>{dueReviews > 0 ? `${dueReviews.length} review${dueReviews.length === 1 ? "" : "s"} ready` : "No reviews due"}</strong>
+          <strong>{dueReviews.length > 0 ? `${dueReviews.length} review${dueReviews.length === 1 ? "" : "s"} ready` : "No reviews due"}</strong>
         </div>
         {(["Learning", "Practicing", "Mastered"] as LearningStage[]).map((stage) => (
           <div key={stage} style={stageStat}>
