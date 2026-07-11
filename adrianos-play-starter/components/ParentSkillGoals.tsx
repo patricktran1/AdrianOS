@@ -21,6 +21,7 @@ export default function ParentSkillGoals() {
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
+    setUnlocked(window.sessionStorage.getItem("adrianos-skill-goals-unlocked") === "yes");
     const refresh = () => setRevision((value) => value + 1);
     window.addEventListener("adrianos-learning-updated", refresh);
     window.addEventListener("adrianos-progress-updated", refresh);
@@ -55,6 +56,7 @@ export default function ParentSkillGoals() {
       setMessage("That PIN did not match.");
       return;
     }
+    window.sessionStorage.setItem("adrianos-skill-goals-unlocked", "yes");
     setUnlocked(true);
     setPin("");
     setMessage("");
