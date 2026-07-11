@@ -80,10 +80,10 @@ const LEVELS: Level[] = [
     start: { x: 0, y: 0, direction: 1 },
     goal: { x: 5, y: 5 },
     obstacles: [
-      { x: 2, y: 0 }, { x: 2, y: 1 }, { x: 4, y: 2 }, { x: 3, y: 4 }, { x: 1, y: 4 },
+      { x: 2, y: 1 }, { x: 3, y: 2 }, { x: 1, y: 3 }, { x: 3, y: 4 }, { x: 4, y: 4 },
     ],
-    stars: [{ x: 1, y: 0 }, { x: 3, y: 2 }, { x: 5, y: 3 }, { x: 4, y: 5 }],
-    maxBlocks: 18,
+    stars: [{ x: 1, y: 0 }, { x: 3, y: 0 }, { x: 5, y: 2 }, { x: 5, y: 4 }],
+    maxBlocks: 12,
   },
 ];
 
