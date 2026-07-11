@@ -18,6 +18,7 @@ const allowedSubjects = new Set([
   "Wellbeing",
   "Health",
   "Digital Citizenship",
+  "Music",
   "Coding",
   "Creativity",
 ]);
