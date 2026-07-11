@@ -549,6 +549,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["economics-work-enterprise"],
   },
   {
+    id: "wellbeing-emotional-awareness",
+    label: "Emotional awareness",
+    subject: "Wellbeing",
+    description: "Name emotions, notice body clues, and recognize that several feelings can be true at once.",
+    prerequisites: [],
+    gameSlug: "feelings-friendship-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["wellbeing-emotional-awareness"],
+  },
+  {
+    id: "wellbeing-self-regulation",
+    label: "Self-regulation",
+    subject: "Wellbeing",
+    description: "Pause, calm the body, separate worries from plans, and focus effort on controllable actions.",
+    prerequisites: ["wellbeing-emotional-awareness"],
+    gameSlug: "feelings-friendship-lab",
+    minAge: 4,
+    order: 2,
+    evidenceSkillIds: ["wellbeing-self-regulation"],
+  },
+  {
+    id: "wellbeing-communication-listening",
+    label: "Communication and listening",
+    subject: "Wellbeing",
+    description: "Make clear requests, listen for understanding, use I-messages, and discuss difficult problems directly.",
+    prerequisites: ["wellbeing-emotional-awareness"],
+    gameSlug: "feelings-friendship-lab",
+    minAge: 5,
+    order: 3,
+    evidenceSkillIds: ["wellbeing-communication-listening"],
+  },
+  {
+    id: "wellbeing-empathy-perspective",
+    label: "Empathy and perspective",
+    subject: "Wellbeing",
+    description: "Respect different experiences, hold two perspectives at once, and use curiosity before assumptions.",
+    prerequisites: ["wellbeing-emotional-awareness", "wellbeing-communication-listening"],
+    gameSlug: "feelings-friendship-lab",
+    minAge: 5,
+    order: 4,
+    evidenceSkillIds: ["wellbeing-empathy-perspective"],
+  },
+  {
+    id: "wellbeing-conflict-boundaries",
+    label: "Conflict resolution and boundaries",
+    subject: "Wellbeing",
+    description: "Create fair solutions, repair harm, state boundaries clearly, and protect privacy and consent.",
+    prerequisites: ["wellbeing-self-regulation", "wellbeing-communication-listening"],
+    gameSlug: "feelings-friendship-lab",
+    minAge: 5,
+    order: 5,
+    evidenceSkillIds: ["wellbeing-conflict-boundaries"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -788,6 +843,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "feelings-friendship-lab") {
+    const level = node.id === "wellbeing-emotional-awareness" || node.id === "wellbeing-self-regulation"
+      ? "Feelings Finder"
+      : node.id === "wellbeing-conflict-boundaries"
+        ? "Calm Problem Solver"
+        : "Friendship Builder";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "economics-lab") {
     const level = node.id === "economics-needs-scarcity"
