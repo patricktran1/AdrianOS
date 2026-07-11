@@ -1,0 +1,64 @@
+name: AdrianOS School Control Audit
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Audit fixed controls and completion paths
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('adrianos-play-starter')
+          games = root / 'app' / 'games'
+          print('=== GAME DIRECTORIES ===')
+          for directory in sorted(p for p in games.iterdir() if p.is_dir()):
+              print(directory.relative_to(root))
+
+          print('\n=== FIXED OR STICKY CONTROL CANDIDATES ===')
+          candidates = []
+          for path in sorted(games.rglob('*')):
+              if path.suffix not in {'.tsx', '.ts', '.css'}:
+                  continue
+              text = path.read_text(errors='ignore')
+              lines = text.splitlines()
+              for index, line in enumerate(lines, 1):
+                  if re.search(r'position\s*:\s*["\']?(fixed|sticky)', line, re.I) or re.search(r'position\s*:\s*(fixed|sticky)', line, re.I):
+                      start = max(0, index - 4)
+                      end = min(len(lines), index + 8)
+                      snippet = '\n'.join(f'{n+1}: {lines[n]}' for n in range(start, end))
+                      candidates.append((str(path.relative_to(root)), index, snippet))
+          if not candidates:
+              print('No game-level fixed or sticky controls found.')
+          for path, line, snippet in candidates:
+              print(f'\n--- {path}:{line} ---\n{snippet}')
+
+          print('\n=== COMPLETION SIGNAL AUDIT ===')
+          for directory in sorted(p for p in games.iterdir() if p.is_dir()):
+              source = '\n'.join(
+                  p.read_text(errors='ignore')
+                  for p in directory.rglob('*')
+                  if p.suffix in {'.tsx', '.ts'}
+              )
+              has_metadata = (directory / 'game.json').exists()
+              signals = []
+              for label, pattern in [
+                  ('award completed', r'completed\s*:\s*true'),
+                  ('award call', r'\baward\s*\('),
+                  ('record completion', r'complete|completed|finish|finished|win|won'),
+                  ('game frame', r'<GameFrame'),
+              ]:
+                  if re.search(pattern, source, re.I):
+                      signals.append(label)
+              print(f'{directory.name}: metadata={has_metadata}; signals={", ".join(signals) if signals else "NONE"}')
+          PY
