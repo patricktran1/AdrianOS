@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useAdrianProgress } from "@/lib/adrian-progress";
+import { useEffect, useRef, useState } from "react";
 
+const GAME_SLUG = "question-quest";
 const QUESTIONS = [
   {
     question: "Why do computers need time to load?",
@@ -46,12 +48,23 @@ const QUESTIONS = [
 ];
 
 export default function QuestionQuest() {
+  const { recordPlay, award } = useAdrianProgress();
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [choice, setChoice] = useState<number | null>(null);
   const [finished, setFinished] = useState(false);
-
+  const completionRecorded = useRef(false);
   const current = QUESTIONS[index];
+
+  useEffect(() => {
+    recordPlay(GAME_SLUG);
+  }, [recordPlay]);
+
+  useEffect(() => {
+    if (!finished || completionRecorded.current) return;
+    completionRecorded.current = true;
+    award(GAME_SLUG, { xp: 16 + score * 5, coins: 5, score, completed: true });
+  }, [finished, score, award]);
 
   function answer(answerIndex: number) {
     if (choice !== null) return;
@@ -69,10 +82,12 @@ export default function QuestionQuest() {
   }
 
   function restart() {
+    completionRecorded.current = false;
     setIndex(0);
     setScore(0);
     setChoice(null);
     setFinished(false);
+    recordPlay(GAME_SLUG);
   }
 
   if (finished) {
@@ -81,7 +96,7 @@ export default function QuestionQuest() {
         <span className="eyebrow">QUEST COMPLETE</span>
         <h1>{score} / {QUESTIONS.length}</h1>
         <p>You collected four new pieces of world-knowledge.</p>
-        <button className="primary-button" onClick={restart}>Play again</button>
+        <button className="primary-button" onClick={restart} type="button">Play again</button>
       </div>
     );
   }
@@ -110,6 +125,7 @@ export default function QuestionQuest() {
               key={answerText}
               className={className}
               onClick={() => answer(answerIndex)}
+              type="button"
             >
               <span>{String.fromCharCode(65 + answerIndex)}</span>
               {answerText}
@@ -122,7 +138,7 @@ export default function QuestionQuest() {
         <div className="fact-panel">
           <strong>{choice === current.correct ? "Correct." : "Good try."}</strong>
           <p>{current.fact}</p>
-          <button className="primary-button" onClick={next}>
+          <button className="primary-button" onClick={next} type="button">
             {index === QUESTIONS.length - 1 ? "See results" : "Next question"}
           </button>
         </div>

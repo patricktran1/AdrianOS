@@ -1,9 +1,11 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { useAdrianProgress } from "@/lib/adrian-progress";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+const GAME_SLUG = "money-math";
 const QUESTIONS = [
   { prompt: "Which coins make 10¢?", answer: "Two nickels", choices: ["Two nickels", "One penny", "Three quarters", "One dime and one nickel"] },
   { prompt: "You have $5 and spend $2. How much is left?", answer: "$3", choices: ["$2", "$3", "$5", "$7"] },
@@ -16,43 +18,99 @@ const QUESTIONS = [
 ];
 
 export default function MoneyMathPage() {
+  const { recordPlay, award } = useAdrianProgress();
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [choice, setChoice] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
+  const completionRecorded = useRef(false);
   const current = QUESTIONS[index];
   const choices = useMemo(() => [...current.choices].sort(() => Math.random() - 0.5), [current]);
+
+  useEffect(() => {
+    recordPlay(GAME_SLUG);
+  }, [recordPlay]);
+
+  useEffect(() => {
+    if (!finished || completionRecorded.current) return;
+    completionRecorded.current = true;
+    award(GAME_SLUG, { xp: 20 + score * 4, coins: 6, score, completed: true });
+  }, [finished, score, award]);
 
   function choose(value: string) {
     if (choice) return;
     setChoice(value);
-    if (value === current.answer) setScore((s) => s + 1);
+    if (value === current.answer) setScore((currentScore) => currentScore + 1);
   }
 
   function next() {
-    if (index === QUESTIONS.length - 1) return setFinished(true);
-    setIndex((i) => i + 1);
+    if (index === QUESTIONS.length - 1) {
+      setFinished(true);
+      return;
+    }
+    setIndex((currentIndex) => currentIndex + 1);
     setChoice(null);
   }
 
-  if (finished) {
-    return <GameFrame title="Money Math"><section style={finish}><div style={{fontSize:72}}>💰</div><h1 style={finishTitle}>Money Mission Complete</h1><p style={muted}>Score: {score} out of {QUESTIONS.length}</p><Link href="/" style={home}>Go Home</Link></section></GameFrame>;
+  function restart() {
+    completionRecorded.current = false;
+    setIndex(0);
+    setScore(0);
+    setChoice(null);
+    setFinished(false);
+    recordPlay(GAME_SLUG);
   }
 
-  return <GameFrame title="Money Math"><main style={wrap}>
-    <div style={stats}><span>Question {index + 1} of {QUESTIONS.length}</span><span>Score {score}</span></div>
-    <section style={card}>
-      <div style={{fontSize:72}}>🪙</div>
-      <span style={eyebrow}>MONEY MATH</span>
-      <h1 style={title}>{current.prompt}</h1>
-      <div style={grid}>{choices.map((item) => {
-        const correct = choice && item === current.answer;
-        const wrong = choice === item && item !== current.answer;
-        return <button key={item} onClick={() => choose(item)} style={{...answer, background: correct ? "#d9ff5b" : wrong ? "#ffb5bf" : "#222936", color: correct || wrong ? "#10131b" : "#fff"}}>{item}</button>;
-      })}</div>
-      {choice && <div style={feedback}><strong>{choice === current.answer ? "Correct." : `The answer is ${current.answer}.`}</strong><button style={primary} onClick={next}>{index === QUESTIONS.length - 1 ? "See results" : "Next question"}</button></div>}
-    </section>
-  </main></GameFrame>;
+  if (finished) {
+    return (
+      <GameFrame title="Money Math">
+        <section style={finish}>
+          <div style={{ fontSize: 72 }}>💰</div>
+          <h1 style={finishTitle}>Money Mission Complete</h1>
+          <p style={muted}>Score: {score} out of {QUESTIONS.length}</p>
+          <div style={finishActions}>
+            <button style={primary} onClick={restart} type="button">Play again</button>
+            <Link href="/" style={home}>Go Home</Link>
+          </div>
+        </section>
+      </GameFrame>
+    );
+  }
+
+  return (
+    <GameFrame title="Money Math">
+      <main style={wrap}>
+        <div style={stats}><span>Question {index + 1} of {QUESTIONS.length}</span><span>Score {score}</span></div>
+        <section style={card}>
+          <div style={{ fontSize: 72 }}>🪙</div>
+          <span style={eyebrow}>MONEY MATH</span>
+          <h1 style={title}>{current.prompt}</h1>
+          <div style={grid}>
+            {choices.map((item) => {
+              const correct = choice !== null && item === current.answer;
+              const wrong = choice === item && item !== current.answer;
+              return (
+                <button
+                  key={item}
+                  onClick={() => choose(item)}
+                  style={{ ...answer, background: correct ? "#d9ff5b" : wrong ? "#ffb5bf" : "#222936", color: correct || wrong ? "#10131b" : "#fff" }}
+                  type="button"
+                >
+                  {item}
+                </button>
+              );
+            })}
+          </div>
+          {choice && (
+            <div style={feedback}>
+              <strong>{choice === current.answer ? "Correct." : `The answer is ${current.answer}.`}</strong>
+              <button style={primary} onClick={next} type="button">{index === QUESTIONS.length - 1 ? "See results" : "Next question"}</button>
+            </div>
+          )}
+        </section>
+      </main>
+    </GameFrame>
+  );
 }
 
 const wrap: React.CSSProperties = { width: "min(820px,100%)", margin: "0 auto" };
@@ -60,11 +118,12 @@ const stats: React.CSSProperties = { display: "flex", justifyContent: "space-bet
 const card: React.CSSProperties = { padding: "clamp(24px,5vw,50px)", borderRadius: 30, background: "#181d28", border: "1px solid rgba(255,255,255,.11)", textAlign: "center" };
 const eyebrow: React.CSSProperties = { color: "#d9ff5b", fontSize: 12, fontWeight: 950, letterSpacing: ".18em" };
 const title: React.CSSProperties = { fontSize: "clamp(2rem,6vw,4rem)", lineHeight: 1, letterSpacing: "-.055em", margin: "14px 0 28px" };
-const grid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12 };
+const grid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 12 };
 const answer: React.CSSProperties = { minHeight: 82, borderRadius: 18, border: "1px solid rgba(255,255,255,.12)", fontSize: 18, fontWeight: 900, cursor: "pointer" };
 const primary: React.CSSProperties = { padding: "12px 18px", borderRadius: 999, border: 0, background: "#d9ff5b", color: "#10131b", fontWeight: 950, cursor: "pointer" };
 const feedback: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 20 };
 const finish: React.CSSProperties = { width: "min(720px,100%)", margin: "0 auto", padding: "clamp(30px,7vw,70px)", borderRadius: 30, background: "#181d28", border: "1px solid rgba(255,255,255,.11)", textAlign: "center" };
 const finishTitle: React.CSSProperties = { fontSize: "clamp(3rem,8vw,5.5rem)", letterSpacing: "-.06em", margin: "14px 0" };
 const muted: React.CSSProperties = { color: "#aab1bf", fontSize: 18, marginBottom: 26 };
-const home: React.CSSProperties = { display: "inline-block", padding: "13px 20px", borderRadius: 999, background: "#d9ff5b", color: "#10131b", fontWeight: 950, textDecoration: "none" };
+const finishActions: React.CSSProperties = { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 };
+const home: React.CSSProperties = { display: "inline-block", padding: "13px 20px", borderRadius: 999, background: "#222936", color: "#fff", fontWeight: 950, textDecoration: "none" };
