@@ -1,0 +1,10 @@
+{
+  "slug": "memory-match",
+  "title": "Memory Match",
+  "description": "Flip cards, find pairs, and sharpen visual memory.",
+  "emoji": "🧠",
+  "subject": "Memory",
+  "age": "Ages 5+",
+  "status": "playable",
+  "order": 2
+}
