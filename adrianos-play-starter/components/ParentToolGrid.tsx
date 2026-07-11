@@ -16,6 +16,7 @@ const LEGACY_TOOL_LABELS = ["Skill goals", "Weekly report", "Starting map", "Coa
 const DAYS: LearningDayKey[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 const TOOLS = [
+  { emoji: "🎒", title: "School mode", description: "Set the child launch screen and free-play access.", target: "school-settings" },
   { emoji: "📅", title: "Weekly report", description: "See progress, friction, and next week’s focus.", target: "Weekly report" },
   { emoji: "🎯", title: "Skill goals", description: "Choose the exact skills AdrianOS should prioritize.", target: "Skill goals" },
   { emoji: "🧭", title: "Starting map", description: "Review placement results and the first learning plan.", target: "Starting map" },
@@ -89,9 +90,9 @@ export default function ParentToolGrid() {
   );
 
   function openTool(target: string) {
-    if (target === "schedule") {
+    if (target === "schedule" || target === "school-settings") {
       setScheduleOpen(true);
-      setMessage("");
+      setMessage(target === "school-settings" ? "School Mode settings are at the top." : "");
       return;
     }
     const button = findLegacyButton(target);
@@ -110,7 +111,7 @@ export default function ParentToolGrid() {
     if (!schedule) return;
     const saved = writeLearningSchedule(profileId, schedule);
     setSchedule(saved);
-    setMessage("Weekly learning schedule saved.");
+    setMessage("Learning schedule and School Mode settings saved.");
   }
 
   if (!hydrated) return null;
@@ -152,7 +153,7 @@ export default function ParentToolGrid() {
           <section style={modal} role="dialog" aria-modal="true" aria-label="Weekly learning schedule" onMouseDown={(event) => event.stopPropagation()}>
             <div style={modalHeader}>
               <div>
-                <span style={eyebrow}>WEEKLY LEARNING SCHEDULE</span>
+                <span style={eyebrow}>SCHOOL MODE + WEEKLY SCHEDULE</span>
                 <h2 style={modalTitle}>Choose the rhythm</h2>
               </div>
               <button onClick={() => setScheduleOpen(false)} style={closeButton} aria-label="Close schedule">×</button>
@@ -170,6 +171,39 @@ export default function ParentToolGrid() {
                 </button>
               ))}
             </div>
+
+            <div style={schoolSettings}>
+              <div style={{ minWidth: 0 }}>
+                <span style={eyebrow}>CHILD EXPERIENCE</span>
+                <h3 style={schoolTitle}>School Mode</h3>
+                <p style={{ ...muted, margin: 0 }}>Use one focused launch screen and keep guided games inside today’s route.</p>
+              </div>
+              <button
+                onClick={() => setSchedule({ ...schedule, schoolMode: !schedule.schoolMode })}
+                style={{ ...toggleButton, background: schedule.schoolMode ? "#d9ff5b" : "#222936", color: schedule.schoolMode ? "#10131b" : "#fff" }}
+                type="button"
+              >
+                {schedule.schoolMode ? "School Mode on" : "School Mode off"}
+              </button>
+            </div>
+
+            <div style={schoolSettings}>
+              <div style={{ minWidth: 0 }}>
+                <strong>Free play after the route</strong>
+                <p style={{ ...muted, margin: "5px 0 0" }}>When off, the completed school screen stays closed instead of opening the full game library.</p>
+              </div>
+              <button
+                onClick={() => setSchedule({ ...schedule, libraryAfterSession: !schedule.libraryAfterSession })}
+                style={{ ...toggleButton, background: schedule.libraryAfterSession ? "#c6b8ff" : "#222936", color: schedule.libraryAfterSession ? "#10131b" : "#fff" }}
+                type="button"
+              >
+                {schedule.libraryAfterSession ? "Free play open" : "Free play closed"}
+              </button>
+            </div>
+
+            <button onClick={() => { window.location.href = "/school"; }} style={previewButton} type="button">
+              Preview child School Mode →
+            </button>
 
             <p style={muted}>Tap a day to cycle between a full three-mission session, one light review mission, and one free-explore mission.</p>
 
@@ -211,7 +245,7 @@ export default function ParentToolGrid() {
             </div>
 
             {message && <div style={notice}>{message}</div>}
-            <button onClick={saveSchedule} style={saveButton} type="button">Save weekly schedule</button>
+            <button onClick={saveSchedule} style={saveButton} type="button">Save School Mode and schedule</button>
           </section>
         </div>
       )}
@@ -238,6 +272,10 @@ const modalTitle: React.CSSProperties = { margin: "6px 0 0", fontSize: "clamp(2r
 const closeButton: React.CSSProperties = { width: 42, height: 42, borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", background: "#222936", color: "#fff", fontSize: 26, cursor: "pointer" };
 const profileTabs: React.CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", margin: "20px 0" };
 const profileButton: React.CSSProperties = { padding: "11px 15px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", fontWeight: 900, cursor: "pointer" };
+const schoolSettings: React.CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 15, alignItems: "center", padding: 16, borderRadius: 20, background: "#10131b", border: "1px solid rgba(127,220,255,.18)", marginBottom: 10 };
+const schoolTitle: React.CSSProperties = { margin: "5px 0", fontSize: 24, letterSpacing: "-.035em" };
+const toggleButton: React.CSSProperties = { minWidth: 150, padding: "11px 14px", borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", fontWeight: 950, cursor: "pointer" };
+const previewButton: React.CSSProperties = { width: "100%", margin: "4px 0 18px", padding: "13px 16px", borderRadius: 999, border: "1px solid rgba(127,220,255,.35)", background: "rgba(127,220,255,.1)", color: "#7fdcff", fontWeight: 950, cursor: "pointer" };
 const dayGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))", gap: 9, marginTop: 18 };
 const dayButton: React.CSSProperties = { minHeight: 104, display: "grid", gap: 10, placeContent: "center", padding: 12, borderRadius: 18, border: "2px solid", background: "#10131b", color: "#fff", cursor: "pointer" };
 const modeBadge: React.CSSProperties = { padding: "6px 8px", borderRadius: 999, color: "#10131b", fontSize: 10, fontWeight: 950 };
