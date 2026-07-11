@@ -22,12 +22,14 @@ export type FamilyBackup = {
   family: FamilyState;
   progressByProfile: Record<string, unknown>;
   hubByProfile: Record<string, unknown>;
+  learningByProfile?: Record<string, unknown>;
 };
 
 const FAMILY_KEY = "adrianos-family-v1";
 const FAMILY_EVENT = "adrianos-family-updated";
 const PROGRESS_PREFIX = "adrianos-progress-v2:";
 const HUB_PREFIX = "adrianos-home-hub-v2:";
+const LEARNING_PREFIX = "adrianos-learning-v1:";
 
 const DEFAULT_PROFILES: ChildProfile[] = [
   {
@@ -139,28 +141,29 @@ export function verifyParentPin(pin: string): boolean {
   return Boolean(family.parentPinHash && hashPin(pin) === family.parentPinHash);
 }
 
+function readJsonStorage(key: string): unknown | null {
+  const raw = window.localStorage.getItem(key);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export function exportFamilyBackup(): FamilyBackup {
   const family = readFamilyState();
   const progressByProfile: Record<string, unknown> = {};
   const hubByProfile: Record<string, unknown> = {};
+  const learningByProfile: Record<string, unknown> = {};
 
   for (const profile of family.profiles) {
-    const progress = window.localStorage.getItem(`${PROGRESS_PREFIX}${profile.id}`);
-    const hub = window.localStorage.getItem(`${HUB_PREFIX}${profile.id}`);
-    if (progress) {
-      try {
-        progressByProfile[profile.id] = JSON.parse(progress);
-      } catch {
-        progressByProfile[profile.id] = null;
-      }
-    }
-    if (hub) {
-      try {
-        hubByProfile[profile.id] = JSON.parse(hub);
-      } catch {
-        hubByProfile[profile.id] = null;
-      }
-    }
+    const progress = readJsonStorage(`${PROGRESS_PREFIX}${profile.id}`);
+    const hub = readJsonStorage(`${HUB_PREFIX}${profile.id}`);
+    const learning = readJsonStorage(`${LEARNING_PREFIX}${profile.id}`);
+    if (progress) progressByProfile[profile.id] = progress;
+    if (hub) hubByProfile[profile.id] = hub;
+    if (learning) learningByProfile[profile.id] = learning;
   }
 
   return {
@@ -169,6 +172,7 @@ export function exportFamilyBackup(): FamilyBackup {
     family,
     progressByProfile,
     hubByProfile,
+    learningByProfile,
   };
 }
 
@@ -182,6 +186,7 @@ export function importFamilyBackup(value: unknown): boolean {
   for (const profile of family.profiles) {
     const progress = raw.progressByProfile?.[profile.id];
     const hub = raw.hubByProfile?.[profile.id];
+    const learning = raw.learningByProfile?.[profile.id];
     if (progress && typeof progress === "object") {
       window.localStorage.setItem(
         `${PROGRESS_PREFIX}${profile.id}`,
@@ -191,10 +196,17 @@ export function importFamilyBackup(value: unknown): boolean {
     if (hub && typeof hub === "object") {
       window.localStorage.setItem(`${HUB_PREFIX}${profile.id}`, JSON.stringify(hub));
     }
+    if (learning && typeof learning === "object") {
+      window.localStorage.setItem(
+        `${LEARNING_PREFIX}${profile.id}`,
+        JSON.stringify(learning)
+      );
+    }
   }
 
   window.dispatchEvent(new Event(FAMILY_EVENT));
   window.dispatchEvent(new Event("adrianos-progress-updated"));
+  window.dispatchEvent(new Event("adrianos-learning-updated"));
   return true;
 }
 
@@ -221,6 +233,7 @@ export function useFamilyProfiles() {
     if (!current.profiles.some((profile) => profile.id === profileId)) return false;
     setFamily(writeFamilyState({ ...current, activeProfileId: profileId }));
     window.dispatchEvent(new Event("adrianos-progress-updated"));
+    window.dispatchEvent(new Event("adrianos-learning-updated"));
     return true;
   }, []);
 
