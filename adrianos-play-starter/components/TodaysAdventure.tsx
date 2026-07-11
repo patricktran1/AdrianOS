@@ -5,6 +5,7 @@ import type { Game } from "@/lib/games";
 import { useAdrianProgress } from "@/lib/adrian-progress";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import { useLearningState, type LearningStage } from "@/lib/adrian-learning";
+import { readDailySession } from "@/lib/adrian-daily-session";
 import { skillHref, useSkillGraph } from "@/lib/adrian-skill-graph";
 
 function stageColor(stage: LearningStage): string {
@@ -40,7 +41,7 @@ export default function TodaysAdventure({ games }: { games: Game[] }) {
         ? `Parent goal: reach ${recommended.goal.targetMastery}% mastery.`
         : recommended.dueReviews > 0
           ? `Review ${recommended.dueReviews} missed item${recommended.dueReviews === 1 ? "" : "s"} in this skill.`
-          : `This is the next unlocked skill after its prerequisites.`,
+          : "This is the next unlocked skill after its prerequisites.",
       difficulty: `${recommended.stage} · ${recommended.mastery}%`,
       href: skillHref(recommended),
       baselinePlays: progress.games[recommended.gameSlug]?.plays ?? 0,
@@ -49,6 +50,11 @@ export default function TodaysAdventure({ games }: { games: Game[] }) {
   const completed = items.filter(
     (item) => (progress.games[item.gameSlug]?.plays ?? 0) > item.baselinePlays
   ).length;
+  const guidedSession = readDailySession(activeProfile.id);
+  const guidedComplete = Boolean(
+    guidedSession && guidedSession.missions.every((mission) => mission.status === "complete")
+  );
+  const guidedStarted = Boolean(guidedSession?.startedAt && !guidedComplete);
   const stages = {
     Learning: nodes.filter((node) => !node.locked && node.stage === "Learning").length,
     Practicing: nodes.filter((node) => !node.locked && node.stage === "Practicing").length,
@@ -64,6 +70,14 @@ export default function TodaysAdventure({ games }: { games: Game[] }) {
           <p style={muted}>
             AdrianOS chooses a review, the next prerequisite skill, and a fun finish from this child’s own graph.
           </p>
+          <Link href="/daily-session" style={sessionButton}>
+            <span style={{ fontSize: 24 }}>{guidedComplete ? "🏆" : guidedStarted ? "▶️" : "🚀"}</span>
+            <span>
+              <small style={buttonEyebrow}>GUIDED MODE</small>
+              <strong>{guidedComplete ? "View today’s completed session" : guidedStarted ? "Resume today’s session" : "Start today’s session"}</strong>
+            </span>
+            <span style={{ marginLeft: "auto" }}>→</span>
+          </Link>
         </div>
         <div style={progressOrb} aria-label={`${completed} of ${items.length} missions complete`}>
           <strong>{completed}/{items.length}</strong>
@@ -124,6 +138,8 @@ const shell: React.CSSProperties = {
 const header: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 22, flexWrap: "wrap" };
 const title: React.CSSProperties = { margin: "8px 0", fontSize: "clamp(2.2rem,6vw,4.5rem)", lineHeight: .94, letterSpacing: "-.06em" };
 const muted: React.CSSProperties = { color: "#aab1bf", lineHeight: 1.55, maxWidth: 760 };
+const sessionButton: React.CSSProperties = { maxWidth: 520, display: "flex", alignItems: "center", gap: 12, marginTop: 18, padding: "13px 16px", borderRadius: 19, border: "1px solid rgba(127,220,255,.4)", background: "rgba(127,220,255,.1)", color: "#fff", textDecoration: "none" };
+const buttonEyebrow: React.CSSProperties = { display: "block", marginBottom: 3, color: "#7fdcff", fontSize: 9, fontWeight: 950, letterSpacing: ".14em" };
 const progressOrb: React.CSSProperties = { width: 104, height: 104, borderRadius: 999, display: "grid", placeContent: "center", textAlign: "center", background: "#d9ff5b", color: "#10131b", boxShadow: "0 14px 40px rgba(217,255,91,.18)" };
 const missionGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 14, marginTop: 24 };
 const missionCard: React.CSSProperties = { minHeight: 270, display: "flex", flexDirection: "column", gap: 12, padding: 20, borderRadius: 24, border: "1px solid rgba(255,255,255,.1)", background: "rgba(16,19,27,.78)", color: "#fff", textDecoration: "none", boxShadow: "0 18px 40px rgba(0,0,0,.2)" };
