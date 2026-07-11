@@ -1,0 +1,10 @@
+{
+  "slug": "solar-system-explorer",
+  "title": "Solar System Explorer",
+  "description": "Explore planets, moons, stars, and space missions.",
+  "emoji": "🚀",
+  "subject": "Science",
+  "age": "Ages 6+",
+  "status": "playable",
+  "order": 12
+}
