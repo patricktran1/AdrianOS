@@ -6,30 +6,12 @@ const gamesDir = path.join(root, "app", "games");
 const outputPath = path.join(root, "lib", "generated-games.ts");
 
 const allowedSubjects = new Set([
-  "Logic",
-  "Memory",
-  "Math",
-  "Reading",
-  "Science",
-  "Geography",
-  "History",
-  "Civics",
-  "Economics",
-  "Wellbeing",
-  "Health",
-  "Digital Citizenship",
-  "Music",
-  "Art",
-  "Engineering",
-  "Movement",
-  "Coding",
-  "Creativity",
+  "Logic","Memory","Math","Reading","Science","Geography","History","Civics","Economics","Wellbeing","Health","Digital Citizenship","Music","Art","Engineering","Movement","Life Skills","Coding","Creativity",
 ]);
 
 async function main() {
   const entries = await fs.readdir(gamesDir, { withFileTypes: true });
   const games = [];
-
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     const metadataPath = path.join(gamesDir, entry.name, "game.json");
@@ -45,12 +27,10 @@ async function main() {
       throw new Error(`Invalid metadata in ${entry.name}: ${error.message}`);
     }
   }
-
-  games.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
-  const output = `// AUTO-GENERATED. DO NOT EDIT BY HAND.\nimport type { Game } from "./games";\n\nexport const games: Game[] = ${JSON.stringify(games.map(({ order, ...game }) => game), null, 2)};\n`;
+  games.sort((a,b) => a.order-b.order || a.title.localeCompare(b.title));
+  const output = `// AUTO-GENERATED. DO NOT EDIT BY HAND.\nimport type { Game } from "./games";\n\nexport const games: Game[] = ${JSON.stringify(games.map(({order,...game})=>game),null,2)};\n`;
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
   await fs.writeFile(outputPath, output, "utf8");
   console.log(`Generated ${games.length} games.`);
 }
-
-main().catch((error) => { console.error(error); process.exit(1); });
+main().catch((error)=>{ console.error(error); process.exit(1); });
