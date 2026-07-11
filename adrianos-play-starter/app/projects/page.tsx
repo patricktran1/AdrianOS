@@ -106,6 +106,9 @@ export default function ProjectsPage() {
     );
   }
 
+  const currentProject = project;
+  const currentTemplate = template;
+
   function selectProject(next: ProjectWork) {
     setProject(next);
     setAnswer(next.discoverAnswer);
@@ -118,9 +121,9 @@ export default function ProjectsPage() {
   }
 
   function answerDiscovery(option: string) {
-    const correct = option === template.discover.answer;
+    const correct = option === currentTemplate.discover.answer;
     setAnswer(option);
-    const updated = updateProject(activeProfile.id, project.id, {
+    const updated = updateProject(activeProfile.id, currentProject.id, {
       discoverAnswer: option,
       discoverCorrect: correct,
       currentStep: correct ? 1 : 0,
@@ -144,7 +147,7 @@ export default function ProjectsPage() {
       setMessage("Choose at least one building block or describe your design.");
       return;
     }
-    const updated = updateProject(activeProfile.id, project.id, {
+    const updated = updateProject(activeProfile.id, currentProject.id, {
       projectName: projectName.trim(),
       selectedIdeas,
       makeText: makeText.trim(),
@@ -160,19 +163,19 @@ export default function ProjectsPage() {
       setMessage("Add one or two sentences explaining your thinking.");
       return;
     }
-    const saved = updateProject(activeProfile.id, project.id, {
-      projectName: projectName.trim() || template.title,
+    const saved = updateProject(activeProfile.id, currentProject.id, {
+      projectName: projectName.trim() || currentTemplate.title,
       selectedIdeas,
       makeText: makeText.trim(),
       explainText: explainText.trim(),
       currentStep: 2,
     });
     if (!saved) return;
-    const completed = completeProject(activeProfile.id, project.id);
+    const completed = completeProject(activeProfile.id, currentProject.id);
     if (!completed) return;
     if (!completed.rewardClaimed) {
       award("project-studio", { xp: 40, coins: 12, score: 100, completed: true });
-      claimProjectReward(activeProfile.id, project.id);
+      claimProjectReward(activeProfile.id, currentProject.id);
     }
     setProject({ ...completed, rewardClaimed: true });
     setMessage("Project complete. Your artifact is now part of the learning portfolio.");
@@ -186,7 +189,7 @@ export default function ProjectsPage() {
   }
 
   function saveParentNote() {
-    const updated = updateProject(activeProfile.id, project.id, { parentNote: parentNote.trim() });
+    const updated = updateProject(activeProfile.id, currentProject.id, { parentNote: parentNote.trim() });
     if (updated) setProject(updated);
     setMessage("Parent note saved with this project.");
   }
