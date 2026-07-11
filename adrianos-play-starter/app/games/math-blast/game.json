@@ -1,0 +1,10 @@
+{
+  "slug": "math-blast",
+  "title": "Math Blast",
+  "description": "Build streaks with addition and subtraction missions.",
+  "emoji": "⚡",
+  "subject": "Math",
+  "age": "Ages 6+",
+  "status": "playable",
+  "order": 3
+}
