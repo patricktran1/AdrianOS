@@ -40,7 +40,6 @@ export default function DailySessionBar() {
 
   useEffect(() => {
     if (!profileId || missionIndex === null || !mission || mission.status === "complete") return;
-    let redirectTimer: number | null = null;
 
     const completeVerifiedMission = () => {
       if (completing.current) return;
@@ -52,7 +51,7 @@ export default function DailySessionBar() {
       }
       setSession(updated);
       setMessage("Mission complete! Returning to today’s route…");
-      redirectTimer = window.setTimeout(() => {
+      window.setTimeout(() => {
         window.location.href = "/daily-session?school=1";
       }, 1200);
     };
@@ -79,7 +78,6 @@ export default function DailySessionBar() {
     return () => {
       window.removeEventListener("adrianos-progress-updated", checkProgress);
       window.clearInterval(timer);
-      if (redirectTimer !== null) window.clearTimeout(redirectTimer);
     };
   }, [profileId, missionIndex, mission?.id, mission?.status, mission?.startedAt, mission?.baselineCompletions, mission?.baselinePlays]);
 
