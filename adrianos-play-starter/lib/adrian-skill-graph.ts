@@ -659,6 +659,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["health-injury-emergency"],
   },
   {
+    id: "digital-privacy-sharing",
+    label: "Privacy and thoughtful sharing",
+    subject: "Digital Citizenship",
+    description: "Protect location, identity, routines, images, and personal details before sharing.",
+    prerequisites: [],
+    gameSlug: "digital-citizenship-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["digital-privacy-sharing"],
+  },
+  {
+    id: "digital-security-scams",
+    label: "Passwords, scams, and account safety",
+    subject: "Digital Citizenship",
+    description: "Keep credentials private, recognize suspicious pressure, and use trusted routes to secure accounts.",
+    prerequisites: ["digital-privacy-sharing"],
+    gameSlug: "digital-citizenship-lab",
+    minAge: 4,
+    order: 2,
+    evidenceSkillIds: ["digital-security-scams"],
+  },
+  {
+    id: "digital-kindness-boundaries",
+    label: "Online kindness and boundaries",
+    subject: "Digital Citizenship",
+    description: "Communicate respectfully, protect consent and privacy, and reject harassment or doxxing.",
+    prerequisites: ["digital-privacy-sharing"],
+    gameSlug: "digital-citizenship-lab",
+    minAge: 5,
+    order: 3,
+    evidenceSkillIds: ["digital-kindness-boundaries"],
+  },
+  {
+    id: "digital-media-ai-literacy",
+    label: "Media and AI literacy",
+    subject: "Digital Citizenship",
+    description: "Verify dramatic claims, inspect sources, and treat edited or AI-generated content as unproven until checked.",
+    prerequisites: ["digital-privacy-sharing"],
+    gameSlug: "digital-citizenship-lab",
+    minAge: 5,
+    order: 4,
+    evidenceSkillIds: ["digital-media-ai-literacy"],
+  },
+  {
+    id: "digital-balance-help",
+    label: "Screen balance and getting help",
+    subject: "Digital Citizenship",
+    description: "Use stopping plans, protect sleep and attention, and involve a trusted adult when online pressure feels unsafe.",
+    prerequisites: ["digital-privacy-sharing"],
+    gameSlug: "digital-citizenship-lab",
+    minAge: 4,
+    order: 5,
+    evidenceSkillIds: ["digital-balance-help"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -898,6 +953,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "digital-citizenship-lab") {
+    const level = node.id === "digital-privacy-sharing" || node.id === "digital-balance-help"
+      ? "Safe Starter"
+      : node.id === "digital-media-ai-literacy" || node.id === "digital-security-scams"
+        ? "Digital Detective"
+        : "Smart Sharer";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "health-safety-lab") {
     const level = node.id === "health-daily-care" || node.id === "health-hygiene-germs"

@@ -25,6 +25,7 @@ import { readCivicToolbox, type CivicToolbox } from "@/lib/adrian-civic-toolbox"
 import { readEconomicsLedger, type EconomicsLedger } from "@/lib/adrian-economics-ledger";
 import { readWellbeingToolkit, type WellbeingToolkit } from "@/lib/adrian-wellbeing-toolkit";
 import { readHealthToolkit, type HealthToolkit } from "@/lib/adrian-health-toolkit";
+import { readDigitalToolkit, type DigitalToolkit } from "@/lib/adrian-digital-toolkit";
 import { readWorldPassport, type WorldPassport } from "@/lib/adrian-world-passport";
 import { readWeeklyReports, type WeeklyReport } from "@/lib/adrian-weekly-report";
 import type { Game } from "@/lib/games";
@@ -226,10 +227,25 @@ function buildHighlights(
   civicToolbox: CivicToolbox,
   economicsLedger: EconomicsLedger,
   wellbeingToolkit: WellbeingToolkit,
-  healthToolkit: HealthToolkit
+  healthToolkit: HealthToolkit,
+  digitalToolkit: DigitalToolkit
 ): PortfolioHighlight[] {
   const highlights = new Map<string, PortfolioHighlight>();
   const now = new Date().toISOString();
+
+  if (digitalToolkit.cards.length > 0) {
+    const latest = digitalToolkit.cards[digitalToolkit.cards.length - 1];
+    addHighlight(highlights, {
+      id: "digital-toolkit",
+      kind: "achievement",
+      emoji: "🛡️",
+      title: "Digital Citizenship Toolkit",
+      detail: `${digitalToolkit.cards.length} digital tool${digitalToolkit.cards.length === 1 ? "" : "s"} earned across ${digitalToolkit.missions} mission${digitalToolkit.missions === 1 ? "" : "s"}. Recent tools: ${digitalToolkit.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+      date: latest?.earnedAt ?? digitalToolkit.updatedAt,
+      subject: "Digital Citizenship",
+      value: `${digitalToolkit.cards.length} TOOLS`,
+    });
+  }
 
   if (healthToolkit.cards.length > 0) {
     const latest = healthToolkit.cards[healthToolkit.cards.length - 1];
@@ -441,7 +457,8 @@ export function buildLearningPortfolio(
   const economicsLedger = readEconomicsLedger(profile.id);
   const wellbeingToolkit = readWellbeingToolkit(profile.id);
   const healthToolkit = readHealthToolkit(profile.id);
-  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit);
+  const digitalToolkit = readDigitalToolkit(profile.id);
+  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit);
   const selected = readPortfolioShowcase(profile.id);
   const defaultIds = highlights.slice(0, 6).map((item) => item.id);
   const showcaseIds = selected ?? defaultIds;
@@ -459,7 +476,8 @@ export function buildLearningPortfolio(
   const economicsSubjects = economicsLedger.cards.length > 0 ? ["Economics" as const] : [];
   const wellbeingSubjects = wellbeingToolkit.cards.length > 0 ? ["Wellbeing" as const] : [];
   const healthSubjects = healthToolkit.cards.length > 0 ? ["Health" as const] : [];
-  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects]).size;
+  const digitalSubjects = digitalToolkit.cards.length > 0 ? ["Digital Citizenship" as const] : [];
+  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects]).size;
   const totalCompletions = Object.values(progress.games).reduce((sum, row) => sum + row.completions, 0);
   const projectText = projects.length > 0
     ? `, ${projects.length} completed project${projects.length === 1 ? "" : "s"}`
