@@ -1,6 +1,6 @@
 # AdrianOS Play
 
-A child-friendly game portal built with Next.js. It ships with two playable sample games and a slot for the existing Guess Who-style game.
+A child-friendly game portal built with Next.js. It ships with playable sample games.
 
 ## Run locally
 
