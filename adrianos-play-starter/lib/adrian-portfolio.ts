@@ -24,6 +24,7 @@ import { readHistoryArchive, type HistoryArchive } from "@/lib/adrian-history-ar
 import { readCivicToolbox, type CivicToolbox } from "@/lib/adrian-civic-toolbox";
 import { readEconomicsLedger, type EconomicsLedger } from "@/lib/adrian-economics-ledger";
 import { readWellbeingToolkit, type WellbeingToolkit } from "@/lib/adrian-wellbeing-toolkit";
+import { readHealthToolkit, type HealthToolkit } from "@/lib/adrian-health-toolkit";
 import { readWorldPassport, type WorldPassport } from "@/lib/adrian-world-passport";
 import { readWeeklyReports, type WeeklyReport } from "@/lib/adrian-weekly-report";
 import type { Game } from "@/lib/games";
@@ -224,10 +225,25 @@ function buildHighlights(
   historyArchive: HistoryArchive,
   civicToolbox: CivicToolbox,
   economicsLedger: EconomicsLedger,
-  wellbeingToolkit: WellbeingToolkit
+  wellbeingToolkit: WellbeingToolkit,
+  healthToolkit: HealthToolkit
 ): PortfolioHighlight[] {
   const highlights = new Map<string, PortfolioHighlight>();
   const now = new Date().toISOString();
+
+  if (healthToolkit.cards.length > 0) {
+    const latest = healthToolkit.cards[healthToolkit.cards.length - 1];
+    addHighlight(highlights, {
+      id: "health-toolkit",
+      kind: "achievement",
+      emoji: "🩺",
+      title: "Health & Safety Toolkit",
+      detail: `${healthToolkit.cards.length} practical safety tool${healthToolkit.cards.length === 1 ? "" : "s"} earned across ${healthToolkit.missions} mission${healthToolkit.missions === 1 ? "" : "s"}. Recent tools: ${healthToolkit.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+      date: latest?.earnedAt ?? healthToolkit.updatedAt,
+      subject: "Health",
+      value: `${healthToolkit.cards.length} TOOLS`,
+    });
+  }
 
   if (wellbeingToolkit.cards.length > 0) {
     const latest = wellbeingToolkit.cards[wellbeingToolkit.cards.length - 1];
@@ -424,7 +440,8 @@ export function buildLearningPortfolio(
   const civicToolbox = readCivicToolbox(profile.id);
   const economicsLedger = readEconomicsLedger(profile.id);
   const wellbeingToolkit = readWellbeingToolkit(profile.id);
-  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit);
+  const healthToolkit = readHealthToolkit(profile.id);
+  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit);
   const selected = readPortfolioShowcase(profile.id);
   const defaultIds = highlights.slice(0, 6).map((item) => item.id);
   const showcaseIds = selected ?? defaultIds;
@@ -441,7 +458,8 @@ export function buildLearningPortfolio(
   const civicSubjects = civicToolbox.cards.length > 0 ? ["Civics" as const] : [];
   const economicsSubjects = economicsLedger.cards.length > 0 ? ["Economics" as const] : [];
   const wellbeingSubjects = wellbeingToolkit.cards.length > 0 ? ["Wellbeing" as const] : [];
-  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects]).size;
+  const healthSubjects = healthToolkit.cards.length > 0 ? ["Health" as const] : [];
+  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects]).size;
   const totalCompletions = Object.values(progress.games).reduce((sum, row) => sum + row.completions, 0);
   const projectText = projects.length > 0
     ? `, ${projects.length} completed project${projects.length === 1 ? "" : "s"}`
