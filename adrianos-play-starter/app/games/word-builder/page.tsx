@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 const WORDS = [
@@ -31,6 +32,7 @@ export default function WordBuilderPage() {
   const [picked, setPicked] = useState<number[]>([]);
   const [score, setScore] = useState(0);
   const [message, setMessage] = useState("Tap letters to build the word.");
+  const [finished, setFinished] = useState(false);
 
   const current = WORDS[index];
   const scrambled = useMemo(() => shuffleWord(current.word), [current.word]);
@@ -51,20 +53,29 @@ export default function WordBuilderPage() {
   }
 
   function checkWord() {
-    if (built === current.word) {
-      setScore((currentScore) => currentScore + 1);
-      setMessage("Correct! New word unlocked.");
-
-      window.setTimeout(() => {
-        setIndex((currentIndex) => (currentIndex + 1) % WORDS.length);
-        setPicked([]);
-        setMessage("Tap letters to build the word.");
-      }, 750);
-
+    if (built !== current.word) {
+      setMessage("Almost. Try moving the letters around.");
       return;
     }
 
-    setMessage("Almost. Try moving the letters around.");
+    const nextScore = score + 1;
+    setScore(nextScore);
+
+    if (index === WORDS.length - 1) {
+      setMessage("You completed every word.");
+      window.setTimeout(() => {
+        setFinished(true);
+      }, 650);
+      return;
+    }
+
+    setMessage("Correct! New word unlocked.");
+
+    window.setTimeout(() => {
+      setIndex((currentIndex) => currentIndex + 1);
+      setPicked([]);
+      setMessage("Tap letters to build the word.");
+    }, 750);
   }
 
   const secondaryButtonStyle: React.CSSProperties = {
@@ -92,6 +103,82 @@ export default function WordBuilderPage() {
     cursor: "pointer",
     boxShadow: "0 8px 22px rgba(0,0,0,.28)",
   };
+
+  if (finished) {
+    return (
+      <GameFrame title="Word Builder">
+        <div
+          style={{
+            width: "min(720px, 100%)",
+            margin: "0 auto",
+          }}
+        >
+          <section
+            style={{
+              padding: "clamp(30px, 7vw, 68px)",
+              border: "1px solid rgba(255,255,255,.11)",
+              borderRadius: 30,
+              background: "#181d28",
+              boxShadow: "0 30px 70px rgba(0,0,0,.28)",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 64, marginBottom: 18 }}>🏆</div>
+
+            <span
+              style={{
+                color: "#d9ff5b",
+                fontSize: 12,
+                fontWeight: 950,
+                letterSpacing: "0.18em",
+              }}
+            >
+              WORD BUILDER COMPLETE
+            </span>
+
+            <h1
+              style={{
+                margin: "14px 0 14px",
+                fontSize: "clamp(2.8rem, 8vw, 5.5rem)",
+                lineHeight: 0.95,
+                letterSpacing: "-0.065em",
+              }}
+            >
+              You built every word.
+            </h1>
+
+            <p
+              style={{
+                margin: "0 auto 28px",
+                color: "#aab1bf",
+                fontSize: 18,
+                lineHeight: 1.55,
+              }}
+            >
+              Final score: {score} out of {WORDS.length}
+            </p>
+
+            <Link
+              href="/"
+              style={{
+                display: "inline-block",
+                minWidth: 150,
+                padding: "14px 22px",
+                borderRadius: 999,
+                color: "#10131b",
+                background: "#d9ff5b",
+                fontWeight: 950,
+                textDecoration: "none",
+                boxShadow: "0 8px 22px rgba(0,0,0,.28)",
+              }}
+            >
+              Go Home
+            </Link>
+          </section>
+        </div>
+      </GameFrame>
+    );
+  }
 
   return (
     <GameFrame title="Word Builder">
