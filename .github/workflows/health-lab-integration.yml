@@ -1,0 +1,152 @@
+name: Health Lab Integration Patch
+
+on:
+  push:
+    branches: [feature/health-safety-lab]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event_name == 'pull_request' || github.event.head_commit.message != 'Integrate Health Lab across AdrianOS'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/health-safety-lab
+      - name: Wire skills and portfolio
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          skills = Path('adrianos-play-starter/lib/adrian-skill-graph.ts')
+          text = skills.read_text()
+          nodes = '''  {
+              id: "health-daily-care",
+              label: "Daily body care",
+              subject: "Health",
+              description: "Use sleep, hydration, varied food, movement, and recovery to care for the body each day.",
+              prerequisites: [],
+              gameSlug: "health-safety-lab",
+              minAge: 4,
+              order: 1,
+              evidenceSkillIds: ["health-daily-care"],
+            },
+            {
+              id: "health-hygiene-germs",
+              label: "Hygiene and germ prevention",
+              subject: "Health",
+              description: "Use handwashing, cough habits, sun protection, and food-safety reasoning to reduce preventable exposure.",
+              prerequisites: ["health-daily-care"],
+              gameSlug: "health-safety-lab",
+              minAge: 4,
+              order: 2,
+              evidenceSkillIds: ["health-hygiene-germs"],
+            },
+            {
+              id: "health-body-signals-help",
+              label: "Body signals and asking for help",
+              subject: "Health",
+              description: "Notice important body signals, stop unsafe activity, describe patterns, and involve a trusted adult.",
+              prerequisites: ["health-daily-care"],
+              gameSlug: "health-safety-lab",
+              minAge: 4,
+              order: 3,
+              evidenceSkillIds: ["health-body-signals-help"],
+            },
+            {
+              id: "health-medicine-poison",
+              label: "Medicine and poison safety",
+              subject: "Health",
+              description: "Avoid unknown substances, never share medicine, check labels and ingredients, and use trusted expert help.",
+              prerequisites: ["health-body-signals-help"],
+              gameSlug: "health-safety-lab",
+              minAge: 4,
+              order: 4,
+              evidenceSkillIds: ["health-medicine-poison"],
+            },
+            {
+              id: "health-injury-emergency",
+              label: "Injury and emergency response",
+              subject: "Health",
+              description: "Choose protective gear, get adult help, recognize urgent danger, and contact emergency or poison services appropriately.",
+              prerequisites: ["health-body-signals-help"],
+              gameSlug: "health-safety-lab",
+              minAge: 4,
+              order: 5,
+              evidenceSkillIds: ["health-injury-emergency"],
+            },
+          '''
+          marker = '  {\n    id: "coding-sequences",'
+          if 'id: "health-daily-care"' not in text:
+              text = text.replace(marker, nodes + marker, 1)
+          route = '''  if (node.gameSlug === "health-safety-lab") {
+              const level = node.id === "health-daily-care" || node.id === "health-hygiene-germs"
+                ? "Healthy Helper"
+                : node.id === "health-medicine-poison" || node.id === "health-injury-emergency"
+                  ? "Safety Strategist"
+                  : "Body Steward";
+              params.set("level", level);
+              params.set("focus", node.id);
+            }
+          '''
+          route_marker = '  if (node.gameSlug === "feelings-friendship-lab") {'
+          if 'node.gameSlug === "health-safety-lab"' not in text:
+              text = text.replace(route_marker, route + route_marker, 1)
+          skills.write_text(text)
+
+          portfolio = Path('adrianos-play-starter/lib/adrian-portfolio.ts')
+          text = portfolio.read_text()
+          if 'from "@/lib/adrian-health-toolkit"' not in text:
+              text = text.replace(
+                  'import { readWellbeingToolkit, type WellbeingToolkit } from "@/lib/adrian-wellbeing-toolkit";',
+                  'import { readWellbeingToolkit, type WellbeingToolkit } from "@/lib/adrian-wellbeing-toolkit";\nimport { readHealthToolkit, type HealthToolkit } from "@/lib/adrian-health-toolkit";',
+                  1,
+              )
+          text = text.replace(
+              '  economicsLedger: EconomicsLedger,\n  wellbeingToolkit: WellbeingToolkit\n): PortfolioHighlight[] {',
+              '  economicsLedger: EconomicsLedger,\n  wellbeingToolkit: WellbeingToolkit,\n  healthToolkit: HealthToolkit\n): PortfolioHighlight[] {',
+              1,
+          )
+          health_block = '''  if (healthToolkit.cards.length > 0) {
+              const latest = healthToolkit.cards[healthToolkit.cards.length - 1];
+              addHighlight(highlights, {
+                id: "health-toolkit",
+                kind: "achievement",
+                emoji: "🩺",
+                title: "Health & Safety Toolkit",
+                detail: `${healthToolkit.cards.length} practical safety tool${healthToolkit.cards.length === 1 ? "" : "s"} earned across ${healthToolkit.missions} mission${healthToolkit.missions === 1 ? "" : "s"}. Recent tools: ${healthToolkit.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+                date: latest?.earnedAt ?? healthToolkit.updatedAt,
+                subject: "Health",
+                value: `${healthToolkit.cards.length} TOOLS`,
+              });
+            }
+
+          '''
+          wellbeing_marker = '  if (wellbeingToolkit.cards.length > 0) {'
+          if 'id: "health-toolkit"' not in text:
+              text = text.replace(wellbeing_marker, health_block + wellbeing_marker, 1)
+          text = text.replace(
+              '  const wellbeingToolkit = readWellbeingToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit);',
+              '  const wellbeingToolkit = readWellbeingToolkit(profile.id);\n  const healthToolkit = readHealthToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit);',
+              1,
+          )
+          text = text.replace(
+              '  const wellbeingSubjects = wellbeingToolkit.cards.length > 0 ? ["Wellbeing" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects]).size;',
+              '  const wellbeingSubjects = wellbeingToolkit.cards.length > 0 ? ["Wellbeing" as const] : [];\n  const healthSubjects = healthToolkit.cards.length > 0 ? ["Health" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects]).size;',
+              1,
+          )
+          portfolio.write_text(text)
+          PY
+      - name: Commit integration
+        run: |
+          git config user.name "AdrianOS Build Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add adrianos-play-starter/lib/adrian-skill-graph.ts adrianos-play-starter/lib/adrian-portfolio.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "Integrate Health Lab across AdrianOS"
+            git push origin HEAD:feature/health-safety-lab
+          fi
