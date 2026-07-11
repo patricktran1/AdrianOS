@@ -276,7 +276,7 @@
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 16px;
-  margin: 18px 0 94px;
+  margin: 18px 0 calc(94px + var(--school-mode-ribbon-clearance, 0px));
 }
 
 .questionPanel > div:first-child,
@@ -433,7 +433,7 @@
   position: fixed;
   z-index: 30;
   left: 50%;
-  bottom: 14px;
+  bottom: calc(14px + var(--school-mode-ribbon-clearance, 0px));
   display: flex;
   justify-content: center;
   gap: 9px;
