@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Game } from "@/lib/games";
 import { useAdrianProgress } from "@/lib/adrian-progress";
+import { useFamilyProfiles } from "@/lib/adrian-profiles";
 
-const HUB_KEY = "adrianos-home-hub-v1";
+const LEGACY_HUB_KEY = "adrianos-home-hub-v1";
+const HUB_PREFIX = "adrianos-home-hub-v2:";
 
 const SHOP_ITEMS = [
   { id: "rocket", emoji: "🚀", name: "Rocket Pilot", cost: 0 },
@@ -32,36 +34,39 @@ function localDateKey(date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
-function makeHubState(totalPlays: number, totalCompletions: number): HubState {
+function hubKey(profileId: string): string {
+  return `${HUB_PREFIX}${profileId}`;
+}
+
+function makeHubState(totalPlays: number, totalCompletions: number, avatarId = "rocket"): HubState {
   return {
     day: localDateKey(),
     baselinePlays: totalPlays,
     baselineCompletions: totalCompletions,
     claimedMissions: [],
-    unlockedAvatars: ["rocket"],
-    avatarId: "rocket",
+    unlockedAvatars: Array.from(new Set(["rocket", avatarId])),
+    avatarId,
   };
 }
 
 function normalizeHubState(
   value: unknown,
   totalPlays: number,
-  totalCompletions: number
+  totalCompletions: number,
+  defaultAvatarId: string
 ): HubState {
   if (!value || typeof value !== "object") {
-    return makeHubState(totalPlays, totalCompletions);
+    return makeHubState(totalPlays, totalCompletions, defaultAvatarId);
   }
-
   const raw = value as Partial<HubState>;
   const unlocked = Array.isArray(raw.unlockedAvatars)
     ? raw.unlockedAvatars.filter((item): item is string => typeof item === "string")
-    : ["rocket"];
-  const unlockedAvatars = Array.from(new Set(["rocket", ...unlocked]));
+    : ["rocket", defaultAvatarId];
+  const unlockedAvatars = Array.from(new Set(["rocket", defaultAvatarId, ...unlocked]));
   const avatarId =
     typeof raw.avatarId === "string" && unlockedAvatars.includes(raw.avatarId)
       ? raw.avatarId
-      : "rocket";
-
+      : defaultAvatarId;
   return {
     day: typeof raw.day === "string" ? raw.day : localDateKey(),
     baselinePlays:
@@ -78,11 +83,26 @@ function normalizeHubState(
   };
 }
 
-function readHubState(totalPlays: number, totalCompletions: number): HubState {
-  try {
-    const raw = window.localStorage.getItem(HUB_KEY);
-    const parsed = raw ? normalizeHubState(JSON.parse(raw), totalPlays, totalCompletions) : makeHubState(totalPlays, totalCompletions);
+function avatarIdFromEmoji(emoji: string): string {
+  return SHOP_ITEMS.find((item) => item.emoji === emoji)?.id ?? "rocket";
+}
 
+function readHubState(
+  profileId: string,
+  totalPlays: number,
+  totalCompletions: number,
+  defaultAvatarId: string
+): HubState {
+  try {
+    const key = hubKey(profileId);
+    if (profileId === "adrian" && !window.localStorage.getItem(key)) {
+      const legacy = window.localStorage.getItem(LEGACY_HUB_KEY);
+      if (legacy) window.localStorage.setItem(key, legacy);
+    }
+    const raw = window.localStorage.getItem(key);
+    const parsed = raw
+      ? normalizeHubState(JSON.parse(raw), totalPlays, totalCompletions, defaultAvatarId)
+      : makeHubState(totalPlays, totalCompletions, defaultAvatarId);
     if (parsed.day !== localDateKey()) {
       return {
         ...parsed,
@@ -92,10 +112,9 @@ function readHubState(totalPlays: number, totalCompletions: number): HubState {
         claimedMissions: [],
       };
     }
-
     return parsed;
   } catch {
-    return makeHubState(totalPlays, totalCompletions);
+    return makeHubState(totalPlays, totalCompletions, defaultAvatarId);
   }
 }
 
@@ -127,6 +146,13 @@ export default function HomeHub({ games }: { games: Game[] }) {
     xpIntoLevel,
     xpPerLevel,
   } = useAdrianProgress();
+  const {
+    family,
+    activeProfile,
+    hydrated: profilesHydrated,
+    switchProfile,
+    updateProfile,
+  } = useFamilyProfiles();
   const [hub, setHub] = useState<HubState>(() => makeHubState(0, 0));
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState("");
@@ -144,20 +170,34 @@ export default function HomeHub({ games }: { games: Game[] }) {
   );
 
   useEffect(() => {
-    if (!hydrated) return;
-    const next = readHubState(totalPlays, totalCompletions);
-    window.localStorage.setItem(HUB_KEY, JSON.stringify(next));
+    if (!hydrated || !profilesHydrated) return;
+    const defaultAvatarId = avatarIdFromEmoji(activeProfile.emoji);
+    const next = readHubState(
+      activeProfile.id,
+      totalPlays,
+      totalCompletions,
+      defaultAvatarId
+    );
+    window.localStorage.setItem(hubKey(activeProfile.id), JSON.stringify(next));
     setHub(next);
+    setNotice("");
     setReady(true);
-  }, [hydrated, totalPlays, totalCompletions]);
+  }, [
+    hydrated,
+    profilesHydrated,
+    activeProfile.id,
+    activeProfile.emoji,
+    totalPlays,
+    totalCompletions,
+  ]);
 
   function saveHub(next: HubState) {
-    window.localStorage.setItem(HUB_KEY, JSON.stringify(next));
+    window.localStorage.setItem(hubKey(activeProfile.id), JSON.stringify(next));
     setHub(next);
   }
 
   const latestGame = useMemo(() => {
-    return gameEntries
+    return [...gameEntries]
       .filter(([, game]) => game.lastPlayed)
       .sort((a, b) =>
         String(b[1].lastPlayed).localeCompare(String(a[1].lastPlayed))
@@ -167,7 +207,7 @@ export default function HomeHub({ games }: { games: Game[] }) {
   }, [gameEntries, games]);
 
   const topGame = useMemo(() => {
-    return gameEntries
+    return [...gameEntries]
       .sort((a, b) => b[1].plays - a[1].plays)
       .map(([slug]) => games.find((game) => game.slug === slug))
       .find((game): game is Game => Boolean(game));
@@ -215,11 +255,7 @@ export default function HomeHub({ games }: { games: Game[] }) {
   function claimMission(mission: (typeof missions)[number]) {
     const complete = mission.value >= mission.goal;
     if (!complete || hub.claimedMissions.includes(mission.id)) return;
-
-    award("adrianos-hub", {
-      xp: mission.xp,
-      coins: mission.coins,
-    });
+    award("adrianos-hub", { xp: mission.xp, coins: mission.coins });
     saveHub({
       ...hub,
       claimedMissions: [...hub.claimedMissions, mission.id],
@@ -229,70 +265,36 @@ export default function HomeHub({ games }: { games: Game[] }) {
 
   function buyOrEquip(item: (typeof SHOP_ITEMS)[number]) {
     const unlocked = hub.unlockedAvatars.includes(item.id);
-
     if (unlocked) {
       saveHub({ ...hub, avatarId: item.id });
+      updateProfile(activeProfile.id, { emoji: item.emoji });
       setNotice(`${item.name} equipped.`);
       return;
     }
-
     if (!spendCoins(item.cost)) {
       setNotice("Not enough coins yet. Complete missions and games to earn more.");
       return;
     }
-
     saveHub({
       ...hub,
       avatarId: item.id,
       unlockedAvatars: [...hub.unlockedAvatars, item.id],
     });
+    updateProfile(activeProfile.id, { emoji: item.emoji });
     setNotice(`${item.name} unlocked and equipped.`);
   }
 
-  const avatar =
-    SHOP_ITEMS.find((item) => item.id === hub.avatarId) ?? SHOP_ITEMS[0];
-
+  const avatar = SHOP_ITEMS.find((item) => item.id === hub.avatarId) ?? SHOP_ITEMS[0];
   const badges = [
-    {
-      emoji: "🚀",
-      name: "First Launch",
-      description: "Play your first game.",
-      unlocked: totalPlays >= 1,
-    },
-    {
-      emoji: "🗺️",
-      name: "Game Explorer",
-      description: "Try three different games.",
-      unlocked: gamesPlayed >= 3,
-    },
-    {
-      emoji: "🏆",
-      name: "Mission Master",
-      description: "Complete five games.",
-      unlocked: totalCompletions >= 5,
-    },
-    {
-      emoji: "💯",
-      name: "High Scorer",
-      description: "Score at least 100 in one game.",
-      unlocked: bestScore >= 100,
-    },
-    {
-      emoji: "⭐",
-      name: "Level Three",
-      description: "Reach AdrianOS level 3.",
-      unlocked: progress.level >= 3,
-    },
-    {
-      emoji: "👑",
-      name: "Arcade Hero",
-      description: "Complete twenty games.",
-      unlocked: totalCompletions >= 20,
-    },
+    { emoji: "🚀", name: "First Launch", description: "Play your first game.", unlocked: totalPlays >= 1 },
+    { emoji: "🗺️", name: "Game Explorer", description: "Try three different games.", unlocked: gamesPlayed >= 3 },
+    { emoji: "🏆", name: "Mission Master", description: "Complete five games.", unlocked: totalCompletions >= 5 },
+    { emoji: "💯", name: "High Scorer", description: "Score at least 100 in one game.", unlocked: bestScore >= 100 },
+    { emoji: "⭐", name: "Level Three", description: "Reach AdrianOS level 3.", unlocked: progress.level >= 3 },
+    { emoji: "👑", name: "Arcade Hero", description: "Complete twenty games.", unlocked: totalCompletions >= 20 },
   ];
 
-  const week = lastSevenDays();
-  const weeklyValues = week.map((day) => {
+  const weeklyValues = lastSevenDays().map((day) => {
     const activity = progress.activity.find((item) => item.date === day.key);
     return {
       ...day,
@@ -308,7 +310,7 @@ export default function HomeHub({ games }: { games: Game[] }) {
 
   if (!ready) {
     return (
-      <section style={{ ...panel, marginTop: 42, minHeight: 260 }}>
+      <section style={{ ...panel, marginTop: 42, minHeight: 220 }}>
         <span className="eyebrow">ADRIANOS HOME HUB</span>
         <h2 style={{ margin: "10px 0 0" }}>Loading mission control…</h2>
       </section>
@@ -317,13 +319,31 @@ export default function HomeHub({ games }: { games: Game[] }) {
 
   return (
     <section style={{ marginTop: 42 }}>
+      <div style={profileSwitcher} aria-label="Choose player">
+        {family.profiles.map((profile) => {
+          const active = profile.id === activeProfile.id;
+          return (
+            <button
+              key={profile.id}
+              onClick={() => switchProfile(profile.id)}
+              style={{ ...profileButton, ...(active ? profileButtonActive : {}) }}
+            >
+              <span style={{ fontSize: 24 }}>{profile.emoji}</span>
+              <span>{profile.name}</span>
+              <small style={{ opacity: 0.65 }}>Age {profile.age}</small>
+            </button>
+          );
+        })}
+        <Link href="/parent" style={parentButton}>Parent dashboard</Link>
+      </div>
+
       <div style={hubHeader}>
         <div style={profileAvatar} aria-label={`${avatar.name} avatar`}>
           {avatar.emoji}
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <span className="eyebrow">ADRIANOS HOME HUB</span>
-          <h2 style={profileTitle}>Adrian</h2>
+          <h2 style={profileTitle}>{activeProfile.name}</h2>
           <p style={{ margin: "5px 0 14px", color: "#aab1bf", fontWeight: 800 }}>
             Level {progress.level} · {titleForLevel(progress.level)}
           </p>
@@ -354,9 +374,7 @@ export default function HomeHub({ games }: { games: Game[] }) {
       {notice && (
         <div style={noticeStyle} role="status">
           {notice}
-          <button onClick={() => setNotice("")} style={noticeClose}>
-            ×
-          </button>
+          <button onClick={() => setNotice("")} style={noticeClose}>×</button>
         </div>
       )}
 
@@ -371,27 +389,17 @@ export default function HomeHub({ games }: { games: Game[] }) {
               return (
                 <div key={mission.id} style={missionRow}>
                   <span style={{ fontSize: 28 }}>{mission.emoji}</span>
-                  <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ flex: 1 }}>
                     <strong>{mission.title}</strong>
-                    <div style={{ color: "#aab1bf", fontSize: 13, marginTop: 3 }}>
-                      {mission.description}
-                    </div>
+                    <p style={smallText}>{mission.description}</p>
                     <div style={miniTrack}>
-                      <div
-                        style={{
-                          ...miniFill,
-                          width: `${Math.min(100, (mission.value / mission.goal) * 100)}%`,
-                        }}
-                      />
+                      <div style={{ ...miniFill, width: `${Math.min(100, mission.value / mission.goal * 100)}%` }} />
                     </div>
                   </div>
                   <button
                     onClick={() => claimMission(mission)}
                     disabled={!complete || claimed}
-                    style={{
-                      ...missionButton,
-                      opacity: !complete || claimed ? 0.55 : 1,
-                    }}
+                    style={{ ...claimButton, opacity: !complete || claimed ? 0.45 : 1 }}
                   >
                     {claimed ? "Claimed" : complete ? "Claim" : `${Math.min(mission.value, mission.goal)}/${mission.goal}`}
                   </button>
@@ -402,341 +410,114 @@ export default function HomeHub({ games }: { games: Game[] }) {
         </article>
 
         <article style={panel}>
-          <span className="eyebrow">WEEKLY PROGRESS</span>
-          <h3 style={sectionTitle}>Seven-day pulse</h3>
-          <div style={weekChart}>
-            {weeklyValues.map((day) => {
-              const value = day.plays + day.completions;
-              return (
-                <div key={day.key} style={weekColumn} title={`${day.plays} plays, ${day.completions} completions, ${day.xp} XP`}>
-                  <div style={barWell}>
-                    <div
-                      style={{
-                        ...weekBar,
-                        height: `${Math.max(8, (value / maxWeekly) * 100)}%`,
-                        opacity: value === 0 ? 0.2 : 1,
-                      }}
-                    />
-                  </div>
-                  <strong style={{ fontSize: 12 }}>{day.label}</strong>
-                  <span style={{ color: "#aab1bf", fontSize: 11 }}>{value}</span>
-                </div>
-              );
-            })}
-          </div>
+          <span className="eyebrow">PLAYER SNAPSHOT</span>
+          <h3 style={sectionTitle}>{activeProfile.name}’s progress</h3>
           <div style={statGrid}>
-            <div style={statBox}><span>Plays</span><strong>{totalPlays}</strong></div>
-            <div style={statBox}><span>Wins</span><strong>{totalCompletions}</strong></div>
-            <div style={statBox}><span>Games tried</span><strong>{gamesPlayed}</strong></div>
-            <div style={statBox}><span>Top game</span><strong style={{ fontSize: 16 }}>{topGame?.title ?? "None yet"}</strong></div>
+            <Stat label="Games tried" value={gamesPlayed} />
+            <Stat label="Total plays" value={totalPlays} />
+            <Stat label="Completed" value={totalCompletions} />
+            <Stat label="Best score" value={bestScore} />
           </div>
+          <p style={{ ...smallText, marginTop: 16 }}>
+            Favorite game: <strong style={{ color: "#fff" }}>{topGame?.title ?? "Not discovered yet"}</strong>
+          </p>
         </article>
       </div>
 
       <div style={dashboardGrid}>
         <article style={panel}>
-          <span className="eyebrow">BADGE CABINET</span>
-          <h3 style={sectionTitle}>Achievements</h3>
-          <div style={badgeGrid}>
-            {badges.map((badge) => (
-              <div
-                key={badge.name}
-                style={{
-                  ...badgeCard,
-                  opacity: badge.unlocked ? 1 : 0.38,
-                  borderColor: badge.unlocked
-                    ? "rgba(217,255,91,.38)"
-                    : "rgba(255,255,255,.1)",
-                }}
-                title={badge.description}
-              >
-                <span style={{ fontSize: 31 }}>{badge.unlocked ? badge.emoji : "🔒"}</span>
-                <strong style={{ fontSize: 13 }}>{badge.name}</strong>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article style={panel}>
-          <span className="eyebrow">COIN SHOP</span>
-          <h3 style={sectionTitle}>Choose your avatar</h3>
-          <div style={shopGrid}>
-            {SHOP_ITEMS.map((item) => {
-              const unlocked = hub.unlockedAvatars.includes(item.id);
-              const equipped = hub.avatarId === item.id;
-              const canBuy = progress.coins >= item.cost;
+          <span className="eyebrow">LAST 7 DAYS</span>
+          <h3 style={sectionTitle}>Learning activity</h3>
+          <div style={chart}>
+            {weeklyValues.map((day) => {
+              const value = day.plays + day.completions;
               return (
-                <button
-                  key={item.id}
-                  onClick={() => buyOrEquip(item)}
-                  style={{
-                    ...shopCard,
-                    borderColor: equipped
-                      ? "#d9ff5b"
-                      : "rgba(255,255,255,.11)",
-                    opacity: unlocked || canBuy ? 1 : 0.55,
-                  }}
-                >
-                  <span style={{ fontSize: 36 }}>{item.emoji}</span>
-                  <strong>{item.name}</strong>
-                  <small style={{ color: equipped ? "#d9ff5b" : "#aab1bf" }}>
-                    {equipped
-                      ? "EQUIPPED"
-                      : unlocked
-                        ? "EQUIP"
-                        : item.cost === 0
-                          ? "FREE"
-                          : `🪙 ${item.cost}`}
-                  </small>
-                </button>
+                <div key={day.key} style={chartColumn} title={`${day.plays} plays, ${day.completions} completions, ${day.xp} XP`}>
+                  <div style={{ ...chartBar, height: `${Math.max(7, value / maxWeekly * 100)}%` }} />
+                  <small>{day.label}</small>
+                </div>
               );
             })}
           </div>
         </article>
+
+        <article style={panel}>
+          <span className="eyebrow">BADGE CABINET</span>
+          <h3 style={sectionTitle}>Achievements</h3>
+          <div style={badgeGrid}>
+            {badges.map((badge) => (
+              <div key={badge.name} style={{ ...badgeCard, opacity: badge.unlocked ? 1 : 0.35 }}>
+                <span style={{ fontSize: 30 }}>{badge.unlocked ? badge.emoji : "🔒"}</span>
+                <strong>{badge.name}</strong>
+                <small style={{ color: "#aab1bf" }}>{badge.description}</small>
+              </div>
+            ))}
+          </div>
+        </article>
       </div>
+
+      <article style={{ ...panel, marginTop: 16 }}>
+        <span className="eyebrow">COIN SHOP</span>
+        <h3 style={sectionTitle}>Choose an avatar</h3>
+        <div style={shopGrid}>
+          {SHOP_ITEMS.map((item) => {
+            const unlocked = hub.unlockedAvatars.includes(item.id);
+            const equipped = hub.avatarId === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => buyOrEquip(item)}
+                style={{ ...shopCard, ...(equipped ? shopCardEquipped : {}) }}
+              >
+                <span style={{ fontSize: 40 }}>{item.emoji}</span>
+                <strong>{item.name}</strong>
+                <small>{equipped ? "Equipped" : unlocked ? "Equip" : `🪙 ${item.cost}`}</small>
+              </button>
+            );
+          })}
+        </div>
+      </article>
     </section>
   );
 }
 
-const hubHeader: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  flexWrap: "wrap",
-  gap: 22,
-  padding: "clamp(22px,4vw,36px)",
-  borderRadius: 30,
-  border: "1px solid rgba(255,255,255,.11)",
-  background: "linear-gradient(135deg, rgba(198,184,255,.13), rgba(217,255,91,.055))",
-  boxShadow: "0 24px 60px rgba(0,0,0,.24)",
-};
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={statCard}>
+      <span style={{ color: "#aab1bf", fontSize: 12, fontWeight: 800 }}>{label}</span>
+      <strong style={{ display: "block", fontSize: 30, marginTop: 6 }}>{value}</strong>
+    </div>
+  );
+}
 
-const profileAvatar: React.CSSProperties = {
-  width: 106,
-  height: 106,
-  flex: "0 0 auto",
-  display: "grid",
-  placeItems: "center",
-  borderRadius: 30,
-  background: "#222936",
-  border: "2px solid rgba(217,255,91,.45)",
-  fontSize: 58,
-  boxShadow: "0 15px 35px rgba(0,0,0,.22)",
-};
-
-const profileTitle: React.CSSProperties = {
-  margin: "7px 0 0",
-  fontSize: "clamp(2.2rem,5vw,4.2rem)",
-  lineHeight: 0.95,
-  letterSpacing: "-.055em",
-};
-
-const xpTrack: React.CSSProperties = {
-  width: "min(470px,100%)",
-  height: 10,
-  overflow: "hidden",
-  borderRadius: 999,
-  background: "rgba(255,255,255,.09)",
-};
-
-const xpFill: React.CSSProperties = {
-  height: "100%",
-  borderRadius: 999,
-  background: "#d9ff5b",
-  transition: "width .25s ease",
-};
-
-const xpLabels: React.CSSProperties = {
-  width: "min(470px,100%)",
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  flexWrap: "wrap",
-  marginTop: 8,
-  color: "#aab1bf",
-  fontSize: 12,
-  fontWeight: 850,
-};
-
-const continueButton: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 12,
-  marginLeft: "auto",
-  padding: "14px 17px",
-  borderRadius: 20,
-  background: "#d9ff5b",
-  color: "#10131b",
-  fontWeight: 950,
-  boxShadow: "0 12px 28px rgba(0,0,0,.2)",
-};
-
-const dashboardGrid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
-  gap: 18,
-  marginTop: 18,
-};
-
-const panel: React.CSSProperties = {
-  padding: "clamp(20px,3vw,28px)",
-  borderRadius: 26,
-  border: "1px solid rgba(255,255,255,.11)",
-  background: "#181d28",
-  boxShadow: "0 18px 45px rgba(0,0,0,.2)",
-};
-
-const sectionTitle: React.CSSProperties = {
-  margin: "8px 0 20px",
-  fontSize: "clamp(1.5rem,3vw,2.2rem)",
-  letterSpacing: "-.04em",
-};
-
-const missionRow: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  padding: 13,
-  borderRadius: 18,
-  background: "#222936",
-  border: "1px solid rgba(255,255,255,.08)",
-};
-
-const miniTrack: React.CSSProperties = {
-  height: 5,
-  marginTop: 8,
-  overflow: "hidden",
-  borderRadius: 999,
-  background: "rgba(255,255,255,.08)",
-};
-
-const miniFill: React.CSSProperties = {
-  height: "100%",
-  borderRadius: 999,
-  background: "#c6b8ff",
-};
-
-const missionButton: React.CSSProperties = {
-  minWidth: 70,
-  padding: "9px 11px",
-  border: 0,
-  borderRadius: 999,
-  background: "#d9ff5b",
-  color: "#10131b",
-  fontWeight: 950,
-  cursor: "pointer",
-};
-
-const weekChart: React.CSSProperties = {
-  height: 190,
-  display: "grid",
-  gridTemplateColumns: "repeat(7,1fr)",
-  alignItems: "end",
-  gap: 8,
-  padding: "16px 8px 4px",
-  borderRadius: 20,
-  background: "#11161f",
-};
-
-const weekColumn: React.CSSProperties = {
-  height: "100%",
-  display: "grid",
-  gridTemplateRows: "1fr auto auto",
-  alignItems: "end",
-  justifyItems: "center",
-  gap: 5,
-};
-
-const barWell: React.CSSProperties = {
-  width: "min(34px,100%)",
-  height: "100%",
-  display: "flex",
-  alignItems: "end",
-  borderRadius: 999,
-  overflow: "hidden",
-  background: "rgba(255,255,255,.045)",
-};
-
-const weekBar: React.CSSProperties = {
-  width: "100%",
-  minHeight: 8,
-  borderRadius: 999,
-  background: "linear-gradient(#d9ff5b,#c6b8ff)",
-};
-
-const statGrid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2,1fr)",
-  gap: 9,
-  marginTop: 14,
-};
-
-const statBox: React.CSSProperties = {
-  minHeight: 72,
-  padding: 12,
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  borderRadius: 16,
-  background: "#222936",
-};
-
-const badgeGrid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3,1fr)",
-  gap: 10,
-};
-
-const badgeCard: React.CSSProperties = {
-  minHeight: 105,
-  padding: 10,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  textAlign: "center",
-  borderRadius: 18,
-  border: "1px solid rgba(255,255,255,.1)",
-  background: "#222936",
-};
-
-const shopGrid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3,1fr)",
-  gap: 10,
-};
-
-const shopCard: React.CSSProperties = {
-  minHeight: 132,
-  padding: 12,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 7,
-  borderRadius: 18,
-  border: "2px solid rgba(255,255,255,.11)",
-  background: "#222936",
-  color: "#f6f5f2",
-  cursor: "pointer",
-};
-
-const noticeStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginTop: 14,
-  padding: "12px 15px",
-  borderRadius: 16,
-  background: "rgba(217,255,91,.12)",
-  border: "1px solid rgba(217,255,91,.3)",
-  fontWeight: 850,
-};
-
-const noticeClose: React.CSSProperties = {
-  border: 0,
-  background: "transparent",
-  fontSize: 22,
-  cursor: "pointer",
-};
+const panel: React.CSSProperties = { padding: "clamp(20px,4vw,30px)", border: "1px solid rgba(255,255,255,.11)", borderRadius: 26, background: "#181d28", boxShadow: "0 24px 55px rgba(0,0,0,.22)" };
+const profileSwitcher: React.CSSProperties = { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 14 };
+const profileButton: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 9, padding: "10px 14px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", background: "#181d28", color: "#fff", fontWeight: 900, cursor: "pointer" };
+const profileButtonActive: React.CSSProperties = { background: "#d9ff5b", color: "#10131b", borderColor: "#d9ff5b" };
+const parentButton: React.CSSProperties = { marginLeft: "auto", padding: "11px 15px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", background: "#222936", fontWeight: 900 };
+const hubHeader: React.CSSProperties = { display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", padding: "clamp(22px,5vw,38px)", borderRadius: 30, border: "1px solid rgba(255,255,255,.11)", background: "linear-gradient(135deg,#202735,#151a24)", boxShadow: "0 28px 65px rgba(0,0,0,.28)" };
+const profileAvatar: React.CSSProperties = { width: 100, height: 100, display: "grid", placeItems: "center", borderRadius: 28, background: "#d9ff5b", fontSize: 54 };
+const profileTitle: React.CSSProperties = { margin: "7px 0 0", fontSize: "clamp(2.5rem,7vw,5rem)", lineHeight: .9, letterSpacing: "-.065em" };
+const xpTrack: React.CSSProperties = { height: 10, maxWidth: 520, borderRadius: 999, background: "rgba(255,255,255,.09)", overflow: "hidden" };
+const xpFill: React.CSSProperties = { height: "100%", background: "#d9ff5b", borderRadius: 999 };
+const xpLabels: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", maxWidth: 520, marginTop: 8, color: "#aab1bf", fontSize: 12, fontWeight: 800 };
+const continueButton: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, padding: "13px 16px", borderRadius: 18, background: "#d9ff5b", color: "#10131b", fontWeight: 950 };
+const noticeStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 12, padding: "12px 16px", borderRadius: 16, background: "rgba(198,184,255,.14)", border: "1px solid rgba(198,184,255,.3)", fontWeight: 850 };
+const noticeClose: React.CSSProperties = { border: 0, background: "transparent", color: "#fff", fontSize: 22, cursor: "pointer" };
+const dashboardGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 16, marginTop: 16 };
+const sectionTitle: React.CSSProperties = { margin: "8px 0 18px", fontSize: "clamp(1.5rem,4vw,2.4rem)", letterSpacing: "-.04em" };
+const missionRow: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 18, background: "#222936", border: "1px solid rgba(255,255,255,.08)" };
+const smallText: React.CSSProperties = { margin: "4px 0 8px", color: "#aab1bf", lineHeight: 1.4, fontSize: 13 };
+const miniTrack: React.CSSProperties = { height: 5, borderRadius: 999, background: "rgba(255,255,255,.08)", overflow: "hidden" };
+const miniFill: React.CSSProperties = { height: "100%", borderRadius: 999, background: "#d9ff5b" };
+const claimButton: React.CSSProperties = { border: 0, borderRadius: 999, padding: "9px 12px", background: "#d9ff5b", color: "#10131b", fontWeight: 900, cursor: "pointer" };
+const statGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10 };
+const statCard: React.CSSProperties = { padding: 15, borderRadius: 18, background: "#222936", border: "1px solid rgba(255,255,255,.08)" };
+const chart: React.CSSProperties = { height: 170, display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 8, alignItems: "end" };
+const chartColumn: React.CSSProperties = { height: "100%", display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center", gap: 7, color: "#aab1bf" };
+const chartBar: React.CSSProperties = { width: "100%", maxWidth: 34, minHeight: 7, borderRadius: "9px 9px 3px 3px", background: "linear-gradient(#d9ff5b,#9dbb31)" };
+const badgeGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10 };
+const badgeCard: React.CSSProperties = { display: "grid", gap: 5, padding: 13, borderRadius: 18, background: "#222936", border: "1px solid rgba(255,255,255,.08)" };
+const shopGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10 };
+const shopCard: React.CSSProperties = { display: "grid", gap: 8, placeItems: "center", padding: 16, borderRadius: 20, border: "1px solid rgba(255,255,255,.1)", background: "#222936", color: "#fff", cursor: "pointer" };
+const shopCardEquipped: React.CSSProperties = { borderColor: "#d9ff5b", boxShadow: "0 0 0 2px rgba(217,255,91,.16)" };
