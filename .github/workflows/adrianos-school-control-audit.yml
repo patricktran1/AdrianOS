@@ -1,11 +1,13 @@
 name: AdrianOS School Control Audit
 
 on:
+  push:
+    branches: [agent/school-mode-fixed-control-qa]
   pull_request:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   audit:
@@ -13,6 +15,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.head.ref }}
       - name: Audit fixed controls and completion paths
         run: |
           python - <<'PY'
@@ -21,11 +25,13 @@ jobs:
 
           root = Path('adrianos-play-starter')
           games = root / 'app' / 'games'
-          print('=== GAME DIRECTORIES ===')
-          for directory in sorted(p for p in games.iterdir() if p.is_dir()):
-              print(directory.relative_to(root))
+          output = []
+          output.append('=== GAME DIRECTORIES ===')
+          directories = sorted(p for p in games.iterdir() if p.is_dir())
+          for directory in directories:
+              output.append(str(directory.relative_to(root)))
 
-          print('\n=== FIXED OR STICKY CONTROL CANDIDATES ===')
+          output.append('\n=== FIXED OR STICKY CONTROL CANDIDATES ===')
           candidates = []
           for path in sorted(games.rglob('*')):
               if path.suffix not in {'.tsx', '.ts', '.css'}:
@@ -39,12 +45,12 @@ jobs:
                       snippet = '\n'.join(f'{n+1}: {lines[n]}' for n in range(start, end))
                       candidates.append((str(path.relative_to(root)), index, snippet))
           if not candidates:
-              print('No game-level fixed or sticky controls found.')
+              output.append('No game-level fixed or sticky controls found.')
           for path, line, snippet in candidates:
-              print(f'\n--- {path}:{line} ---\n{snippet}')
+              output.append(f'\n--- {path}:{line} ---\n{snippet}')
 
-          print('\n=== COMPLETION SIGNAL AUDIT ===')
-          for directory in sorted(p for p in games.iterdir() if p.is_dir()):
+          output.append('\n=== COMPLETION SIGNAL AUDIT ===')
+          for directory in directories:
               source = '\n'.join(
                   p.read_text(errors='ignore')
                   for p in directory.rglob('*')
@@ -60,5 +66,17 @@ jobs:
               ]:
                   if re.search(pattern, source, re.I):
                       signals.append(label)
-              print(f'{directory.name}: metadata={has_metadata}; signals={", ".join(signals) if signals else "NONE"}')
+              output.append(f'{directory.name}: metadata={has_metadata}; signals={", ".join(signals) if signals else "NONE"}')
+
+          report = '\n'.join(output) + '\n'
+          print(report)
+          Path('qa-school-audit-report.txt').write_text(report)
           PY
+      - name: Save audit report on audit branch
+        if: github.event_name == 'push' && github.event.head_commit.message != 'Save School Mode audit report'
+        run: |
+          git config user.name "AdrianOS QA Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add qa-school-audit-report.txt
+          git commit -m "Save School Mode audit report"
+          git push origin HEAD:${{ github.ref_name }}
