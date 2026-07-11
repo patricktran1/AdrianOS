@@ -934,6 +934,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["movement-spatial-awareness"],
   },
   {
+    id: "life-routines-organization",
+    label: "Routines and organization",
+    subject: "Life Skills",
+    description: "Use checklists, stable cues, categories, and visible systems to make everyday tasks reliable.",
+    prerequisites: [],
+    gameSlug: "life-skills-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["life-routines-organization"],
+  },
+  {
+    id: "life-time-planning",
+    label: "Time planning",
+    subject: "Life Skills",
+    description: "Count backward, include setup time, add buffers, and protect deadlines.",
+    prerequisites: ["life-routines-organization"],
+    gameSlug: "life-skills-lab",
+    minAge: 4,
+    order: 2,
+    evidenceSkillIds: ["life-time-planning"],
+  },
+  {
+    id: "life-food-prep",
+    label: "Food preparation and kitchen safety",
+    subject: "Life Skills",
+    description: "Plan simple food tasks, use hygiene, recognize supervision needs, and pause when storage safety is uncertain.",
+    prerequisites: [],
+    gameSlug: "life-skills-lab",
+    minAge: 4,
+    order: 3,
+    evidenceSkillIds: ["life-food-prep"],
+  },
+  {
+    id: "life-household-care",
+    label: "Household care",
+    subject: "Life Skills",
+    description: "Notice hazards, follow care labels, organize cleanup, and avoid unknown household products.",
+    prerequisites: ["life-routines-organization"],
+    gameSlug: "life-skills-lab",
+    minAge: 4,
+    order: 4,
+    evidenceSkillIds: ["life-household-care"],
+  },
+  {
+    id: "life-help-problem-solving",
+    label: "Everyday problem-solving and asking for help",
+    subject: "Life Skills",
+    description: "Use bounded searches, communicate early, create safe backup plans, and involve a trusted adult appropriately.",
+    prerequisites: ["life-routines-organization"],
+    gameSlug: "life-skills-lab",
+    minAge: 4,
+    order: 5,
+    evidenceSkillIds: ["life-help-problem-solving"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -1173,6 +1228,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "life-skills-lab") {
+    const level = node.id === "life-routines-organization" || node.id === "life-food-prep"
+      ? "Helper"
+      : node.id === "life-time-planning" || node.id === "life-help-problem-solving"
+        ? "Planner"
+        : "Independent";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "movement-lab") {
     const level = node.id === "movement-balance" || node.id === "movement-mobility"
