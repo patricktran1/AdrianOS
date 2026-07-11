@@ -10,7 +10,6 @@ import {
   dailySessionStreak,
   ensureDailySession,
   guidedMissionHref,
-  readDailySession,
   startDailySessionMission,
   type DailySession,
   type DailySessionMission,
@@ -25,6 +24,37 @@ function kindLabel(kind: DailySessionMission["kind"]): string {
 
 function missionEmoji(slug: string): string {
   return games.find((game) => game.slug === slug)?.emoji ?? "🎯";
+}
+
+function modeLabel(session: DailySession): string {
+  if (session.scheduleMode === "light") return "LIGHT REVIEW DAY";
+  if (session.scheduleMode === "free") return "FREE EXPLORE DAY";
+  return "FULL LEARNING DAY";
+}
+
+function heroCopy(session: DailySession): { title: string; description: string } {
+  if (session.scheduleMode === "light") {
+    return {
+      title: "One focused mission.\nThen you’re done.",
+      description: "Today is a lighter day, so AdrianOS selected one useful review or skill mission.",
+    };
+  }
+  if (session.scheduleMode === "free") {
+    return {
+      title: "One curiosity mission.\nThen go explore.",
+      description: "Today is a free-explore day. AdrianOS chose one playful mission without a heavy lesson load.",
+    };
+  }
+  return {
+    title: "Three missions.\nThen you’re done.",
+    description: "AdrianOS arranged a review, the next useful skill, and a fun finish. Work through them in order and collect the daily reward.",
+  };
+}
+
+function rewardFor(session: DailySession): { xp: number; coins: number } {
+  if (session.scheduleMode === "light") return { xp: 15, coins: 5 };
+  if (session.scheduleMode === "free") return { xp: 10, coins: 3 };
+  return { xp: 30, coins: 10 };
 }
 
 export default function DailySessionPage() {
@@ -72,9 +102,10 @@ export default function DailySessionPage() {
     if (!session || !allComplete || session.rewardClaimed) return;
     const updated = claimDailySessionReward(activeProfile.id);
     if (!updated?.rewardClaimed) return;
-    award("daily-session", { xp: 30, coins: 10, score: 3, completed: true });
+    const reward = rewardFor(session);
+    award("daily-session", { xp: reward.xp, coins: reward.coins, score: session.missions.length, completed: true });
     setSession(updated);
-    setMessage("Daily session complete. +30 XP and +10 coins!");
+    setMessage(`Daily session complete. +${reward.xp} XP and +${reward.coins} coins!`);
   }
 
   if (!profilesReady || !progressReady || !session) {
@@ -88,6 +119,9 @@ export default function DailySessionPage() {
     );
   }
 
+  const reward = rewardFor(session);
+  const copy = heroCopy(session);
+
   return (
     <main style={page}>
       <header style={topbar}>
@@ -99,11 +133,9 @@ export default function DailySessionPage() {
       <section style={heroCard}>
         <div style={heroGrid}>
           <div>
-            <span style={eyebrow}>TODAY’S GUIDED SESSION</span>
-            <h1 style={heroTitle}>Three missions.<br />Then you’re done.</h1>
-            <p style={muted}>
-              AdrianOS arranged a review, the next useful skill, and a fun finish. Work through them in order and collect the daily reward.
-            </p>
+            <span style={eyebrow}>{modeLabel(session)}</span>
+            <h1 style={heroTitle}>{copy.title.split("\n").map((line, index) => <span key={line}>{index > 0 && <br />}{line}</span>)}</h1>
+            <p style={muted}>{copy.description}</p>
           </div>
           <div style={timeOrb}>
             <strong>{session.recommendedMinutes}</strong>
@@ -114,7 +146,7 @@ export default function DailySessionPage() {
         <div style={sessionStats}>
           <div><small>PROGRESS</small><strong>{completedCount}/{session.missions.length} missions</strong></div>
           <div><small>SESSION STREAK</small><strong>{streak} day{streak === 1 ? "" : "s"}</strong></div>
-          <div><small>REWARD</small><strong>30 XP · 10 coins</strong></div>
+          <div><small>REWARD</small><strong>{reward.xp} XP · {reward.coins} coins</strong></div>
         </div>
       </section>
 
@@ -170,7 +202,7 @@ export default function DailySessionPage() {
               : "Collect the daily reward and enjoy the rest of the day."}
           </p>
           {!session.rewardClaimed && (
-            <button onClick={claimReward} style={rewardButton} type="button">Collect 30 XP + 10 coins</button>
+            <button onClick={claimReward} style={rewardButton} type="button">Collect {reward.xp} XP + {reward.coins} coins</button>
           )}
           {message && <p style={notice}>{message}</p>}
           <Link href="/" style={secondaryLink}>Return home</Link>
