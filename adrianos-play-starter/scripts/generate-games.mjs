@@ -6,7 +6,7 @@ const gamesDir = path.join(root, "app", "games");
 const outputPath = path.join(root, "lib", "generated-games.ts");
 
 const allowedSubjects = new Set([
-  "Logic","Memory","Math","Reading","Science","Geography","History","Civics","Economics","Wellbeing","Health","Digital Citizenship","Music","Art","Engineering","Movement","Life Skills","Environment","Coding","Creativity",
+  "Logic","Memory","Math","Reading","Science","Geography","History","Civics","Economics","Wellbeing","Health","Digital Citizenship","Music","Art","Engineering","Movement","Life Skills","Environment","Learning Skills","Coding","Creativity",
 ]);
 
 async function main() {
