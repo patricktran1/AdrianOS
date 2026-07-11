@@ -28,6 +28,7 @@ import { readHealthToolkit, type HealthToolkit } from "@/lib/adrian-health-toolk
 import { readDigitalToolkit, type DigitalToolkit } from "@/lib/adrian-digital-toolkit";
 import { readMusicToolkit, type MusicToolkit } from "@/lib/adrian-music-toolkit";
 import { readArtToolkit, type ArtToolkit } from "@/lib/adrian-art-toolkit";
+import { readEngineeringToolkit, type EngineeringToolkit } from "@/lib/adrian-engineering-toolkit";
 import { readWorldPassport, type WorldPassport } from "@/lib/adrian-world-passport";
 import { readWeeklyReports, type WeeklyReport } from "@/lib/adrian-weekly-report";
 import type { Game } from "@/lib/games";
@@ -232,10 +233,25 @@ function buildHighlights(
   healthToolkit: HealthToolkit,
   digitalToolkit: DigitalToolkit,
   musicToolkit: MusicToolkit,
-  artToolkit: ArtToolkit
+  artToolkit: ArtToolkit,
+  engineeringToolkit: EngineeringToolkit
 ): PortfolioHighlight[] {
   const highlights = new Map<string, PortfolioHighlight>();
   const now = new Date().toISOString();
+
+  if (engineeringToolkit.cards.length > 0) {
+    const latest = engineeringToolkit.cards[engineeringToolkit.cards.length - 1];
+    addHighlight(highlights, {
+      id: "engineering-toolkit",
+      kind: "achievement",
+      emoji: "🛠️",
+      title: "Engineering Toolkit",
+      detail: `${engineeringToolkit.cards.length} design tool${engineeringToolkit.cards.length === 1 ? "" : "s"} earned across ${engineeringToolkit.missions} engineering mission${engineeringToolkit.missions === 1 ? "" : "s"}. Recent tools: ${engineeringToolkit.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+      date: latest?.earnedAt ?? engineeringToolkit.updatedAt,
+      subject: "Engineering",
+      value: `${engineeringToolkit.cards.length} TOOLS`,
+    });
+  }
 
   if (artToolkit.cards.length > 0 || artToolkit.artworks > 0) {
     const latest = artToolkit.cards[artToolkit.cards.length - 1];
@@ -492,7 +508,8 @@ export function buildLearningPortfolio(
   const digitalToolkit = readDigitalToolkit(profile.id);
   const musicToolkit = readMusicToolkit(profile.id);
   const artToolkit = readArtToolkit(profile.id);
-  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit);
+  const engineeringToolkit = readEngineeringToolkit(profile.id);
+  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit);
   const selected = readPortfolioShowcase(profile.id);
   const defaultIds = highlights.slice(0, 6).map((item) => item.id);
   const showcaseIds = selected ?? defaultIds;
@@ -513,7 +530,8 @@ export function buildLearningPortfolio(
   const digitalSubjects = digitalToolkit.cards.length > 0 ? ["Digital Citizenship" as const] : [];
   const musicSubjects = musicToolkit.cards.length > 0 ? ["Music" as const] : [];
   const artSubjects = artToolkit.cards.length > 0 || artToolkit.artworks > 0 ? ["Art" as const] : [];
-  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects]).size;
+  const engineeringSubjects = engineeringToolkit.cards.length > 0 ? ["Engineering" as const] : [];
+  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects]).size;
   const totalCompletions = Object.values(progress.games).reduce((sum, row) => sum + row.completions, 0);
   const projectText = projects.length > 0
     ? `, ${projects.length} completed project${projects.length === 1 ? "" : "s"}`

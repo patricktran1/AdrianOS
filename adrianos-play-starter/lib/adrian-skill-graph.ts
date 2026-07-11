@@ -824,6 +824,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["art-visual-storytelling"],
   },
   {
+    id: "engineering-structures",
+    label: "Structures and stability",
+    subject: "Engineering",
+    description: "Use shape, bracing, load paths, and redundancy to make structures more stable and resilient.",
+    prerequisites: [],
+    gameSlug: "engineering-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["engineering-structures"],
+  },
+  {
+    id: "engineering-forces",
+    label: "Forces and motion",
+    subject: "Engineering",
+    description: "Reason about pushes, pulls, ramps, compression, friction, and motion trade-offs.",
+    prerequisites: [],
+    gameSlug: "engineering-lab",
+    minAge: 4,
+    order: 2,
+    evidenceSkillIds: ["engineering-forces"],
+  },
+  {
+    id: "engineering-materials",
+    label: "Materials and properties",
+    subject: "Engineering",
+    description: "Match material properties to needs and combine materials for stronger performance.",
+    prerequisites: [],
+    gameSlug: "engineering-lab",
+    minAge: 4,
+    order: 3,
+    evidenceSkillIds: ["engineering-materials"],
+  },
+  {
+    id: "engineering-mechanisms",
+    label: "Mechanisms and simple machines",
+    subject: "Engineering",
+    description: "Understand wheels, levers, gears, and feedback systems that change force or motion.",
+    prerequisites: ["engineering-forces"],
+    gameSlug: "engineering-lab",
+    minAge: 5,
+    order: 4,
+    evidenceSkillIds: ["engineering-mechanisms"],
+  },
+  {
+    id: "engineering-iteration",
+    label: "Testing and iteration",
+    subject: "Engineering",
+    description: "Use fair tests, failure clues, criteria, constraints, and targeted revisions to improve a design.",
+    prerequisites: ["engineering-structures", "engineering-materials"],
+    gameSlug: "engineering-lab",
+    minAge: 5,
+    order: 5,
+    evidenceSkillIds: ["engineering-iteration"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -1063,6 +1118,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "engineering-lab") {
+    const level = node.id === "engineering-structures" || node.id === "engineering-forces"
+      ? "Builder"
+      : node.id === "engineering-iteration"
+        ? "Systems Thinker"
+        : "Inventor";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "art-design-lab") {
     const level = node.id === "art-color-relationships" || node.id === "art-shape-form"
