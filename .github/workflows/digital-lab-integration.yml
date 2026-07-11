@@ -1,0 +1,152 @@
+name: Digital Citizenship Integration Patch
+
+on:
+  push:
+    branches: [feature/digital-citizenship-lab]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event_name == 'pull_request' || github.event.head_commit.message != 'Integrate Digital Citizenship across AdrianOS'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/digital-citizenship-lab
+      - name: Wire skills and portfolio
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          skills = Path('adrianos-play-starter/lib/adrian-skill-graph.ts')
+          text = skills.read_text()
+          nodes = '''  {
+              id: "digital-privacy-sharing",
+              label: "Privacy and thoughtful sharing",
+              subject: "Digital Citizenship",
+              description: "Protect location, identity, routines, images, and personal details before sharing.",
+              prerequisites: [],
+              gameSlug: "digital-citizenship-lab",
+              minAge: 4,
+              order: 1,
+              evidenceSkillIds: ["digital-privacy-sharing"],
+            },
+            {
+              id: "digital-security-scams",
+              label: "Passwords, scams, and account safety",
+              subject: "Digital Citizenship",
+              description: "Keep credentials private, recognize suspicious pressure, and use trusted routes to secure accounts.",
+              prerequisites: ["digital-privacy-sharing"],
+              gameSlug: "digital-citizenship-lab",
+              minAge: 4,
+              order: 2,
+              evidenceSkillIds: ["digital-security-scams"],
+            },
+            {
+              id: "digital-kindness-boundaries",
+              label: "Online kindness and boundaries",
+              subject: "Digital Citizenship",
+              description: "Communicate respectfully, protect consent and privacy, and reject harassment or doxxing.",
+              prerequisites: ["digital-privacy-sharing"],
+              gameSlug: "digital-citizenship-lab",
+              minAge: 5,
+              order: 3,
+              evidenceSkillIds: ["digital-kindness-boundaries"],
+            },
+            {
+              id: "digital-media-ai-literacy",
+              label: "Media and AI literacy",
+              subject: "Digital Citizenship",
+              description: "Verify dramatic claims, inspect sources, and treat edited or AI-generated content as unproven until checked.",
+              prerequisites: ["digital-privacy-sharing"],
+              gameSlug: "digital-citizenship-lab",
+              minAge: 5,
+              order: 4,
+              evidenceSkillIds: ["digital-media-ai-literacy"],
+            },
+            {
+              id: "digital-balance-help",
+              label: "Screen balance and getting help",
+              subject: "Digital Citizenship",
+              description: "Use stopping plans, protect sleep and attention, and involve a trusted adult when online pressure feels unsafe.",
+              prerequisites: ["digital-privacy-sharing"],
+              gameSlug: "digital-citizenship-lab",
+              minAge: 4,
+              order: 5,
+              evidenceSkillIds: ["digital-balance-help"],
+            },
+          '''
+          marker = '  {\n    id: "coding-sequences",'
+          if 'id: "digital-privacy-sharing"' not in text:
+              text = text.replace(marker, nodes + marker, 1)
+          route = '''  if (node.gameSlug === "digital-citizenship-lab") {
+              const level = node.id === "digital-privacy-sharing" || node.id === "digital-balance-help"
+                ? "Safe Starter"
+                : node.id === "digital-media-ai-literacy" || node.id === "digital-security-scams"
+                  ? "Digital Detective"
+                  : "Smart Sharer";
+              params.set("level", level);
+              params.set("focus", node.id);
+            }
+          '''
+          marker2 = '  if (node.gameSlug === "health-safety-lab") {'
+          if 'node.gameSlug === "digital-citizenship-lab"' not in text:
+              text = text.replace(marker2, route + marker2, 1)
+          skills.write_text(text)
+
+          portfolio = Path('adrianos-play-starter/lib/adrian-portfolio.ts')
+          text = portfolio.read_text()
+          if 'from "@/lib/adrian-digital-toolkit"' not in text:
+              text = text.replace(
+                  'import { readHealthToolkit, type HealthToolkit } from "@/lib/adrian-health-toolkit";',
+                  'import { readHealthToolkit, type HealthToolkit } from "@/lib/adrian-health-toolkit";\nimport { readDigitalToolkit, type DigitalToolkit } from "@/lib/adrian-digital-toolkit";',
+                  1,
+              )
+          text = text.replace(
+              '  wellbeingToolkit: WellbeingToolkit,\n  healthToolkit: HealthToolkit\n): PortfolioHighlight[] {',
+              '  wellbeingToolkit: WellbeingToolkit,\n  healthToolkit: HealthToolkit,\n  digitalToolkit: DigitalToolkit\n): PortfolioHighlight[] {',
+              1,
+          )
+          block = '''  if (digitalToolkit.cards.length > 0) {
+              const latest = digitalToolkit.cards[digitalToolkit.cards.length - 1];
+              addHighlight(highlights, {
+                id: "digital-toolkit",
+                kind: "achievement",
+                emoji: "🛡️",
+                title: "Digital Citizenship Toolkit",
+                detail: `${digitalToolkit.cards.length} digital tool${digitalToolkit.cards.length === 1 ? "" : "s"} earned across ${digitalToolkit.missions} mission${digitalToolkit.missions === 1 ? "" : "s"}. Recent tools: ${digitalToolkit.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+                date: latest?.earnedAt ?? digitalToolkit.updatedAt,
+                subject: "Digital Citizenship",
+                value: `${digitalToolkit.cards.length} TOOLS`,
+              });
+            }
+
+          '''
+          marker3 = '  if (healthToolkit.cards.length > 0) {'
+          if 'id: "digital-toolkit"' not in text:
+              text = text.replace(marker3, block + marker3, 1)
+          text = text.replace(
+              '  const healthToolkit = readHealthToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit);',
+              '  const healthToolkit = readHealthToolkit(profile.id);\n  const digitalToolkit = readDigitalToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit);',
+              1,
+          )
+          text = text.replace(
+              '  const healthSubjects = healthToolkit.cards.length > 0 ? ["Health" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects]).size;',
+              '  const healthSubjects = healthToolkit.cards.length > 0 ? ["Health" as const] : [];\n  const digitalSubjects = digitalToolkit.cards.length > 0 ? ["Digital Citizenship" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects]).size;',
+              1,
+          )
+          portfolio.write_text(text)
+          PY
+      - name: Commit integration
+        run: |
+          git config user.name "AdrianOS Build Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add adrianos-play-starter/lib/adrian-skill-graph.ts adrianos-play-starter/lib/adrian-portfolio.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "Integrate Digital Citizenship across AdrianOS"
+            git push origin HEAD:feature/digital-citizenship-lab
+          fi
