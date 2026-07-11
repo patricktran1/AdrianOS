@@ -21,6 +21,15 @@ html[data-school-mission-active="true"] .game-stage {
   bottom: max(10px, env(safe-area-inset-bottom)) !important;
 }
 
+.daily-session-bar-body > :nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.daily-session-bar-pause {
+  white-space: nowrap;
+}
+
 @media (max-width: 570px) {
   html[data-school-mission-active="true"] {
     --school-mode-ribbon-clearance: calc(96px + env(safe-area-inset-bottom));
