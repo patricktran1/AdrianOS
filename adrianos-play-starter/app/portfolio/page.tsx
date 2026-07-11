@@ -94,9 +94,10 @@ export default function PortfolioPage() {
     );
   }
 
+  const currentPortfolio = portfolio;
   const selectedIds = readPortfolioShowcase(activeProfile.id)
-    ?? portfolio.showcase.map((item) => item.id);
-  const transcriptBySubject = portfolio.transcript.reduce<Record<string, PortfolioTranscriptRow[]>>(
+    ?? currentPortfolio.showcase.map((item) => item.id);
+  const transcriptBySubject = currentPortfolio.transcript.reduce<Record<string, PortfolioTranscriptRow[]>>(
     (groups, row) => {
       groups[row.subject] = [...(groups[row.subject] ?? []), row];
       return groups;
@@ -108,7 +109,7 @@ export default function PortfolioPage() {
     togglePortfolioHighlight(
       activeProfile.id,
       highlight.id,
-      portfolio.showcase.map((item) => item.id)
+      currentPortfolio.showcase.map((item) => item.id)
     );
     setRevision((value) => value + 1);
     setMessage(selectedIds.includes(highlight.id)
@@ -117,10 +118,10 @@ export default function PortfolioPage() {
   }
 
   async function copySummary() {
-    const rows = portfolio.transcript
+    const rows = currentPortfolio.transcript
       .map((row) => `${row.subject}: ${row.label} — ${row.stage}, ${row.mastery}% mastery, ${row.attempts} attempts`)
       .join("\n");
-    const text = `${activeProfile.name} Learning Portfolio\n${portfolio.summary}\n\n${rows}`;
+    const text = `${activeProfile.name} Learning Portfolio\n${currentPortfolio.summary}\n\n${rows}`;
     try {
       await navigator.clipboard.writeText(text);
       setMessage("Transcript summary copied.");
@@ -175,24 +176,24 @@ export default function PortfolioPage() {
           <div>
             <span style={eyebrow}>{parentMode ? "EVIDENCE-BASED MASTERY TRANSCRIPT" : "MY LEARNING STORY"}</span>
             <h1 style={heroTitle}>{activeProfile.emoji} {activeProfile.name}</h1>
-            <p style={muted} className="portfolio-print-muted">{portfolio.summary}</p>
+            <p style={muted} className="portfolio-print-muted">{currentPortfolio.summary}</p>
             <small style={{ ...muted, display: "block", marginTop: 12 }} className="portfolio-print-muted">
-              Updated {formatDate(portfolio.generatedAt)}
+              Updated {formatDate(currentPortfolio.generatedAt)}
             </small>
           </div>
           <div style={masteryOrb}>
-            <strong>{portfolio.masteredSkills}</strong>
+            <strong>{currentPortfolio.masteredSkills}</strong>
             <span>MASTERED</span>
           </div>
         </div>
 
         <div style={metricGrid}>
-          <Metric label="Active skills" value={portfolio.activeSkills} />
-          <Metric label="Practicing" value={portfolio.practicingSkills} />
-          <Metric label="School days" value={portfolio.completedSessions} />
-          <Metric label="Completed work" value={portfolio.totalCompletions} />
-          <Metric label="Subjects" value={portfolio.subjectsWithEvidence} />
-          <Metric label="Total XP" value={portfolio.totalXp} />
+          <Metric label="Active skills" value={currentPortfolio.activeSkills} />
+          <Metric label="Practicing" value={currentPortfolio.practicingSkills} />
+          <Metric label="School days" value={currentPortfolio.completedSessions} />
+          <Metric label="Completed work" value={currentPortfolio.totalCompletions} />
+          <Metric label="Subjects" value={currentPortfolio.subjectsWithEvidence} />
+          <Metric label="Total XP" value={currentPortfolio.totalXp} />
         </div>
       </section>
 
@@ -207,11 +208,11 @@ export default function PortfolioPage() {
           {parentMode && <span style={countPill}>{selectedIds.length}/12 selected</span>}
         </div>
 
-        {portfolio.showcase.length === 0 && !parentMode ? (
+        {currentPortfolio.showcase.length === 0 && !parentMode ? (
           <EmptyPortfolio name={activeProfile.name} />
         ) : (
           <div style={highlightGrid}>
-            {(parentMode ? portfolio.highlights : portfolio.showcase).map((highlight) => {
+            {(parentMode ? currentPortfolio.highlights : currentPortfolio.showcase).map((highlight) => {
               const selected = selectedIds.includes(highlight.id);
               return (
                 <article key={highlight.id} style={{ ...highlightCard, opacity: parentMode && !selected ? .68 : 1 }}>
@@ -246,7 +247,7 @@ export default function PortfolioPage() {
         <span style={eyebrow}>{parentMode ? "MASTERY TRANSCRIPT" : "SKILLS I’M GROWING"}</span>
         <h2 style={sectionTitle}>{parentMode ? "Skill-by-skill evidence" : "My learning map"}</h2>
 
-        {portfolio.transcript.length === 0 ? (
+        {currentPortfolio.transcript.length === 0 ? (
           <p style={muted} className="portfolio-print-muted">Skill evidence will appear after the first learning activities.</p>
         ) : (
           <div style={subjectList}>
@@ -288,11 +289,11 @@ export default function PortfolioPage() {
         <section style={section} className="portfolio-print-card">
           <span style={eyebrow}>RECENT LEARNING HISTORY</span>
           <h2 style={sectionTitle}>Weekly evidence trail</h2>
-          {portfolio.recentWeeks.length === 0 ? (
+          {currentPortfolio.recentWeeks.length === 0 ? (
             <p style={muted} className="portfolio-print-muted">Weekly snapshots will appear after the first report is generated.</p>
           ) : (
             <div style={weekList}>
-              {portfolio.recentWeeks.map((week) => (
+              {currentPortfolio.recentWeeks.map((week) => (
                 <article key={week.weekStart} style={weekCard}>
                   <div style={weekHeader}>
                     <strong>{week.weekStart} to {week.weekEnd}</strong>
