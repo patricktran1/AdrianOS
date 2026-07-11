@@ -1,0 +1,10 @@
+{
+  "slug": "engineering-lab",
+  "title": "Engineering Lab",
+  "description": "Test structures, materials, forces, mechanisms, and design improvements.",
+  "emoji": "🛠️",
+  "subject": "Engineering",
+  "age": "Ages 4+",
+  "status": "playable",
+  "order": 15
+}
