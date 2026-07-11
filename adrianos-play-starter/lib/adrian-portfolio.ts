@@ -26,6 +26,7 @@ import { readEconomicsLedger, type EconomicsLedger } from "@/lib/adrian-economic
 import { readWellbeingToolkit, type WellbeingToolkit } from "@/lib/adrian-wellbeing-toolkit";
 import { readHealthToolkit, type HealthToolkit } from "@/lib/adrian-health-toolkit";
 import { readDigitalToolkit, type DigitalToolkit } from "@/lib/adrian-digital-toolkit";
+import { readMusicToolkit, type MusicToolkit } from "@/lib/adrian-music-toolkit";
 import { readWorldPassport, type WorldPassport } from "@/lib/adrian-world-passport";
 import { readWeeklyReports, type WeeklyReport } from "@/lib/adrian-weekly-report";
 import type { Game } from "@/lib/games";
@@ -228,10 +229,25 @@ function buildHighlights(
   economicsLedger: EconomicsLedger,
   wellbeingToolkit: WellbeingToolkit,
   healthToolkit: HealthToolkit,
-  digitalToolkit: DigitalToolkit
+  digitalToolkit: DigitalToolkit,
+  musicToolkit: MusicToolkit
 ): PortfolioHighlight[] {
   const highlights = new Map<string, PortfolioHighlight>();
   const now = new Date().toISOString();
+
+  if (musicToolkit.cards.length > 0) {
+    const latest = musicToolkit.cards[musicToolkit.cards.length - 1];
+    addHighlight(highlights, {
+      id: "music-toolkit",
+      kind: "achievement",
+      emoji: "🎼",
+      title: "Music Lab Toolkit",
+      detail: `${musicToolkit.cards.length} listening and composition tool${musicToolkit.cards.length === 1 ? "" : "s"} earned across ${musicToolkit.missions} mission${musicToolkit.missions === 1 ? "" : "s"}. Recent tools: ${musicToolkit.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+      date: latest?.earnedAt ?? musicToolkit.updatedAt,
+      subject: "Music",
+      value: `${musicToolkit.cards.length} TOOLS`,
+    });
+  }
 
   if (digitalToolkit.cards.length > 0) {
     const latest = digitalToolkit.cards[digitalToolkit.cards.length - 1];
@@ -458,7 +474,8 @@ export function buildLearningPortfolio(
   const wellbeingToolkit = readWellbeingToolkit(profile.id);
   const healthToolkit = readHealthToolkit(profile.id);
   const digitalToolkit = readDigitalToolkit(profile.id);
-  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit);
+  const musicToolkit = readMusicToolkit(profile.id);
+  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit);
   const selected = readPortfolioShowcase(profile.id);
   const defaultIds = highlights.slice(0, 6).map((item) => item.id);
   const showcaseIds = selected ?? defaultIds;
@@ -477,7 +494,8 @@ export function buildLearningPortfolio(
   const wellbeingSubjects = wellbeingToolkit.cards.length > 0 ? ["Wellbeing" as const] : [];
   const healthSubjects = healthToolkit.cards.length > 0 ? ["Health" as const] : [];
   const digitalSubjects = digitalToolkit.cards.length > 0 ? ["Digital Citizenship" as const] : [];
-  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects]).size;
+  const musicSubjects = musicToolkit.cards.length > 0 ? ["Music" as const] : [];
+  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects]).size;
   const totalCompletions = Object.values(progress.games).reduce((sum, row) => sum + row.completions, 0);
   const projectText = projects.length > 0
     ? `, ${projects.length} completed project${projects.length === 1 ? "" : "s"}`

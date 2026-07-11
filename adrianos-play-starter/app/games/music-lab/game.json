@@ -1,0 +1,10 @@
+{
+  "slug": "music-lab",
+  "title": "Music Lab",
+  "description": "Hear beats, compare melodies, discover musical form, and build a toolkit for creating music.",
+  "emoji": "🎶",
+  "subject": "Music",
+  "age": "Ages 4+",
+  "status": "playable",
+  "order": 12
+}
