@@ -20,6 +20,7 @@ const allowedSubjects = new Set([
   "Digital Citizenship",
   "Music",
   "Art",
+  "Engineering",
   "Coding",
   "Creativity",
 ]);
