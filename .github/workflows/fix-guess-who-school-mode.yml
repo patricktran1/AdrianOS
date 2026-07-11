@@ -1,0 +1,125 @@
+name: Fix Guess Who School Mode
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/fix-guess-who-school-mode.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Fix Guess Who controls in School Mode'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Guess Who controls
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          page = Path('adrianos-play-starter/app/games/guess-who/GuessWhoGame.tsx')
+          text = page.read_text()
+
+          old = '''            {humanAnswer !== null && (
+              <>
+                <p>
+                  Flip cards yourself, or let the game remove every non-match.
+                </p>'''
+          new = '''            <button
+              type="button"
+              className={styles.guessNowButton}
+              onClick={() => setGuessOpen(true)}
+            >
+              🎯 Make a guess
+            </button>
+
+            {humanAnswer !== null && (
+              <>
+                <p>
+                  Flip cards yourself, or let the game remove every non-match.
+                </p>'''
+          if 'className={styles.guessNowButton}' not in text:
+              if old not in text:
+                  raise SystemExit('Computer-mode insertion point not found')
+              text = text.replace(old, new, 1)
+
+          old2 = '''          <div>
+            <span className={styles.eyebrow}>PLAYER {currentPlayer}</span>
+            <h2>Ask your opponent a yes-or-no question.</h2>
+            <p>
+              They answer out loud. Tap every person who no longer matches,
+              then end your turn or make a guess.
+            </p>
+          </div>'''
+          new2 = '''          <div>
+            <span className={styles.eyebrow}>PLAYER {currentPlayer}</span>
+            <h2>Ask your opponent a yes-or-no question.</h2>
+            <p>
+              They answer out loud. Tap every person who no longer matches,
+              then end your turn or make a guess.
+            </p>
+            <button
+              type="button"
+              className={styles.guessNowButton}
+              onClick={() => setGuessOpen(true)}
+            >
+              🎯 Make a guess
+            </button>
+          </div>'''
+          if text.count('className={styles.guessNowButton}') < 2:
+              if old2 not in text:
+                  raise SystemExit('Two-player insertion point not found')
+              text = text.replace(old2, new2, 1)
+
+          page.write_text(text)
+
+          css = Path('adrianos-play-starter/app/games/guess-who/guess-who.module.css')
+          styles = css.read_text()
+          if '.guessNowButton {' not in styles:
+              marker = '''.primaryButton {
+  border: 0;
+  color: #10131b;
+  background: #d9ff5b;
+}
+'''
+              addition = marker + '''
+.guessNowButton {
+  width: 100%;
+  min-height: 54px;
+  margin-top: 12px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 18px;
+  color: #10131b;
+  background: #d9ff5b;
+  font-size: 1.05rem;
+  font-weight: 950;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(217, 255, 91, 0.18);
+}
+'''
+              if marker not in styles:
+                  raise SystemExit('CSS insertion point not found')
+              styles = styles.replace(marker, addition, 1)
+
+          styles = styles.replace('  bottom: 14px;\n  display: flex;', '  bottom: 108px;\n  display: flex;', 1)
+          if '@media (max-width: 700px)' in styles and 'bottom: 102px;' not in styles:
+              styles += '''
+
+@media (max-width: 700px) {
+  .bottomBar {
+    bottom: 102px;
+  }
+}
+'''
+          css.write_text(styles)
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name "AdrianOS Build Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add adrianos-play-starter/app/games/guess-who/GuessWhoGame.tsx adrianos-play-starter/app/games/guess-who/guess-who.module.css
+          git commit -m "Fix Guess Who controls in School Mode"
+          git push origin HEAD:main
