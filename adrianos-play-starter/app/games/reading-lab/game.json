@@ -1,0 +1,10 @@
+{
+  "slug": "reading-lab",
+  "title": "Reading Lab",
+  "description": "Read original stories, uncover clues, and explain what the passage shows.",
+  "emoji": "📖",
+  "subject": "Reading",
+  "age": "Ages 5+",
+  "status": "playable",
+  "order": 5
+}
