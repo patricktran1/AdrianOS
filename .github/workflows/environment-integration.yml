@@ -102,13 +102,13 @@ jobs:
           text = portfolio.read_text()
           if 'from "@/lib/adrian-environment-toolkit"' not in text:
               text = text.replace(
-                  'import { readIndependenceToolkit, type IndependenceToolkit } from "@/lib/adrian-life-skills-toolkit";',
-                  'import { readIndependenceToolkit, type IndependenceToolkit } from "@/lib/adrian-life-skills-toolkit";\nimport { readEnvironmentToolkit, type EnvironmentToolkit } from "@/lib/adrian-environment-toolkit";',
+                  'import { readLifeSkillsToolkit, type LifeSkillsToolkit } from "@/lib/adrian-life-skills-toolkit";',
+                  'import { readLifeSkillsToolkit, type LifeSkillsToolkit } from "@/lib/adrian-life-skills-toolkit";\nimport { readEnvironmentToolkit, type EnvironmentToolkit } from "@/lib/adrian-environment-toolkit";',
                   1,
               )
           text = text.replace(
-              '  movementToolkit: MovementToolkit,\n  independenceToolkit: IndependenceToolkit\n): PortfolioHighlight[] {',
-              '  movementToolkit: MovementToolkit,\n  independenceToolkit: IndependenceToolkit,\n  environmentToolkit: EnvironmentToolkit\n): PortfolioHighlight[] {',
+              '  movementToolkit: MovementToolkit,\n  lifeSkillsToolkit: LifeSkillsToolkit\n): PortfolioHighlight[] {',
+              '  movementToolkit: MovementToolkit,\n  lifeSkillsToolkit: LifeSkillsToolkit,\n  environmentToolkit: EnvironmentToolkit\n): PortfolioHighlight[] {',
               1,
           )
           block = '''  if (environmentToolkit.cards.length > 0) {
@@ -126,17 +126,17 @@ jobs:
             }
 
           '''
-          marker2 = '  if (independenceToolkit.cards.length > 0) {'
+          marker2 = '  if (lifeSkillsToolkit.tools.length > 0) {'
           if 'id: "environment-toolkit"' not in text:
               text = text.replace(marker2, block + marker2, 1)
           text = text.replace(
-              '  const independenceToolkit = readIndependenceToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit, independenceToolkit);',
-              '  const independenceToolkit = readIndependenceToolkit(profile.id);\n  const environmentToolkit = readEnvironmentToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit, independenceToolkit, environmentToolkit);',
+              '  const lifeSkillsToolkit = readLifeSkillsToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit, lifeSkillsToolkit);',
+              '  const lifeSkillsToolkit = readLifeSkillsToolkit(profile.id);\n  const environmentToolkit = readEnvironmentToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit, lifeSkillsToolkit, environmentToolkit);',
               1,
           )
           text = text.replace(
-              '  const independenceSubjects = independenceToolkit.cards.length > 0 ? ["Life Skills" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects, ...independenceSubjects]).size;',
-              '  const independenceSubjects = independenceToolkit.cards.length > 0 ? ["Life Skills" as const] : [];\n  const environmentSubjects = environmentToolkit.cards.length > 0 ? ["Environment" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects, ...independenceSubjects, ...environmentSubjects]).size;',
+              '  const lifeSkillsSubjects = lifeSkillsToolkit.tools.length > 0 ? ["Life Skills" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects, ...lifeSkillsSubjects]).size;',
+              '  const lifeSkillsSubjects = lifeSkillsToolkit.tools.length > 0 ? ["Life Skills" as const] : [];\n  const environmentSubjects = environmentToolkit.cards.length > 0 ? ["Environment" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects, ...lifeSkillsSubjects, ...environmentSubjects]).size;',
               1,
           )
           portfolio.write_text(text)
