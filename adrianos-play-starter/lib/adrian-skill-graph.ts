@@ -714,6 +714,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["digital-balance-help"],
   },
   {
+    id: "music-steady-beat",
+    label: "Steady beat",
+    subject: "Music",
+    description: "Hear, maintain, and compare a steady pulse and changes in tempo.",
+    prerequisites: [],
+    gameSlug: "music-lab",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["music-steady-beat"],
+  },
+  {
+    id: "music-rhythm-patterns",
+    label: "Rhythm patterns",
+    subject: "Music",
+    description: "Recognize short and long sounds, rests, repeated rhythm cells, and syncopation.",
+    prerequisites: ["music-steady-beat"],
+    gameSlug: "music-lab",
+    minAge: 4,
+    order: 2,
+    evidenceSkillIds: ["music-rhythm-patterns"],
+  },
+  {
+    id: "music-pitch-direction",
+    label: "Pitch direction",
+    subject: "Music",
+    description: "Hear whether notes move higher, lower, repeat, form contours, or span larger intervals.",
+    prerequisites: [],
+    gameSlug: "music-lab",
+    minAge: 4,
+    order: 3,
+    evidenceSkillIds: ["music-pitch-direction"],
+  },
+  {
+    id: "music-listening-form",
+    label: "Musical listening",
+    subject: "Music",
+    description: "Identify repetition, contrast, phrase relationships, and simple musical form.",
+    prerequisites: ["music-steady-beat", "music-pitch-direction"],
+    gameSlug: "music-lab",
+    minAge: 5,
+    order: 4,
+    evidenceSkillIds: ["music-listening-form"],
+  },
+  {
+    id: "music-composition",
+    label: "Simple composition",
+    subject: "Music",
+    description: "Use motifs, home notes, contour, rhythm, and variation to shape musical ideas.",
+    prerequisites: ["music-rhythm-patterns", "music-pitch-direction"],
+    gameSlug: "music-lab",
+    minAge: 5,
+    order: 5,
+    evidenceSkillIds: ["music-composition"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -953,6 +1008,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "music-lab") {
+    const level = node.id === "music-steady-beat" || node.id === "music-pitch-direction"
+      ? "Beat Starter"
+      : node.id === "music-listening-form" || node.id === "music-composition"
+        ? "Music Detective"
+        : "Melody Maker";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "digital-citizenship-lab") {
     const level = node.id === "digital-privacy-sharing" || node.id === "digital-balance-help"
