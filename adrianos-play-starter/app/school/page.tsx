@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import ProjectStudioCard from "@/components/ProjectStudioCard";
+import WritingStudioCard from "@/components/WritingStudioCard";
 import { useAdrianProgress } from "@/lib/adrian-progress";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import {
@@ -165,6 +166,7 @@ export default function SchoolPage() {
         </section>
       )}
 
+      <WritingStudioCard />
       <ProjectStudioCard />
 
       {!schedule.schoolMode && (
