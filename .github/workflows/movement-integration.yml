@@ -1,0 +1,152 @@
+name: Movement Integration Patch
+
+on:
+  push:
+    branches: [feature/movement-lab]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event_name == 'pull_request' || github.event.head_commit.message != 'Integrate Movement across AdrianOS'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/movement-lab
+      - name: Wire skills and portfolio
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          skills = Path('adrianos-play-starter/lib/adrian-skill-graph.ts')
+          text = skills.read_text()
+          nodes = '''  {
+              id: "movement-balance",
+              label: "Balance and body control",
+              subject: "Movement",
+              description: "Use visual focus, base of support, and controlled body position to stay steady.",
+              prerequisites: [],
+              gameSlug: "movement-lab",
+              minAge: 4,
+              order: 1,
+              evidenceSkillIds: ["movement-balance"],
+            },
+            {
+              id: "movement-coordination",
+              label: "Coordination and rhythm",
+              subject: "Movement",
+              description: "Coordinate opposite sides, repeat movement patterns, and combine actions with rhythm.",
+              prerequisites: [],
+              gameSlug: "movement-lab",
+              minAge: 4,
+              order: 2,
+              evidenceSkillIds: ["movement-coordination"],
+            },
+            {
+              id: "movement-mobility",
+              label: "Mobility and range of motion",
+              subject: "Movement",
+              description: "Explore comfortable, controlled movement ranges without forcing or bouncing.",
+              prerequisites: [],
+              gameSlug: "movement-lab",
+              minAge: 4,
+              order: 3,
+              evidenceSkillIds: ["movement-mobility"],
+            },
+            {
+              id: "movement-strength",
+              label: "Strength and stability",
+              subject: "Movement",
+              description: "Use controlled body angles, stable equipment, and varied movements to build strength safely.",
+              prerequisites: ["movement-balance"],
+              gameSlug: "movement-lab",
+              minAge: 4,
+              order: 4,
+              evidenceSkillIds: ["movement-strength"],
+            },
+            {
+              id: "movement-spatial-awareness",
+              label: "Spatial awareness and safe movement",
+              subject: "Movement",
+              description: "Scan the environment, understand personal reach, and plan safe direction changes.",
+              prerequisites: ["movement-balance"],
+              gameSlug: "movement-lab",
+              minAge: 4,
+              order: 5,
+              evidenceSkillIds: ["movement-spatial-awareness"],
+            },
+          '''
+          marker = '  {\n    id: "coding-sequences",'
+          if 'id: "movement-balance"' not in text:
+              text = text.replace(marker, nodes + marker, 1)
+          route = '''  if (node.gameSlug === "movement-lab") {
+              const level = node.id === "movement-balance" || node.id === "movement-mobility"
+                ? "Mover"
+                : node.id === "movement-strength"
+                  ? "Movement Strategist"
+                  : "Coordinator";
+              params.set("level", level);
+              params.set("focus", node.id);
+            }
+          '''
+          route_marker = '  if (node.gameSlug === "engineering-lab") {'
+          if 'node.gameSlug === "movement-lab"' not in text:
+              text = text.replace(route_marker, route + route_marker, 1)
+          skills.write_text(text)
+
+          portfolio = Path('adrianos-play-starter/lib/adrian-portfolio.ts')
+          text = portfolio.read_text()
+          if 'from "@/lib/adrian-movement-toolkit"' not in text:
+              text = text.replace(
+                  'import { readEngineeringToolkit, type EngineeringToolkit } from "@/lib/adrian-engineering-toolkit";',
+                  'import { readEngineeringToolkit, type EngineeringToolkit } from "@/lib/adrian-engineering-toolkit";\nimport { readMovementToolkit, type MovementToolkit } from "@/lib/adrian-movement-toolkit";',
+                  1,
+              )
+          text = text.replace(
+              '  artToolkit: ArtToolkit,\n  engineeringToolkit: EngineeringToolkit\n): PortfolioHighlight[] {',
+              '  artToolkit: ArtToolkit,\n  engineeringToolkit: EngineeringToolkit,\n  movementToolkit: MovementToolkit\n): PortfolioHighlight[] {',
+              1,
+          )
+          block = '''  if (movementToolkit.cards.length > 0) {
+              const latest = movementToolkit.cards[movementToolkit.cards.length - 1];
+              addHighlight(highlights, {
+                id: "movement-toolkit",
+                kind: "achievement",
+                emoji: "🤸",
+                title: "Movement Toolkit",
+                detail: `${movementToolkit.cards.length} movement tool${movementToolkit.cards.length === 1 ? "" : "s"} earned across ${movementToolkit.missions} mission${movementToolkit.missions === 1 ? "" : "s"} and about ${movementToolkit.minutes} guided minute${movementToolkit.minutes === 1 ? "" : "s"}. Recent tools: ${movementToolkit.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+                date: latest?.earnedAt ?? movementToolkit.updatedAt,
+                subject: "Movement",
+                value: `${movementToolkit.cards.length} TOOLS`,
+              });
+            }
+
+          '''
+          marker2 = '  if (engineeringToolkit.cards.length > 0) {'
+          if 'id: "movement-toolkit"' not in text:
+              text = text.replace(marker2, block + marker2, 1)
+          text = text.replace(
+              '  const engineeringToolkit = readEngineeringToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit);',
+              '  const engineeringToolkit = readEngineeringToolkit(profile.id);\n  const movementToolkit = readMovementToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit);',
+              1,
+          )
+          text = text.replace(
+              '  const engineeringSubjects = engineeringToolkit.cards.length > 0 ? ["Engineering" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects]).size;',
+              '  const engineeringSubjects = engineeringToolkit.cards.length > 0 ? ["Engineering" as const] : [];\n  const movementSubjects = movementToolkit.cards.length > 0 ? ["Movement" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects]).size;',
+              1,
+          )
+          portfolio.write_text(text)
+          PY
+      - name: Commit integration
+        run: |
+          git config user.name "AdrianOS Build Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add adrianos-play-starter/lib/adrian-skill-graph.ts adrianos-play-starter/lib/adrian-portfolio.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "Integrate Movement across AdrianOS"
+            git push origin HEAD:feature/movement-lab
+          fi
