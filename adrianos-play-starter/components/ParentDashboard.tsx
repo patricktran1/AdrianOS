@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import ParentToolGrid from "@/components/ParentToolGrid";
 import type { Game } from "@/lib/games";
 import {
   readProgressForProfile,
@@ -26,6 +27,22 @@ type ProfileReport = {
   gamesTried: number;
   favoriteSlug: string | null;
 };
+
+const PARENT_SESSION_KEYS = [
+  "adrianos-parent-unlocked",
+  "adrianos-weekly-report-unlocked",
+  "adrianos-placement-report-unlocked",
+  "adrianos-coach-report-unlocked",
+  "adrianos-skill-goals-unlocked",
+];
+
+function setParentSessionAccess(unlocked: boolean) {
+  if (typeof window === "undefined") return;
+  for (const key of PARENT_SESSION_KEYS) {
+    if (unlocked) window.sessionStorage.setItem(key, "yes");
+    else window.sessionStorage.removeItem(key);
+  }
+}
 
 function totalFor(progress: AdrianProgress, field: "plays" | "completions"): number {
   return Object.values(progress.games).reduce((sum, game) => sum + game[field], 0);
@@ -58,6 +75,7 @@ export default function ParentDashboard({ games }: { games: Game[] }) {
   const [backupText, setBackupText] = useState("");
 
   useEffect(() => {
+    setUnlocked(window.sessionStorage.getItem("adrianos-parent-unlocked") === "yes");
     const refresh = () => setRefreshKey((value) => value + 1);
     window.addEventListener("adrianos-progress-updated", refresh);
     window.addEventListener("adrianos-family-updated", refresh);
@@ -87,14 +105,21 @@ export default function ParentDashboard({ games }: { games: Game[] }) {
     });
   }, [family.profiles, refreshKey]);
 
+  function finishUnlock() {
+    setParentSessionAccess(true);
+    setUnlocked(true);
+    setPin("");
+    setConfirmPin("");
+    setMessage("");
+    window.setTimeout(() => window.location.reload(), 60);
+  }
+
   function unlockDashboard() {
     if (!verifyPin(pin)) {
       setMessage("That PIN did not match.");
       return;
     }
-    setUnlocked(true);
-    setPin("");
-    setMessage("");
+    finishUnlock();
   }
 
   function createPin() {
@@ -110,10 +135,13 @@ export default function ParentDashboard({ games }: { games: Game[] }) {
       setMessage("The PIN could not be saved.");
       return;
     }
-    setUnlocked(true);
-    setPin("");
-    setConfirmPin("");
-    setMessage("Parent PIN created.");
+    finishUnlock();
+  }
+
+  function lockDashboard() {
+    setParentSessionAccess(false);
+    setUnlocked(false);
+    window.setTimeout(() => window.location.reload(), 40);
   }
 
   function downloadBackup() {
@@ -152,15 +180,15 @@ export default function ParentDashboard({ games }: { games: Game[] }) {
     const creating = !family.parentPinHash;
     return (
       <main style={page}>
-        <section style={{ ...card, width: "min(520px,100%)", margin: "0 auto" }}>
+        <section style={{ ...card, width: "min(560px,100%)", margin: "0 auto" }}>
           <Link href="/" style={backLink}>← Back to AdrianOS</Link>
-          <div style={{ fontSize: 54, marginTop: 24 }}>🔐</div>
+          <div style={{ fontSize: 62, marginTop: 24 }}>🔐</div>
           <span style={eyebrow}>PARENT ACCESS</span>
-          <h1 style={lockTitle}>{creating ? "Create a parent PIN" : "Enter parent PIN"}</h1>
+          <h1 style={lockTitle}>{creating ? "Create a parent PIN" : "Enter parent PIN once"}</h1>
           <p style={muted}>
             {creating
-              ? "Choose a 4 to 6 digit PIN for reports, profile settings, and backups."
-              : "This keeps settings and reports out of the game area."}
+              ? "Choose a 4 to 6 digit PIN for all reports, settings, schedules, and backups."
+              : "One unlock opens every parent report and control for this browser session."}
           </p>
           <input
             inputMode="numeric"
@@ -182,8 +210,8 @@ export default function ParentDashboard({ games }: { games: Game[] }) {
               style={pinInput}
             />
           )}
-          <button onClick={creating ? createPin : unlockDashboard} style={primaryButton}>
-            {creating ? "Create PIN" : "Unlock dashboard"}
+          <button onClick={creating ? createPin : unlockDashboard} style={unlockButton}>
+            {creating ? "Create PIN and open dashboard" : "Unlock all parent tools"}
           </button>
           {message && <p style={{ ...muted, color: "#ffb5bf" }}>{message}</p>}
         </section>
@@ -198,12 +226,14 @@ export default function ParentDashboard({ games }: { games: Game[] }) {
           <Link href="/" style={backLink}>← Back to AdrianOS</Link>
           <span style={{ ...eyebrow, display: "block", marginTop: 18 }}>PARENT DASHBOARD</span>
           <h1 style={title}>Learning cockpit</h1>
-          <p style={muted}>Private reports, adaptive mastery, and review signals for each child.</p>
+          <p style={muted}>One unlock. Every report, goal, schedule, and family control.</p>
         </div>
-        <button onClick={() => setUnlocked(false)} style={secondaryButton}>Lock dashboard</button>
+        <button onClick={lockDashboard} style={lockButton}>🔒 Lock parent tools</button>
       </header>
 
       {message && <div style={notice}>{message}</div>}
+
+      <ParentToolGrid />
 
       <section style={reportGrid}>
         {reports.map((report) => (
@@ -233,7 +263,7 @@ export default function ParentDashboard({ games }: { games: Game[] }) {
         <h2 style={sectionTitle}>Backup and restore</h2>
         <p style={muted}>
           Download one family backup and import it on another device. It contains profiles,
-          progress, mastery, review queues, coins, badges, and avatar purchases. Keep it private.
+          progress, mastery, review queues, schedules, coins, badges, and avatar purchases. Keep it private.
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
           <button onClick={downloadBackup} style={primaryButton}>Download family backup</button>
@@ -406,7 +436,7 @@ const lockTitle: React.CSSProperties = { margin: "10px 0", fontSize: "clamp(2.3r
 const sectionTitle: React.CSSProperties = { margin: "8px 0 18px", fontSize: "clamp(1.7rem,4vw,2.8rem)", letterSpacing: "-.045em" };
 const eyebrow: React.CSSProperties = { color: "#d9ff5b", fontWeight: 950, fontSize: 12, letterSpacing: ".16em" };
 const muted: React.CSSProperties = { color: "#aab1bf", lineHeight: 1.55 };
-const backLink: React.CSSProperties = { display: "inline-block", padding: "10px 13px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", background: "#181d28", fontWeight: 900 };
+const backLink: React.CSSProperties = { display: "inline-block", padding: "12px 16px", borderRadius: 999, border: "1px solid rgba(255,255,255,.12)", background: "#181d28", fontWeight: 900 };
 const card: React.CSSProperties = { padding: "clamp(22px,4vw,32px)", borderRadius: 28, border: "1px solid rgba(255,255,255,.11)", background: "#181d28", boxShadow: "0 26px 60px rgba(0,0,0,.25)" };
 const reportGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(310px,1fr))", gap: 18, marginBottom: 18 };
 const avatar: React.CSSProperties = { width: 76, height: 76, display: "grid", placeItems: "center", borderRadius: 22, background: "#d9ff5b", fontSize: 40 };
@@ -424,6 +454,8 @@ const textInput: React.CSSProperties = { width: "100%", padding: "12px 13px", bo
 const ageInput: React.CSSProperties = { ...textInput, textAlign: "center" };
 const emojiInput: React.CSSProperties = { ...textInput, textAlign: "center", fontSize: 24 };
 const pinInput: React.CSSProperties = { ...textInput, marginTop: 10, fontSize: 24, letterSpacing: ".28em", textAlign: "center" };
+const unlockButton: React.CSSProperties = { width: "100%", marginTop: 16, padding: "18px 22px", borderRadius: 999, border: 0, background: "#d9ff5b", color: "#10131b", fontSize: 18, fontWeight: 950, cursor: "pointer", boxShadow: "0 16px 42px rgba(217,255,91,.18)" };
+const lockButton: React.CSSProperties = { padding: "14px 19px", borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", background: "#222936", color: "#fff", fontSize: 15, fontWeight: 900, cursor: "pointer" };
 const primaryButton: React.CSSProperties = { marginTop: 14, padding: "13px 18px", borderRadius: 999, border: 0, background: "#d9ff5b", color: "#10131b", fontWeight: 950, cursor: "pointer" };
 const secondaryButton: React.CSSProperties = { padding: "11px 15px", borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", background: "#222936", color: "#fff", fontWeight: 900, cursor: "pointer" };
 const notice: React.CSSProperties = { marginBottom: 16, padding: "12px 15px", borderRadius: 15, background: "rgba(198,184,255,.14)", border: "1px solid rgba(198,184,255,.3)", fontWeight: 850 };
