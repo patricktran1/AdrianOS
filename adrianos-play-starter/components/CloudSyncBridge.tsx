@@ -15,6 +15,7 @@ const LOCAL_EVENTS = [
   "adrianos-progress-updated",
   "adrianos-family-updated",
   "adrianos-hub-updated",
+  "adrianos-learning-updated",
 ];
 
 export default function CloudSyncBridge() {
