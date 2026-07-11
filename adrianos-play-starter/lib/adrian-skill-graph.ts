@@ -1044,6 +1044,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["environment-climate-action"],
   },
   {
+    id: "study-planning",
+    label: "Planning and starting work",
+    subject: "Learning Skills",
+    description: "Break work into a clear first step, plan backward from deadlines, and spread practice over time.",
+    prerequisites: [],
+    gameSlug: "study-skills-lab",
+    minAge: 5,
+    order: 1,
+    evidenceSkillIds: ["study-planning"],
+  },
+  {
+    id: "study-notes",
+    label: "Useful notes and organization",
+    subject: "Learning Skills",
+    description: "Capture key ideas, organize topics, and create notes that can become self-tests.",
+    prerequisites: [],
+    gameSlug: "study-skills-lab",
+    minAge: 5,
+    order: 2,
+    evidenceSkillIds: ["study-notes"],
+  },
+  {
+    id: "study-retrieval",
+    label: "Remembering through retrieval",
+    subject: "Learning Skills",
+    description: "Use recall, teach-back, spacing, and mixed practice instead of relying only on rereading.",
+    prerequisites: ["study-planning"],
+    gameSlug: "study-skills-lab",
+    minAge: 5,
+    order: 3,
+    evidenceSkillIds: ["study-retrieval"],
+  },
+  {
+    id: "study-questions",
+    label: "Questions and checking understanding",
+    subject: "Learning Skills",
+    description: "Ask specific questions, summarize without looking, and compare confidence with evidence.",
+    prerequisites: [],
+    gameSlug: "study-skills-lab",
+    minAge: 5,
+    order: 4,
+    evidenceSkillIds: ["study-questions"],
+  },
+  {
+    id: "study-feedback",
+    label: "Using feedback and revising",
+    subject: "Learning Skills",
+    description: "Find patterns in mistakes, apply feedback, verify the revision, and carry the lesson into future work.",
+    prerequisites: ["study-questions"],
+    gameSlug: "study-skills-lab",
+    minAge: 6,
+    order: 5,
+    evidenceSkillIds: ["study-feedback"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -1283,6 +1338,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "study-skills-lab") {
+    const level = node.id === "study-planning" || node.id === "study-notes"
+      ? "Learning Starter"
+      : node.id === "study-feedback"
+        ? "Learning Strategist"
+        : "Study Builder";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "nature-environment-lab") {
     const level = node.id === "environment-ecosystems" || node.id === "environment-resources"
