@@ -1,0 +1,10 @@
+{
+  "slug": "world-explorer",
+  "title": "World Explorer",
+  "description": "Travel the globe through clues and landmarks.",
+  "emoji": "🌍",
+  "subject": "Geography",
+  "age": "Ages 6+",
+  "status": "playable",
+  "order": 8
+}
