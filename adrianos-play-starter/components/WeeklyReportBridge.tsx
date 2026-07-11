@@ -36,18 +36,19 @@ export default function WeeklyReportBridge() {
       }, delay);
     };
 
+    const handleSourceEvent = () => schedule();
     const handleVisibility = () => {
       if (document.visibilityState === "visible") schedule(300);
     };
 
     schedule(900);
-    for (const eventName of SOURCE_EVENTS) window.addEventListener(eventName, schedule);
+    for (const eventName of SOURCE_EVENTS) window.addEventListener(eventName, handleSourceEvent);
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       stopped = true;
       if (timer) window.clearTimeout(timer);
-      for (const eventName of SOURCE_EVENTS) window.removeEventListener(eventName, schedule);
+      for (const eventName of SOURCE_EVENTS) window.removeEventListener(eventName, handleSourceEvent);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
