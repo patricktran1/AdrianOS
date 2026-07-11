@@ -2,10 +2,12 @@
 
 import GameFrame from "@/components/GameFrame";
 import { useAdrianProgress } from "@/lib/adrian-progress";
+import { getActiveProfile } from "@/lib/adrian-profiles";
+import { getDueReviewItems, recordLearningAttempt, type ReviewItem } from "@/lib/adrian-learning";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type Mode = "mission" | "timer" | "daily";
+type Mode = "mission" | "timer" | "daily" | "review";
 type Topic = "mixed" | "addition" | "subtraction" | "money";
 type Screen = "menu" | "play" | "results";
 
@@ -97,12 +99,25 @@ function formatValue(value: number, money: boolean) {
   return money ? `$${(value / 100).toFixed(2)}` : String(value);
 }
 
+function problemFromReview(item: ReviewItem): Problem | null {
+  const left = item.data?.left;
+  const right = item.data?.right;
+  const operator = item.data?.operator;
+  const money = item.data?.money;
+  if (typeof left !== "number" || typeof right !== "number") return null;
+  if (operator !== "+" && operator !== "−") return null;
+  const answer = operator === "+" ? left + right : left - right;
+  return { left, right, operator, answer, money: money === true };
+}
+
 export default function MathBlastPage() {
   const { progress, recordPlay, award } = useAdrianProgress();
   const [screen, setScreen] = useState<Screen>("menu");
   const [mode, setMode] = useState<Mode>("mission");
   const [topic, setTopic] = useState<Topic>("mixed");
+  const [initialDifficulty, setInitialDifficulty] = useState(1);
   const [problem, setProblem] = useState<Problem>(() => makeProblem("mixed", 1));
+  const [reviewProblems, setReviewProblems] = useState<Problem[]>([]);
   const [questionNumber, setQuestionNumber] = useState(1);
   const [score, setScore] = useState(0);
   const [correct, setCorrect] = useState(0);
@@ -113,11 +128,30 @@ export default function MathBlastPage() {
   const [message, setMessage] = useState("Choose the correct answer.");
   const [lastReward, setLastReward] = useState({ xp: 0, coins: 0 });
   const sessionEndedRef = useRef(false);
+  const autoStarted = useRef(false);
+  const profileId = getActiveProfile().id;
+  const dueReviews = getDueReviewItems(profileId, GAME_SLUG);
 
   const bestScore = progress.games[GAME_SLUG]?.bestScore ?? 0;
-  const difficulty = clamp(1 + Math.floor(correct / 4) - Math.floor(wrong / 3), 1, 7);
+  const difficulty = clamp(initialDifficulty + Math.floor(correct / 4) - Math.floor(wrong / 3), 1, 7);
   const choices = useMemo(() => makeChoices(problem), [problem]);
-  const targetQuestions = mode === "daily" ? DAILY_LENGTH : MISSION_LENGTH;
+  const targetQuestions = mode === "review"
+    ? Math.max(1, reviewProblems.length)
+    : mode === "daily"
+      ? DAILY_LENGTH
+      : MISSION_LENGTH;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedDifficulty = Number(params.get("difficulty"));
+    if (Number.isFinite(requestedDifficulty) && requestedDifficulty >= 1) {
+      setInitialDifficulty(clamp(Math.round(requestedDifficulty), 1, 7));
+    }
+    if (params.get("review") === "1" && dueReviews.length > 0 && !autoStarted.current) {
+      autoStarted.current = true;
+      startSession("review", "mixed");
+    }
+  }, []);
 
   useEffect(() => {
     if (screen !== "play" || mode !== "timer") return;
@@ -134,20 +168,40 @@ export default function MathBlastPage() {
   }, [secondsLeft, screen, mode]);
 
   function dailyProblem(number: number, nextDifficulty: number) {
-    const random = seededRandom(hashText(`${dateKey()}-${number}-${nextDifficulty}`));
+    const random = seededRandom(hashText(`${dateKey()}-${profileId}-${number}-${nextDifficulty}`));
     return makeProblem("mixed", nextDifficulty, random);
   }
 
+  function queuedProblems(): Problem[] {
+    return getDueReviewItems(profileId, GAME_SLUG)
+      .map(problemFromReview)
+      .filter((item): item is Problem => Boolean(item))
+      .slice(0, DAILY_LENGTH);
+  }
+
   function nextProblem(nextQuestion: number, nextDifficulty: number) {
-    setProblem(mode === "daily" ? dailyProblem(nextQuestion, nextDifficulty) : makeProblem(topic, nextDifficulty));
+    if (mode === "review") {
+      setProblem(reviewProblems[nextQuestion - 1] ?? reviewProblems[0]);
+    } else {
+      setProblem(mode === "daily" ? dailyProblem(nextQuestion, nextDifficulty) : makeProblem(topic, nextDifficulty));
+    }
     setQuestionNumber(nextQuestion);
     setLocked(false);
     setMessage("Choose the correct answer.");
   }
 
   function startSession(nextMode: Mode, nextTopic: Topic) {
+    const queued = nextMode === "review" ? queuedProblems() : [];
+    if (nextMode === "review" && queued.length === 0) return;
+    const firstProblem = nextMode === "review"
+      ? queued[0]
+      : nextMode === "daily"
+        ? dailyProblem(1, initialDifficulty)
+        : makeProblem(nextTopic, initialDifficulty);
+
     setMode(nextMode);
-    setTopic(nextMode === "daily" ? "mixed" : nextTopic);
+    setTopic(nextMode === "daily" || nextMode === "review" ? "mixed" : nextTopic);
+    setReviewProblems(queued);
     setQuestionNumber(1);
     setScore(0);
     setCorrect(0);
@@ -155,10 +209,10 @@ export default function MathBlastPage() {
     setStreak(0);
     setSecondsLeft(60);
     setLocked(false);
-    setMessage("Choose the correct answer.");
+    setMessage(nextMode === "review" ? "This one came back for another look." : "Choose the correct answer.");
     setLastReward({ xp: 0, coins: 0 });
     sessionEndedRef.current = false;
-    setProblem(nextMode === "daily" ? dailyProblem(1, 1) : makeProblem(nextTopic, 1));
+    setProblem(firstProblem);
     setScreen("play");
     recordPlay(GAME_SLUG);
   }
@@ -172,11 +226,11 @@ export default function MathBlastPage() {
 
     const finalScore = snapshot?.score ?? score;
     const finalCorrect = snapshot?.correct ?? correct;
-    let xp = 15 + finalCorrect * 4 + Math.floor(finalScore / 100) * 3;
-    let coins = 3 + Math.floor(finalCorrect / 3);
+    let xp = mode === "review" ? 8 + finalCorrect * 3 : 15 + finalCorrect * 4 + Math.floor(finalScore / 100) * 3;
+    let coins = mode === "review" ? 2 : 3 + Math.floor(finalCorrect / 3);
 
     if (mode === "daily" && completed) {
-      const dailyKey = `adrianos-math-daily-${dateKey()}`;
+      const dailyKey = `adrianos-math-daily-${profileId}-${dateKey()}`;
       if (!window.localStorage.getItem(dailyKey)) {
         xp += 30;
         coins += 10;
@@ -185,7 +239,7 @@ export default function MathBlastPage() {
     }
 
     setLastReward({ xp, coins });
-    award(GAME_SLUG, { xp, coins, score: finalScore, completed });
+    award(GAME_SLUG, { xp, coins, score: finalScore, completed: completed && mode !== "review" });
     setScreen("results");
     setLocked(true);
   }
@@ -195,10 +249,38 @@ export default function MathBlastPage() {
     setLocked(true);
 
     const isCorrect = value === problem.answer;
+    const skillId = problem.money
+      ? "math-money"
+      : problem.operator === "+"
+        ? "math-addition"
+        : "math-subtraction";
+    const skillLabel = problem.money
+      ? "Money math"
+      : problem.operator === "+"
+        ? "Addition"
+        : "Subtraction";
+    const prompt = `${formatValue(problem.left, problem.money)} ${problem.operator} ${formatValue(problem.right, problem.money)}`;
+    recordLearningAttempt({
+      gameSlug: GAME_SLUG,
+      subject: "Math",
+      skillId,
+      skillLabel,
+      prompt,
+      correctAnswer: formatValue(problem.answer, problem.money),
+      correct: isCorrect,
+      review: mode === "review",
+      data: {
+        left: problem.left,
+        right: problem.right,
+        operator: problem.operator,
+        money: problem.money,
+      },
+    }, profileId);
+
     const nextCorrect = correct + (isCorrect ? 1 : 0);
     const nextWrong = wrong + (isCorrect ? 0 : 1);
     const nextStreak = isCorrect ? streak + 1 : 0;
-    const nextDifficulty = clamp(1 + Math.floor(nextCorrect / 4) - Math.floor(nextWrong / 3), 1, 7);
+    const nextDifficulty = clamp(initialDifficulty + Math.floor(nextCorrect / 4) - Math.floor(nextWrong / 3), 1, 7);
     let nextScore = score;
 
     if (isCorrect) {
@@ -238,7 +320,7 @@ export default function MathBlastPage() {
               <button style={modeButton} onClick={() => startSession("mission", topic)}>
                 <span style={{ fontSize: 42 }}>🚀</span>
                 <strong>10-Question Mission</strong>
-                <small>Finish a focused round.</small>
+                <small>Starts at adaptive level {initialDifficulty}.</small>
               </button>
               <button style={modeButton} onClick={() => startSession("timer", topic)}>
                 <span style={{ fontSize: 42 }}>⏱️</span>
@@ -250,6 +332,13 @@ export default function MathBlastPage() {
                 <strong>Daily Challenge</strong>
                 <small>Eight questions with a daily bonus.</small>
               </button>
+              {dueReviews.length > 0 && (
+                <button style={{ ...modeButton, borderColor: "rgba(198,184,255,.55)" }} onClick={() => startSession("review", "mixed")}>
+                  <span style={{ fontSize: 42 }}>🧠</span>
+                  <strong>Review {dueReviews.length} Due</strong>
+                  <small>Practice exact missed equations.</small>
+                </button>
+              )}
             </div>
 
             <h2 style={{ marginTop: 30 }}>Choose a skill</h2>
@@ -278,8 +367,8 @@ export default function MathBlastPage() {
     return (
       <GameFrame title="Math Blast">
         <section style={finishCard}>
-          <div style={{ fontSize: 66 }}>{score >= bestScore && score > 0 ? "🏆" : "⚡"}</div>
-          <span style={eyebrow}>MISSION COMPLETE</span>
+          <div style={{ fontSize: 66 }}>{mode === "review" ? "🧠" : score >= bestScore && score > 0 ? "🏆" : "⚡"}</div>
+          <span style={eyebrow}>{mode === "review" ? "REVIEW COMPLETE" : "MISSION COMPLETE"}</span>
           <h1 style={finishTitle}>{score} points</h1>
           <div style={resultGrid}>
             <div><span>Correct</span><strong>{correct}</strong></div>
@@ -308,7 +397,7 @@ export default function MathBlastPage() {
         </section>
 
         <section style={playCard}>
-          <span style={eyebrow}>{mode === "daily" ? "DAILY CHALLENGE" : topic.toUpperCase()}</span>
+          <span style={eyebrow}>{mode === "daily" ? "DAILY CHALLENGE" : mode === "review" ? "SPACED REVIEW" : topic.toUpperCase()}</span>
           <h1 style={problemText}>
             {formatValue(problem.left, problem.money)} {problem.operator} {formatValue(problem.right, problem.money)}
           </h1>
