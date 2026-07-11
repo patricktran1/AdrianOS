@@ -1,0 +1,10 @@
+{
+  "slug": "civic-lab",
+  "title": "Civic Lab",
+  "description": "Solve community decisions, test public claims, and learn how rights, services, and responsibilities fit together.",
+  "emoji": "🏙️",
+  "subject": "Civics",
+  "age": "Ages 4+",
+  "status": "playable",
+  "order": 10
+}
