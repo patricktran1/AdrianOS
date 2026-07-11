@@ -2,6 +2,11 @@
 
 import GameFrame from "@/components/GameFrame";
 import { useAdrianProgress } from "@/lib/adrian-progress";
+import { getActiveProfile } from "@/lib/adrian-profiles";
+import {
+  getDueReviewItems,
+  recordLearningAttempt,
+} from "@/lib/adrian-learning";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -10,8 +15,10 @@ type BasicCommand = "MOVE" | "LEFT" | "RIGHT";
 type Command = BasicCommand | "REPEAT2";
 type Point = { x: number; y: number };
 type RobotState = Point & { direction: Direction };
+type CodingSkill = "coding-sequences" | "coding-turns" | "coding-loops" | "coding-debugging";
 
 type Level = {
+  id: string;
   name: string;
   prompt: string;
   start: RobotState;
@@ -19,6 +26,8 @@ type Level = {
   obstacles: Point[];
   stars: Point[];
   maxBlocks: number;
+  skillId: CodingSkill;
+  skillLabel: string;
 };
 
 const SIZE = 6;
@@ -26,6 +35,7 @@ const GAME_SLUG = "robot-commands";
 
 const LEVELS: Level[] = [
   {
+    id: "straight-shot",
     name: "Straight Shot",
     prompt: "Collect both stars and reach the flag.",
     start: { x: 0, y: 5, direction: 1 },
@@ -33,8 +43,11 @@ const LEVELS: Level[] = [
     obstacles: [],
     stars: [{ x: 1, y: 5 }, { x: 2, y: 5 }],
     maxBlocks: 3,
+    skillId: "coding-sequences",
+    skillLabel: "Command sequences",
   },
   {
+    id: "corner-turn",
     name: "Corner Turn",
     prompt: "Go up, turn right, and reach the flag.",
     start: { x: 1, y: 5, direction: 0 },
@@ -42,8 +55,11 @@ const LEVELS: Level[] = [
     obstacles: [{ x: 2, y: 4 }, { x: 3, y: 4 }],
     stars: [{ x: 1, y: 3 }, { x: 2, y: 2 }],
     maxBlocks: 7,
+    skillId: "coding-turns",
+    skillLabel: "Direction and turns",
   },
   {
+    id: "repeat-power",
     name: "Repeat Power",
     prompt: "Use Repeat ×2 to cross the long hallway.",
     start: { x: 0, y: 4, direction: 1 },
@@ -51,8 +67,11 @@ const LEVELS: Level[] = [
     obstacles: [{ x: 3, y: 3 }, { x: 4, y: 3 }],
     stars: [{ x: 2, y: 4 }, { x: 4, y: 4 }],
     maxBlocks: 4,
+    skillId: "coding-loops",
+    skillLabel: "Loops",
   },
   {
+    id: "zigzag",
     name: "Zigzag",
     prompt: "Navigate around the blocks and collect every star.",
     start: { x: 0, y: 5, direction: 0 },
@@ -62,8 +81,11 @@ const LEVELS: Level[] = [
     ],
     stars: [{ x: 0, y: 3 }, { x: 2, y: 3 }, { x: 5, y: 1 }],
     maxBlocks: 14,
+    skillId: "coding-debugging",
+    skillLabel: "Debugging",
   },
   {
+    id: "moon-base",
     name: "Moon Base",
     prompt: "Find the safe path through the moon rocks.",
     start: { x: 5, y: 5, direction: 3 },
@@ -73,8 +95,11 @@ const LEVELS: Level[] = [
     ],
     stars: [{ x: 3, y: 5 }, { x: 2, y: 3 }, { x: 0, y: 1 }],
     maxBlocks: 16,
+    skillId: "coding-debugging",
+    skillLabel: "Debugging",
   },
   {
+    id: "final-circuit",
     name: "Final Circuit",
     prompt: "Collect four stars and finish the final circuit.",
     start: { x: 0, y: 0, direction: 1 },
@@ -84,6 +109,8 @@ const LEVELS: Level[] = [
     ],
     stars: [{ x: 1, y: 0 }, { x: 3, y: 0 }, { x: 5, y: 2 }, { x: 5, y: 4 }],
     maxBlocks: 12,
+    skillId: "coding-debugging",
+    skillLabel: "Debugging",
   },
 ];
 
@@ -120,8 +147,17 @@ function expandProgram(program: Command[]): BasicCommand[] {
   return expanded;
 }
 
+function safeLevelIndex(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const index = Math.round(value);
+  return index >= 0 && index < LEVELS.length ? index : null;
+}
+
 export default function RobotCommandsPage() {
   const { progress, recordPlay, award } = useAdrianProgress();
+  const profileId = getActiveProfile().id;
+  const dueReviews = getDueReviewItems(profileId, GAME_SLUG);
+
   const [levelIndex, setLevelIndex] = useState(0);
   const [program, setProgram] = useState<Command[]>([]);
   const [robot, setRobot] = useState<RobotState>(LEVELS[0].start);
@@ -130,6 +166,8 @@ export default function RobotCommandsPage() {
   const [running, setRunning] = useState(false);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [recordedFailure, setRecordedFailure] = useState(false);
 
   const level = LEVELS[levelIndex];
   const obstacleKeys = useMemo(() => new Set(level.obstacles.map(key)), [level]);
@@ -137,15 +175,26 @@ export default function RobotCommandsPage() {
   const bestScore = progress.games[GAME_SLUG]?.bestScore ?? 0;
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("review") === "1" && dueReviews.length > 0) {
+      const requestedIndex = safeLevelIndex(dueReviews[0].data?.levelIndex);
+      if (requestedIndex !== null) {
+        setLevelIndex(requestedIndex);
+        setRobot(LEVELS[requestedIndex].start);
+        setReviewMode(true);
+        setMessage("Repair this circuit from an earlier attempt.");
+      }
+    }
     recordPlay(GAME_SLUG);
-  }, [recordPlay]);
+  }, []);
 
-  function resetLevel(nextLevel = level) {
+  function resetLevel(nextLevel = level, clearFailure = false) {
     setProgram([]);
     setRobot(nextLevel.start);
     setCollected(new Set());
-    setMessage("Build a program, then run it.");
+    setMessage(reviewMode ? "Repair this circuit from an earlier attempt." : "Build a program, then run it.");
     setRunning(false);
+    if (clearFailure) setRecordedFailure(false);
   }
 
   function addCommand(command: Command) {
@@ -161,6 +210,31 @@ export default function RobotCommandsPage() {
   function undo() {
     if (running) return;
     setProgram((current) => current.slice(0, -1));
+  }
+
+  function saveLearning(correct: boolean) {
+    recordLearningAttempt({
+      gameSlug: GAME_SLUG,
+      subject: "Coding",
+      skillId: level.skillId,
+      skillLabel: level.skillLabel,
+      prompt: level.prompt,
+      correctAnswer: "Reach the flag and collect every star.",
+      correct,
+      review: reviewMode,
+      data: {
+        levelIndex,
+        levelId: level.id,
+        levelName: level.name,
+        program: program.join(","),
+      },
+    }, profileId);
+  }
+
+  function saveFirstFailure() {
+    if (recordedFailure) return;
+    setRecordedFailure(true);
+    saveLearning(false);
   }
 
   async function runProgram() {
@@ -190,7 +264,7 @@ export default function RobotCommandsPage() {
 
         if (blocked) {
           crashed = true;
-          setMessage("Bump! The robot hit a wall or rock.");
+          setMessage("Bump! The robot hit a wall or rock. Debug the plan and try again.");
           break;
         }
 
@@ -205,6 +279,7 @@ export default function RobotCommandsPage() {
     }
 
     if (crashed) {
+      saveFirstFailure();
       setRunning(false);
       return;
     }
@@ -215,23 +290,33 @@ export default function RobotCommandsPage() {
     if (!reachedGoal || !allStars) {
       setMessage(
         !reachedGoal
-          ? "The robot stopped before the flag. Adjust the program."
+          ? "The robot stopped before the flag. Debug the plan and try again."
           : `You still need ${level.stars.length - collectedStars.size} star${level.stars.length - collectedStars.size === 1 ? "" : "s"}.`
       );
+      saveFirstFailure();
       setRunning(false);
       return;
     }
 
+    saveLearning(true);
     const efficiencyBonus = Math.max(0, level.maxBlocks - program.length) * 15;
     const levelScore = 100 + level.stars.length * 25 + efficiencyBonus;
     const nextScore = score + levelScore;
     setScore(nextScore);
     award(GAME_SLUG, {
-      xp: 30 + level.stars.length * 5,
-      coins: 4 + level.stars.length,
+      xp: reviewMode ? 18 : 30 + level.stars.length * 5,
+      coins: reviewMode ? 2 : 4 + level.stars.length,
       score: nextScore,
-      completed: levelIndex === LEVELS.length - 1,
+      completed: !reviewMode && levelIndex === LEVELS.length - 1,
     });
+
+    if (reviewMode) {
+      setMessage("Review circuit repaired!");
+      await sleep(700);
+      setFinished(true);
+      setRunning(false);
+      return;
+    }
 
     if (levelIndex === LEVELS.length - 1) {
       setMessage("Final circuit complete!");
@@ -245,14 +330,17 @@ export default function RobotCommandsPage() {
     await sleep(850);
     const nextIndex = levelIndex + 1;
     setLevelIndex(nextIndex);
-    resetLevel(LEVELS[nextIndex]);
+    setRecordedFailure(false);
+    resetLevel(LEVELS[nextIndex], true);
   }
 
   function restartGame() {
     setLevelIndex(0);
     setScore(0);
     setFinished(false);
-    resetLevel(LEVELS[0]);
+    setReviewMode(false);
+    setRecordedFailure(false);
+    resetLevel(LEVELS[0], true);
     recordPlay(GAME_SLUG);
   }
 
@@ -260,12 +348,12 @@ export default function RobotCommandsPage() {
     return (
       <GameFrame title="Robot Commands 2.0">
         <section style={finishCard}>
-          <div style={{ fontSize: 70 }}>🤖🏆</div>
-          <span style={eyebrow}>ROBOT TRAINING COMPLETE</span>
-          <h1 style={finishTitle}>You cleared every circuit.</h1>
+          <div style={{ fontSize: 70 }}>{reviewMode ? "🤖🧠" : "🤖🏆"}</div>
+          <span style={eyebrow}>{reviewMode ? "REVIEW CIRCUIT COMPLETE" : "ROBOT TRAINING COMPLETE"}</span>
+          <h1 style={finishTitle}>{reviewMode ? "You repaired the program." : "You cleared every circuit."}</h1>
           <p style={finishText}>Score: {score} · Best: {Math.max(score, bestScore)}</p>
           <div style={actionRow}>
-            <button style={primaryButton} onClick={restartGame}>Play Again</button>
+            <button style={primaryButton} onClick={restartGame}>{reviewMode ? "Return to Training" : "Play Again"}</button>
             <Link href="/" style={linkButton}>Go Home</Link>
           </div>
         </section>
@@ -277,7 +365,8 @@ export default function RobotCommandsPage() {
     <GameFrame title="Robot Commands 2.0">
       <div style={{ width: "min(1040px,100%)", margin: "0 auto" }}>
         <div style={statsRow}>
-          <span>Mission {levelIndex + 1}/{LEVELS.length}</span>
+          <span>{reviewMode ? "Spaced Review" : `Mission ${levelIndex + 1}/${LEVELS.length}`}</span>
+          <span>{level.skillLabel}</span>
           <span>Score {score}</span>
           <span>Best {bestScore}</span>
         </div>
