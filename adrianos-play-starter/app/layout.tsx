@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import CloudSyncBridge from "@/components/CloudSyncBridge";
+import WeeklyReportBridge from "@/components/WeeklyReportBridge";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <CloudSyncBridge />
+        <WeeklyReportBridge />
         {children}
       </body>
     </html>
