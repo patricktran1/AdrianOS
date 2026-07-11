@@ -329,6 +329,61 @@ export const SKILL_CATALOG: SkillDefinition[] = [
     evidenceSkillIds: ["science-technology"],
   },
   {
+    id: "geography-map-skills",
+    label: "Map skills and directions",
+    subject: "Geography",
+    description: "Use directions, symbols, scale, coordinates, and terrain clues to read maps.",
+    prerequisites: [],
+    gameSlug: "world-explorer",
+    minAge: 4,
+    order: 1,
+    evidenceSkillIds: ["geography-map-skills"],
+  },
+  {
+    id: "geography-land-water",
+    label: "Landforms and water",
+    subject: "Geography",
+    description: "Understand rivers, islands, coasts, watersheds, mountains, and other physical features.",
+    prerequisites: ["geography-map-skills"],
+    gameSlug: "world-explorer",
+    minAge: 5,
+    order: 2,
+    evidenceSkillIds: ["geography-land-water"],
+  },
+  {
+    id: "geography-places-regions",
+    label: "Places and regions",
+    subject: "Geography",
+    description: "Compare climates, settlements, population patterns, and connected regions.",
+    prerequisites: ["geography-map-skills"],
+    gameSlug: "world-explorer",
+    minAge: 6,
+    order: 3,
+    evidenceSkillIds: ["geography-places-regions"],
+  },
+  {
+    id: "geography-communities-culture",
+    label: "Communities and culture",
+    subject: "Geography",
+    description: "Understand public places, traditions, perspectives, and how communities organize life.",
+    prerequisites: ["geography-map-skills"],
+    gameSlug: "world-explorer",
+    minAge: 6,
+    order: 4,
+    evidenceSkillIds: ["geography-communities-culture"],
+  },
+  {
+    id: "geography-human-environment",
+    label: "People and environments",
+    subject: "Geography",
+    description: "Reason about adaptation, resources, risk, sustainability, and how places shape human choices.",
+    prerequisites: ["geography-land-water", "geography-communities-culture"],
+    gameSlug: "world-explorer",
+    minAge: 7,
+    order: 5,
+    evidenceSkillIds: ["geography-human-environment"],
+  },
+  {
     id: "coding-sequences",
     label: "Command sequences",
     subject: "Coding",
@@ -568,6 +623,15 @@ export function skillHref(node: SkillNode): string {
         ? "Starter"
         : "Growing";
     params.set("level", level);
+  }
+  if (node.gameSlug === "world-explorer") {
+    const level = node.id === "geography-map-skills"
+      ? "Navigator"
+      : node.id === "geography-human-environment"
+        ? "World Builder"
+        : "Explorer";
+    params.set("level", level);
+    params.set("focus", node.id);
   }
   if (node.gameSlug === "science-quest") {
     const topic = node.id.replace("science-", "");

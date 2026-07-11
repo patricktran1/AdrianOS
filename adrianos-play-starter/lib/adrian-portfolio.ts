@@ -20,6 +20,7 @@ import {
   type WritingPiece,
 } from "@/lib/adrian-writing";
 import { getSkillGraph, type SkillNode } from "@/lib/adrian-skill-graph";
+import { readWorldPassport, type WorldPassport } from "@/lib/adrian-world-passport";
 import { readWeeklyReports, type WeeklyReport } from "@/lib/adrian-weekly-report";
 import type { Game } from "@/lib/games";
 
@@ -214,10 +215,25 @@ function buildHighlights(
   reports: WeeklyReport[],
   sessions: ReturnType<typeof completedSessionRows>,
   projects: ProjectWork[],
-  writings: WritingPiece[]
+  writings: WritingPiece[],
+  passport: WorldPassport
 ): PortfolioHighlight[] {
   const highlights = new Map<string, PortfolioHighlight>();
   const now = new Date().toISOString();
+
+  if (passport.stamps.length > 0) {
+    const latest = passport.stamps[passport.stamps.length - 1];
+    addHighlight(highlights, {
+      id: "world-passport",
+      kind: "achievement",
+      emoji: "🌍",
+      title: "World Explorer Passport",
+      detail: `${passport.stamps.length} geography stamp${passport.stamps.length === 1 ? "" : "s"} earned across ${passport.expeditions} expedition${passport.expeditions === 1 ? "" : "s"}. Recent stamps: ${passport.stamps.slice(-4).map((stamp) => stamp.label).join(", ")}.`,
+      date: latest?.earnedAt ?? passport.updatedAt,
+      subject: "Geography",
+      value: `${passport.stamps.length} STAMPS`,
+    });
+  }
 
   for (const piece of writings.slice(0, 10)) {
     const prompt = getWritingPrompt(piece.promptId);
@@ -339,7 +355,8 @@ export function buildLearningPortfolio(
   const sessions = completedSessionRows(profile.id);
   const projects = readProjectHistory(profile.id).filter((project) => Boolean(project.completedAt));
   const writings = readWritingHistory(profile.id).filter((piece) => Boolean(piece.completedAt));
-  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings);
+  const passport = readWorldPassport(profile.id);
+  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport);
   const selected = readPortfolioShowcase(profile.id);
   const defaultIds = highlights.slice(0, 6).map((item) => item.id);
   const showcaseIds = selected ?? defaultIds;
@@ -351,7 +368,8 @@ export function buildLearningPortfolio(
   const activeSkills = transcript.length;
   const projectSubjects = projects.flatMap((project) => getProjectTemplate(project.templateId)?.subjects ?? []);
   const writingSubjects = writings.length > 0 ? ["Reading" as const] : [];
-  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects]).size;
+  const passportSubjects = passport.stamps.length > 0 ? ["Geography" as const] : [];
+  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects]).size;
   const totalCompletions = Object.values(progress.games).reduce((sum, row) => sum + row.completions, 0);
   const projectText = projects.length > 0
     ? `, ${projects.length} completed project${projects.length === 1 ? "" : "s"}`

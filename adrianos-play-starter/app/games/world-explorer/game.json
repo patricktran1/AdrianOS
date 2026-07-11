@@ -1,10 +1,10 @@
 {
   "slug": "world-explorer",
   "title": "World Explorer",
-  "description": "Travel the globe through clues and landmarks.",
+  "description": "Use maps, landforms, communities, and environmental clues to understand how the world works.",
   "emoji": "🌍",
   "subject": "Geography",
-  "age": "Ages 6+",
+  "age": "Ages 4+",
   "status": "playable",
   "order": 8
 }
