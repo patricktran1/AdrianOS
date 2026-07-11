@@ -10,6 +10,10 @@ import {
   type ReviewItem,
 } from "@/lib/adrian-learning";
 import {
+  learningPlanForDate,
+  type LearningDayMode,
+} from "@/lib/adrian-learning-schedule";
+import {
   getRecommendedSkill,
   getSkillGraph,
   skillHref,
@@ -28,6 +32,7 @@ export type DailySession = {
   version: 1;
   profileId: string;
   date: string;
+  scheduleMode: LearningDayMode;
   startedAt: string | null;
   completedAt: string | null;
   currentIndex: number;
@@ -85,10 +90,12 @@ function parseSession(item: ReviewItem | undefined): DailySession | null {
       ? raw.missions.map(parseMission).filter((mission): mission is DailySessionMission => Boolean(mission))
       : [];
     if (missions.length === 0) return null;
+    const scheduleMode: LearningDayMode = raw.scheduleMode === "light" || raw.scheduleMode === "free" ? raw.scheduleMode : "full";
     return {
       version: 1,
       profileId: raw.profileId,
       date: raw.date,
+      scheduleMode,
       startedAt: typeof raw.startedAt === "string" ? raw.startedAt : null,
       completedAt: typeof raw.completedAt === "string" ? raw.completedAt : null,
       currentIndex: typeof raw.currentIndex === "number" ? raw.currentIndex : 0,
@@ -177,6 +184,18 @@ function resolveAdventureItems(
   return items.slice(0, 3);
 }
 
+function scheduledItems(items: AdventureItem[], mode: LearningDayMode): AdventureItem[] {
+  if (mode === "full") return items.slice(0, 3);
+  if (mode === "light") {
+    const focused = items.find((item) => item.kind === "review")
+      ?? items.find((item) => item.kind === "skill")
+      ?? items[0];
+    return focused ? [focused] : [];
+  }
+  const explore = items.find((item) => item.kind === "explore") ?? items[items.length - 1] ?? items[0];
+  return explore ? [explore] : [];
+}
+
 export function ensureDailySession(
   profile: ChildProfile,
   games: Game[],
@@ -186,16 +205,19 @@ export function ensureDailySession(
   const existing = readDailySession(profile.id, date);
   if (existing) return existing;
 
+  const plan = learningPlanForDate(profile.id);
   const now = new Date().toISOString();
+  const selectedItems = scheduledItems(resolveAdventureItems(profile, games, progress), plan.mode);
   const session: DailySession = {
     version: 1,
     profileId: profile.id,
     date,
+    scheduleMode: plan.mode,
     startedAt: null,
     completedAt: null,
     currentIndex: 0,
-    recommendedMinutes: profile.age <= 4 ? 8 : profile.age <= 8 ? 12 : 15,
-    missions: resolveAdventureItems(profile, games, progress).map((item) => ({
+    recommendedMinutes: plan.minutes,
+    missions: selectedItems.map((item) => ({
       ...item,
       status: "pending",
       startedAt: null,
