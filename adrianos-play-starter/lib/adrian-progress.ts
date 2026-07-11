@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { getActiveProfile, readFamilyState } from "@/lib/adrian-profiles";
 
 export type GameProgress = {
   plays: number;
@@ -32,8 +33,10 @@ export type ProgressReward = {
   completed?: boolean;
 };
 
-const STORAGE_KEY = "adrianos-progress-v1";
+const LEGACY_STORAGE_KEY = "adrianos-progress-v1";
+const STORAGE_PREFIX = "adrianos-progress-v2:";
 const PROGRESS_EVENT = "adrianos-progress-updated";
+const FAMILY_EVENT = "adrianos-family-updated";
 const XP_PER_LEVEL = 200;
 
 const EMPTY_PROGRESS: AdrianProgress = {
@@ -56,7 +59,7 @@ function localDateKey(date = new Date()): string {
 }
 
 function normalizeGameProgress(value: unknown): GameProgress {
-  const game = value && typeof value === "object" ? value as Partial<GameProgress> : {};
+  const game = value && typeof value === "object" ? (value as Partial<GameProgress>) : {};
   return {
     plays: Math.max(0, safeNumber(game.plays)),
     completions: Math.max(0, safeNumber(game.completions)),
@@ -134,20 +137,40 @@ function updateTodayActivity(
     .slice(-30);
 }
 
-export function readAdrianProgress(): AdrianProgress {
-  if (typeof window === "undefined") return EMPTY_PROGRESS;
+function storageKey(profileId: string): string {
+  return `${STORAGE_PREFIX}${profileId}`;
+}
 
+function migrateLegacyProgress(profileId: string): void {
+  if (typeof window === "undefined" || profileId !== "adrian") return;
+  const targetKey = storageKey(profileId);
+  if (window.localStorage.getItem(targetKey)) return;
+  const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+  if (legacy) window.localStorage.setItem(targetKey, legacy);
+}
+
+export function readProgressForProfile(profileId: string): AdrianProgress {
+  if (typeof window === "undefined") return EMPTY_PROGRESS;
+  migrateLegacyProgress(profileId);
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? normalizeProgress(JSON.parse(raw)) : EMPTY_PROGRESS;
+    const raw = window.localStorage.getItem(storageKey(profileId));
+    return raw ? normalizeProgress(JSON.parse(raw)) : { ...EMPTY_PROGRESS, games: {}, activity: [] };
   } catch {
-    return EMPTY_PROGRESS;
+    return { ...EMPTY_PROGRESS, games: {}, activity: [] };
   }
 }
 
-function writeAdrianProgress(progress: AdrianProgress): AdrianProgress {
+export function readAdrianProgress(): AdrianProgress {
+  if (typeof window === "undefined") return EMPTY_PROGRESS;
+  return readProgressForProfile(getActiveProfile().id);
+}
+
+function writeProgressForProfile(
+  profileId: string,
+  progress: AdrianProgress
+): AdrianProgress {
   if (typeof window === "undefined") return progress;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+  window.localStorage.setItem(storageKey(profileId), JSON.stringify(progress));
   window.dispatchEvent(new Event(PROGRESS_EVENT));
   return progress;
 }
@@ -164,16 +187,19 @@ export function useAdrianProgress() {
 
     refresh();
     window.addEventListener(PROGRESS_EVENT, refresh);
+    window.addEventListener(FAMILY_EVENT, refresh);
     window.addEventListener("storage", refresh);
 
     return () => {
       window.removeEventListener(PROGRESS_EVENT, refresh);
+      window.removeEventListener(FAMILY_EVENT, refresh);
       window.removeEventListener("storage", refresh);
     };
   }, []);
 
   const recordPlay = useCallback((gameSlug: string) => {
-    const current = readAdrianProgress();
+    const profileId = getActiveProfile().id;
+    const current = readProgressForProfile(profileId);
     const game = current.games[gameSlug] ?? normalizeGameProgress(null);
     const next: AdrianProgress = {
       ...current,
@@ -187,12 +213,13 @@ export function useAdrianProgress() {
       },
       activity: updateTodayActivity(current.activity, { plays: 1 }),
     };
-    setProgress(writeAdrianProgress(next));
+    setProgress(writeProgressForProfile(profileId, next));
     return next;
   }, []);
 
   const award = useCallback((gameSlug: string, reward: ProgressReward) => {
-    const current = readAdrianProgress();
+    const profileId = getActiveProfile().id;
+    const current = readProgressForProfile(profileId);
     const game = current.games[gameSlug] ?? normalizeGameProgress(null);
     const earnedXp = Math.max(0, reward.xp ?? 0);
     const earnedCoins = Math.max(0, reward.coins ?? 0);
@@ -217,26 +244,33 @@ export function useAdrianProgress() {
         coins: earnedCoins,
       }),
     };
-    setProgress(writeAdrianProgress(next));
+    setProgress(writeProgressForProfile(profileId, next));
     return next;
   }, []);
 
   const spendCoins = useCallback((amount: number): boolean => {
     const cost = Math.max(0, Math.floor(amount));
-    const current = readAdrianProgress();
+    const profileId = getActiveProfile().id;
+    const current = readProgressForProfile(profileId);
     if (cost === 0 || current.coins < cost) return false;
 
     const next: AdrianProgress = {
       ...current,
       coins: current.coins - cost,
     };
-    setProgress(writeAdrianProgress(next));
+    setProgress(writeProgressForProfile(profileId, next));
     return true;
   }, []);
+
+  const activeProfileId =
+    typeof window === "undefined"
+      ? readFamilyState().activeProfileId
+      : getActiveProfile().id;
 
   return {
     progress,
     hydrated,
+    activeProfileId,
     recordPlay,
     award,
     spendCoins,
