@@ -2,8 +2,10 @@
 
 import GameFrame from "@/components/GameFrame";
 import { useAdrianProgress } from "@/lib/adrian-progress";
+import { getActiveProfile } from "@/lib/adrian-profiles";
+import { getDueReviewItems, recordLearningAttempt } from "@/lib/adrian-learning";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Topic = "All" | "Earth" | "Body" | "Space" | "Technology";
 type Question = {
@@ -56,15 +58,38 @@ export default function ScienceQuestPage() {
   const [playing, setPlaying] = useState(false);
   const [done, setDone] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
+  const autoStarted = useRef(false);
+  const profileId = getActiveProfile().id;
+  const dueReviews = getDueReviewItems(profileId, "science-quest");
 
   const current = session[index];
   const bestScore = progress.games["science-quest"]?.bestScore ?? 0;
 
-  function startGame(useMissed = false) {
-    const pool = useMissed
-      ? missed
-      : QUESTIONS.filter((question) => topic === "All" || question.topic === topic);
-    const selected = useMissed ? [...pool] : shuffled(pool).slice(0, Math.min(ROUND_SIZE, pool.length));
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedTopic = params.get("topic");
+    if (["Earth", "Body", "Space", "Technology"].includes(requestedTopic ?? "")) {
+      setTopic(requestedTopic as Topic);
+    }
+    if (params.get("review") === "1" && dueReviews.length > 0 && !autoStarted.current) {
+      autoStarted.current = true;
+      startGame(false, true);
+    }
+  }, []);
+
+  function startGame(useMissed = false, usePersistent = false) {
+    const persistentPrompts = new Set(
+      getDueReviewItems(profileId, "science-quest").map((item) => item.prompt)
+    );
+    const pool = usePersistent
+      ? QUESTIONS.filter((question) => persistentPrompts.has(question.prompt))
+      : useMissed
+        ? missed
+        : QUESTIONS.filter((question) => topic === "All" || question.topic === topic);
+    const selected = useMissed || usePersistent
+      ? [...pool].slice(0, ROUND_SIZE)
+      : shuffled(pool).slice(0, Math.min(ROUND_SIZE, pool.length));
+    if (selected.length === 0) return;
 
     setSession(selected);
     setIndex(0);
@@ -74,15 +99,28 @@ export default function ScienceQuestPage() {
     if (!useMissed) setMissed([]);
     setPlaying(true);
     setDone(false);
-    setReviewMode(useMissed);
+    setReviewMode(useMissed || usePersistent);
     recordPlay("science-quest");
   }
 
   function answer(value: number) {
     if (choice !== null || !current) return;
     setChoice(value);
+    const isCorrect = value === current.answer;
 
-    if (value === current.answer) {
+    recordLearningAttempt({
+      gameSlug: "science-quest",
+      subject: "Science",
+      skillId: `science-${current.topic.toLowerCase()}`,
+      skillLabel: `${current.topic} science`,
+      prompt: current.prompt,
+      correctAnswer: current.choices[current.answer],
+      correct: isCorrect,
+      review: reviewMode,
+      data: { topic: current.topic },
+    }, profileId);
+
+    if (isCorrect) {
       const nextStreak = streak + 1;
       setStreak(nextStreak);
       setScore((currentScore) => currentScore + 10 + Math.min(10, nextStreak * 2));
@@ -119,7 +157,12 @@ export default function ScienceQuestPage() {
               <button key={item} onClick={() => setTopic(item)} style={pillStyle(topic === item)}>{item}</button>
             ))}
           </div>
-          <button onClick={() => startGame(false)} style={primaryStyle}>Launch Quest</button>
+          <button onClick={() => startGame(false, false)} style={primaryStyle}>Launch Quest</button>
+          {dueReviews.length > 0 && (
+            <button onClick={() => startGame(false, true)} style={{ ...primaryStyle, marginLeft: 10, background: "#c6b8ff", borderColor: "#c6b8ff" }}>
+              Review {dueReviews.length} Due
+            </button>
+          )}
           <p style={mutedStyle}>Personal best: {bestScore}</p>
         </section>
       </GameFrame>
@@ -134,11 +177,11 @@ export default function ScienceQuestPage() {
           <span style={eyebrowStyle}>{reviewMode ? "REVIEW COMPLETE" : "QUEST COMPLETE"}</span>
           <h1 style={titleStyle}>{score} points</h1>
           <p style={mutedStyle}>
-            {missed.length === 0 ? "Perfect expedition. Every answer was correct." : `${missed.length} question${missed.length === 1 ? "" : "s"} ready for another look.`}
+            {missed.length === 0 ? "Perfect expedition. Every answer was correct." : `${missed.length} question${missed.length === 1 ? "" : "s"} scheduled for another look.`}
           </p>
           <div style={optionRowStyle}>
-            {missed.length > 0 && !reviewMode && <button onClick={() => startGame(true)} style={primaryStyle}>Review Missed Questions</button>}
-            <button onClick={() => startGame(false)} style={primaryStyle}>New Random Quest</button>
+            {missed.length > 0 && !reviewMode && <button onClick={() => startGame(true, false)} style={primaryStyle}>Review Missed Questions</button>}
+            <button onClick={() => startGame(false, false)} style={primaryStyle}>New Random Quest</button>
             <Link href="/" style={secondaryLinkStyle}>Go Home</Link>
           </div>
         </section>
@@ -152,7 +195,7 @@ export default function ScienceQuestPage() {
     <GameFrame title="Science Quest">
       <div style={{ width: "min(840px,100%)", margin: "0 auto" }}>
         <div style={statsStyle}>
-          <span>{reviewMode ? "Review" : current.topic}</span>
+          <span>{reviewMode ? "Spaced Review" : current.topic}</span>
           <span>Question {index + 1} of {session.length}</span>
           <span>Score {score} · Streak {streak}</span>
         </div>
