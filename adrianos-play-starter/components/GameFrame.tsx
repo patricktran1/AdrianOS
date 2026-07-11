@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ProgressPill from "@/components/ProgressPill";
+import UniversalCoach from "@/components/UniversalCoach";
 
 export default function GameFrame({
   title,
@@ -20,6 +21,7 @@ export default function GameFrame({
         </div>
       </header>
       <section className="game-stage">{children}</section>
+      <UniversalCoach />
     </main>
   );
 }
