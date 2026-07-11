@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import {
+  getCloudSyncStatus,
   refreshCloudAuthStatus,
   syncCloudNow,
 } from "@/lib/adrian-cloud-sync";
@@ -34,6 +35,10 @@ export default function CloudSyncBridge() {
       }, delay);
     };
 
+    const handleLocalChange = () => {
+      if (getCloudSyncStatus().phase === "syncing") return;
+      scheduleSync();
+    };
     const handleOnline = () => scheduleSync(250);
     const handleVisibility = () => {
       if (document.visibilityState === "visible") scheduleSync(500);
@@ -42,7 +47,7 @@ export default function CloudSyncBridge() {
     void refreshCloudAuthStatus().then(() => scheduleSync(300));
 
     for (const eventName of LOCAL_EVENTS) {
-      window.addEventListener(eventName, scheduleSync as EventListener);
+      window.addEventListener(eventName, handleLocalChange);
     }
     window.addEventListener("online", handleOnline);
     document.addEventListener("visibilitychange", handleVisibility);
@@ -62,7 +67,7 @@ export default function CloudSyncBridge() {
       window.clearInterval(interval);
       data.subscription.unsubscribe();
       for (const eventName of LOCAL_EVENTS) {
-        window.removeEventListener(eventName, scheduleSync as EventListener);
+        window.removeEventListener(eventName, handleLocalChange);
       }
       window.removeEventListener("online", handleOnline);
       document.removeEventListener("visibilitychange", handleVisibility);
