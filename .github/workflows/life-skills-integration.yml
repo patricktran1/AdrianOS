@@ -1,0 +1,152 @@
+name: Life Skills Integration Patch
+
+on:
+  push:
+    branches: [feature/everyday-life-lab]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event_name == 'pull_request' || github.event.head_commit.message != 'Integrate Life Skills across AdrianOS'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/everyday-life-lab
+      - name: Wire skills and portfolio
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          skills = Path('adrianos-play-starter/lib/adrian-skill-graph.ts')
+          text = skills.read_text()
+          nodes = '''  {
+              id: "life-routines-organization",
+              label: "Routines and organization",
+              subject: "Life Skills",
+              description: "Use checklists, stable cues, categories, and visible systems to make everyday tasks reliable.",
+              prerequisites: [],
+              gameSlug: "life-skills-lab",
+              minAge: 4,
+              order: 1,
+              evidenceSkillIds: ["life-routines-organization"],
+            },
+            {
+              id: "life-time-planning",
+              label: "Time planning",
+              subject: "Life Skills",
+              description: "Count backward, include setup time, add buffers, and protect deadlines.",
+              prerequisites: ["life-routines-organization"],
+              gameSlug: "life-skills-lab",
+              minAge: 4,
+              order: 2,
+              evidenceSkillIds: ["life-time-planning"],
+            },
+            {
+              id: "life-food-prep",
+              label: "Food preparation and kitchen safety",
+              subject: "Life Skills",
+              description: "Plan simple food tasks, use hygiene, recognize supervision needs, and pause when storage safety is uncertain.",
+              prerequisites: [],
+              gameSlug: "life-skills-lab",
+              minAge: 4,
+              order: 3,
+              evidenceSkillIds: ["life-food-prep"],
+            },
+            {
+              id: "life-household-care",
+              label: "Household care",
+              subject: "Life Skills",
+              description: "Notice hazards, follow care labels, organize cleanup, and avoid unknown household products.",
+              prerequisites: ["life-routines-organization"],
+              gameSlug: "life-skills-lab",
+              minAge: 4,
+              order: 4,
+              evidenceSkillIds: ["life-household-care"],
+            },
+            {
+              id: "life-help-problem-solving",
+              label: "Everyday problem-solving and asking for help",
+              subject: "Life Skills",
+              description: "Use bounded searches, communicate early, create safe backup plans, and involve a trusted adult appropriately.",
+              prerequisites: ["life-routines-organization"],
+              gameSlug: "life-skills-lab",
+              minAge: 4,
+              order: 5,
+              evidenceSkillIds: ["life-help-problem-solving"],
+            },
+          '''
+          marker = '  {\n    id: "coding-sequences",'
+          if 'id: "life-routines-organization"' not in text:
+              text = text.replace(marker, nodes + marker, 1)
+          route = '''  if (node.gameSlug === "life-skills-lab") {
+              const level = node.id === "life-routines-organization" || node.id === "life-food-prep"
+                ? "Helper"
+                : node.id === "life-time-planning" || node.id === "life-help-problem-solving"
+                  ? "Planner"
+                  : "Independent";
+              params.set("level", level);
+              params.set("focus", node.id);
+            }
+          '''
+          route_marker = '  if (node.gameSlug === "movement-lab") {'
+          if 'node.gameSlug === "life-skills-lab"' not in text:
+              text = text.replace(route_marker, route + route_marker, 1)
+          skills.write_text(text)
+
+          portfolio = Path('adrianos-play-starter/lib/adrian-portfolio.ts')
+          text = portfolio.read_text()
+          if 'from "@/lib/adrian-life-skills-toolkit"' not in text:
+              text = text.replace(
+                  'import { readMovementToolkit, type MovementToolkit } from "@/lib/adrian-movement-toolkit";',
+                  'import { readMovementToolkit, type MovementToolkit } from "@/lib/adrian-movement-toolkit";\nimport { readLifeSkillsToolkit, type LifeSkillsToolkit } from "@/lib/adrian-life-skills-toolkit";',
+                  1,
+              )
+          text = text.replace(
+              '  engineeringToolkit: EngineeringToolkit,\n  movementToolkit: MovementToolkit\n): PortfolioHighlight[] {',
+              '  engineeringToolkit: EngineeringToolkit,\n  movementToolkit: MovementToolkit,\n  lifeSkillsToolkit: LifeSkillsToolkit\n): PortfolioHighlight[] {',
+              1,
+          )
+          block = '''  if (lifeSkillsToolkit.cards.length > 0) {
+              const latest = lifeSkillsToolkit.cards[lifeSkillsToolkit.cards.length - 1];
+              addHighlight(highlights, {
+                id: "life-skills-toolkit",
+                kind: "achievement",
+                emoji: "🧭",
+                title: "Life Skills Toolkit",
+                detail: `${lifeSkillsToolkit.cards.length} practical tool${lifeSkillsToolkit.cards.length === 1 ? "" : "s"} earned across ${lifeSkillsToolkit.missions} real-life mission${lifeSkillsToolkit.missions === 1 ? "" : "s"}. Recent tools: ${lifeSkillsToolkit.cards.slice(-4).map((card) => card.label).join(", ")}.`,
+                date: latest?.earnedAt ?? lifeSkillsToolkit.updatedAt,
+                subject: "Life Skills",
+                value: `${lifeSkillsToolkit.cards.length} TOOLS`,
+              });
+            }
+
+          '''
+          marker2 = '  if (movementToolkit.cards.length > 0) {'
+          if 'id: "life-skills-toolkit"' not in text:
+              text = text.replace(marker2, block + marker2, 1)
+          text = text.replace(
+              '  const movementToolkit = readMovementToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit);',
+              '  const movementToolkit = readMovementToolkit(profile.id);\n  const lifeSkillsToolkit = readLifeSkillsToolkit(profile.id);\n  const highlights = buildHighlights(profile, progress, games, transcript, reports, sessions, projects, writings, passport, historyArchive, civicToolbox, economicsLedger, wellbeingToolkit, healthToolkit, digitalToolkit, musicToolkit, artToolkit, engineeringToolkit, movementToolkit, lifeSkillsToolkit);',
+              1,
+          )
+          text = text.replace(
+              '  const movementSubjects = movementToolkit.cards.length > 0 ? ["Movement" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects]).size;',
+              '  const movementSubjects = movementToolkit.cards.length > 0 ? ["Movement" as const] : [];\n  const lifeSkillsSubjects = lifeSkillsToolkit.cards.length > 0 ? ["Life Skills" as const] : [];\n  const subjectsWithEvidence = new Set([...transcript.map((row) => row.subject), ...projectSubjects, ...writingSubjects, ...passportSubjects, ...historySubjects, ...civicSubjects, ...economicsSubjects, ...wellbeingSubjects, ...healthSubjects, ...digitalSubjects, ...musicSubjects, ...artSubjects, ...engineeringSubjects, ...movementSubjects, ...lifeSkillsSubjects]).size;',
+              1,
+          )
+          portfolio.write_text(text)
+          PY
+      - name: Commit integration
+        run: |
+          git config user.name "AdrianOS Build Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add adrianos-play-starter/lib/adrian-skill-graph.ts adrianos-play-starter/lib/adrian-portfolio.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "Integrate Life Skills across AdrianOS"
+            git push origin HEAD:feature/everyday-life-lab
+          fi
