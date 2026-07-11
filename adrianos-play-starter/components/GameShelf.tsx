@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Game } from "@/lib/games";
 import ProgressPill from "@/components/ProgressPill";
 import PlacementBanner from "@/components/PlacementBanner";
+import SchoolModeBanner from "@/components/SchoolModeBanner";
 import TodaysAdventure from "@/components/TodaysAdventure";
 import SkillMap from "@/components/SkillMap";
 import HomeHub from "@/components/HomeHub";
@@ -61,6 +62,8 @@ export default function GameShelf({ games }: { games: Game[] }) {
           <span>PLAY</span>
         </div>
       </section>
+
+      <SchoolModeBanner />
 
       <div style={parentCtaRow}>
         <Link href="/parent" style={parentCta}>
