@@ -12,6 +12,7 @@ export type Game = {
     | "Geography"
     | "History"
     | "Civics"
+    | "Economics"
     | "Coding"
     | "Creativity";
   age: string;
