@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { seedQaFamily } from "./helpers/seed-family";
 
 test.describe("installable AdrianOS app", () => {
   test("publishes a complete School Mode manifest", async ({ request }) => {
@@ -62,7 +63,8 @@ test.describe("installable AdrianOS app", () => {
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
   });
 
-  test("the installed start URL opens School Mode", async ({ page, request }) => {
+  test("the installed start URL opens School Mode for a configured learner", async ({ page, request }) => {
+    await seedQaFamily(page, { clear: true });
     const manifest = await (await request.get("/manifest.webmanifest")).json();
     await page.goto(manifest.start_url, { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/school\?source=installed-app/);
