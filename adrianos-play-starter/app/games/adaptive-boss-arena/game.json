@@ -1,0 +1,10 @@
+{
+  "slug": "adaptive-boss-arena",
+  "title": "Adaptive Boss Arena",
+  "description": "A three-round boss battle that changes difficulty in real time for TK through Grade 5.",
+  "emoji": "👾",
+  "subject": "Logic",
+  "age": "Ages 4–11",
+  "status": "playable",
+  "order": 2
+}
