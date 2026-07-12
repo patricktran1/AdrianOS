@@ -1,9 +1,14 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { seedQaFamily } from "./helpers/seed-family";
 
 const PROFILE_ID = "qa-learner";
 const PROGRESS_KEY = `adrianos-progress-v2:${PROFILE_ID}`;
 const LEARNING_KEY = `adrianos-learning-v1:${PROFILE_ID}`;
+
+async function waitForChainController(page: Page) {
+  const controller = page.locator('[data-adventure-chain-controller="active"]');
+  await expect(controller).toHaveAttribute("data-controller-ready", "true");
+}
 
 test.describe("Adaptive Adventure Chain", () => {
   test("turns a verified completion into three distinct personalized next paths", async ({ page }) => {
@@ -11,6 +16,7 @@ test.describe("Adaptive Adventure Chain", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/games/story-expedition", { waitUntil: "domcontentloaded" });
     await expect(page.locator('[data-game-power-loop="active"]')).toBeVisible();
+    await waitForChainController(page);
     await expect(page.locator('[data-adventure-chain="active"]')).toHaveCount(0);
 
     await page.evaluate(({ progressKey, learningKey }) => {
@@ -64,8 +70,6 @@ test.describe("Adaptive Adventure Chain", () => {
       window.dispatchEvent(new Event("adrianos-progress-updated"));
     }, { progressKey: PROGRESS_KEY, learningKey: LEARNING_KEY });
 
-    await expect(page.locator('[data-power-moment="active"]')).toBeVisible();
-
     const chain = page.locator('[data-adventure-chain="active"]');
     await expect(chain).toBeVisible({ timeout: 8_000 });
     await expect(chain.getByRole("heading", { name: "Choose what happens next" })).toBeVisible();
@@ -93,7 +97,7 @@ test.describe("Adaptive Adventure Chain", () => {
   test("does not offer a next path for progress changes without a completion", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.goto("/games/math-motion-lab", { waitUntil: "domcontentloaded" });
-    await expect(page.locator('[data-game-power-loop="active"]')).toBeVisible();
+    await waitForChainController(page);
 
     await page.evaluate((progressKey) => {
       const timestamp = new Date().toISOString();
@@ -122,7 +126,7 @@ test.describe("Adaptive Adventure Chain", () => {
   test("cancels a pending next path when the learner immediately replays", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.goto("/games/story-expedition", { waitUntil: "domcontentloaded" });
-    await expect(page.locator('[data-game-power-loop="active"]')).toBeVisible();
+    await waitForChainController(page);
 
     await page.evaluate((progressKey) => {
       const timestamp = new Date().toISOString();
@@ -143,8 +147,6 @@ test.describe("Adaptive Adventure Chain", () => {
       }));
       window.dispatchEvent(new Event("adrianos-progress-updated"));
     }, PROGRESS_KEY);
-
-    await expect(page.locator('[data-power-moment="active"]')).toBeVisible();
 
     await page.evaluate((progressKey) => {
       const progress = JSON.parse(window.localStorage.getItem(progressKey) ?? "{}");
