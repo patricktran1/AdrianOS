@@ -17,6 +17,11 @@ const EVENTS = [
   "adrianos-learning-schedule-updated",
 ];
 
+const TOOL_HINTS: Record<string, string> = {
+  "Weekly report": "See progress, friction",
+  "Skill goals": "Choose the exact skills",
+};
+
 function todayKey(): string {
   const date = new Date();
   const year = date.getFullYear();
@@ -37,9 +42,19 @@ function lastSevenDays(): string[] {
 }
 
 function openParentTool(label: string) {
-  const button = Array.from(document.querySelectorAll<HTMLButtonElement>("aside > button"))
-    .find((item) => item.textContent?.includes(label));
-  button?.click();
+  const hint = TOOL_HINTS[label] ?? label;
+  let attempts = 0;
+  const open = () => {
+    const button = Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
+      .find((item) => item.offsetParent !== null && item.textContent?.includes(hint));
+    if (button) {
+      button.click();
+      return;
+    }
+    attempts += 1;
+    if (attempts < 20) window.setTimeout(open, 50);
+  };
+  open();
 }
 
 export default function ParentCommandCenter({ games }: { games: Game[] }) {
