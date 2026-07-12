@@ -1,5 +1,4 @@
 import { expect, test, type Page } from "@playwright/test";
-import { seedQaFamily } from "./helpers/seed-family";
 
 const ACCOUNT_EMAIL = "parent@example.com";
 const FAMILY_KEY = "adrianos-family-v1";
@@ -11,6 +10,38 @@ const PARENT_KEYS = [
   "adrianos-coach-report-unlocked",
   "adrianos-skill-goals-unlocked",
 ];
+
+async function seedFamilyOnce(page: Page, options: { progress?: boolean; parentUnlocked?: boolean } = {}) {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.evaluate(({ familyKey, progressKey, parentKeys, progress, parentUnlocked }) => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+    window.localStorage.setItem("adrianos-family-customized-v1", "yes");
+    window.localStorage.setItem(familyKey, JSON.stringify({
+      activeProfileId: "qa-learner",
+      profiles: [{
+        id: "qa-learner",
+        name: "QA Learner",
+        age: 7,
+        emoji: "⭐",
+        createdAt: "2026-07-12T00:00:00.000Z",
+      }],
+      parentPinHash: null,
+    }));
+    if (progress) {
+      window.localStorage.setItem(progressKey, JSON.stringify({ xp: 140, coins: 20, level: 1, games: {}, activity: [] }));
+    }
+    if (parentUnlocked) {
+      for (const key of parentKeys) window.sessionStorage.setItem(key, "yes");
+    }
+  }, {
+    familyKey: FAMILY_KEY,
+    progressKey: PROGRESS_KEY,
+    parentKeys: PARENT_KEYS,
+    progress: options.progress === true,
+    parentUnlocked: options.parentUnlocked === true,
+  });
+}
 
 async function publishSignedInAccount(page: Page) {
   await expect(page.getByTestId("family-account-control-ready")).toBeAttached();
@@ -29,10 +60,7 @@ async function publishSignedInAccount(page: Page) {
 
 test.describe("public device account security", () => {
   test("normal sign out keeps local learning but locks parent tools", async ({ page }) => {
-    await seedQaFamily(page, { clear: true });
-    await page.addInitScript((keys) => {
-      for (const key of keys) window.sessionStorage.setItem(key, "yes");
-    }, PARENT_KEYS);
+    await seedFamilyOnce(page, { parentUnlocked: true });
     await page.goto("/school", { waitUntil: "domcontentloaded" });
     await publishSignedInAccount(page);
 
@@ -50,12 +78,8 @@ test.describe("public device account security", () => {
 
   test("shared-computer exit refuses an unconfirmed wipe, then erases only AdrianOS data", async ({ page, context }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await seedQaFamily(page, { clear: true });
-    await page.addInitScript(({ progressKey, parentKeys }) => {
-      window.localStorage.setItem(progressKey, JSON.stringify({ xp: 140, coins: 20, games: {} }));
-      window.localStorage.setItem("unrelated-app-key", "keep-me");
-      for (const key of parentKeys) window.sessionStorage.setItem(key, "yes");
-    }, { progressKey: PROGRESS_KEY, parentKeys: PARENT_KEYS });
+    await seedFamilyOnce(page, { progress: true, parentUnlocked: true });
+    await page.evaluate(() => window.localStorage.setItem("unrelated-app-key", "keep-me"));
     await page.goto("/school", { waitUntil: "domcontentloaded" });
     await publishSignedInAccount(page);
 
@@ -96,24 +120,7 @@ test.describe("public device account security", () => {
     await page.addInitScript(() => {
       (window as Window & { __ADRIANOS_PARENT_IDLE_TIMEOUT_MS?: number }).__ADRIANOS_PARENT_IDLE_TIMEOUT_MS = 800;
     });
-    await page.goto("/", { waitUntil: "domcontentloaded" });
-    await page.evaluate(({ familyKey, parentKeys }) => {
-      window.localStorage.clear();
-      window.sessionStorage.clear();
-      window.localStorage.setItem("adrianos-family-customized-v1", "yes");
-      window.localStorage.setItem(familyKey, JSON.stringify({
-        activeProfileId: "qa-learner",
-        profiles: [{
-          id: "qa-learner",
-          name: "QA Learner",
-          age: 7,
-          emoji: "⭐",
-          createdAt: "2026-07-12T00:00:00.000Z",
-        }],
-        parentPinHash: null,
-      }));
-      for (const key of parentKeys) window.sessionStorage.setItem(key, "yes");
-    }, { familyKey: FAMILY_KEY, parentKeys: PARENT_KEYS });
+    await seedFamilyOnce(page, { parentUnlocked: true });
 
     await page.goto("/parent", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "Learning cockpit", exact: true })).toBeVisible();
