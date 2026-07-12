@@ -9,6 +9,7 @@ import WeeklyReportBridge from "@/components/WeeklyReportBridge";
 import "./globals.css";
 import "./school-mode-controls.css";
 import "./mobile-app-shell.css";
+import "./learner-profile-setup.css";
 
 export const metadata: Metadata = {
   title: "AdrianOS Learning",
