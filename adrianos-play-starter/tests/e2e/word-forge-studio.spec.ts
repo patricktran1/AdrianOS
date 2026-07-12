@@ -5,6 +5,12 @@ const PROFILE_ID = "qa-learner";
 const PROGRESS_KEY = `adrianos-progress-v2:${PROFILE_ID}`;
 const LEARNING_KEY = `adrianos-learning-v1:${PROFILE_ID}`;
 
+async function buildWord(page: import("@playwright/test").Page, word: string) {
+  for (const letter of word) {
+    await page.getByRole("button", { name: letter, exact: true }).first().click();
+  }
+}
+
 test.describe("Word Forge Studio", () => {
   test("gives Adrian a Grade 2 dinosaur word-building deck with adaptive coaching", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
@@ -14,16 +20,11 @@ test.describe("Word Forge Studio", () => {
     await page.getByRole("button", { name: "Start forging →" }).click();
     await expect(page.getByRole("heading", { name: "When the sun goes down." })).toBeVisible();
 
-    const letterButtons = page.locator("button").filter({ hasNotText: /Check word|Undo|Hear the word/ });
-    for (const letter of ["s", "u", "n", "s", "e", "x"]) {
-      await letterButtons.filter({ hasText: new RegExp(`^${letter}$`, "i") }).first().click();
-    }
+    await buildWord(page, "tesnus");
     await page.getByRole("button", { name: "Check word" }).click();
     await expect(page.getByRole("status")).toContainText("Coach clue: build it from sun + set");
 
-    for (const letter of ["s", "u", "n", "s", "e", "t"]) {
-      await letterButtons.filter({ hasText: new RegExp(`^${letter}$`, "i") }).first().click();
-    }
+    await buildWord(page, "sunset");
     await page.getByRole("button", { name: "Check word" }).click();
     await expect(page.getByRole("status")).toContainText("Word repaired!");
 
@@ -39,9 +40,7 @@ test.describe("Word Forge Studio", () => {
 
     const words = ["sunset", "playground", "careful", "ancient", "footprint"];
     for (let round = 0; round < words.length; round += 1) {
-      for (const letter of words[round]) {
-        await page.locator("button").filter({ hasText: new RegExp(`^${letter}$`, "i") }).first().click();
-      }
+      await buildWord(page, words[round]);
       await page.getByRole("button", { name: "Check word" }).click();
       await page.getByRole("button", { name: round === words.length - 1 ? "Open the word vault →" : "Next word →" }).click();
     }
