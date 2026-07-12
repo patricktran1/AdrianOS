@@ -4,7 +4,7 @@ import { seedQaFamily } from "./helpers/seed-family";
 const PROFILE_ID = "qa-learner";
 const LEARNING_KEY = `adrianos-learning-v1:${PROFILE_ID}`;
 const PROGRESS_KEY = `adrianos-progress-v2:${PROFILE_ID}`;
-const REVIEW_ID = "number-quest:math-addition:rescue-test";
+const REVIEW_ID = "number-quest:math-addition:15z4qzr";
 
 async function seedDueReview(page: import("@playwright/test").Page) {
   await seedQaFamily(page, { clear: true, grade: 2 });
