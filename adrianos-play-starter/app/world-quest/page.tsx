@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import FamilyProfileBar from "@/components/FamilyProfileBar";
 import styles from "@/components/WorldQuest.module.css";
 import { buildWeeklyWorldQuest } from "@/lib/adrian-world-quest";
@@ -12,11 +12,19 @@ import { games } from "@/lib/generated-games";
 export default function WorldQuestPage() {
   const { progress, hydrated } = useAdrianProgress();
   const { activeProfile, hasProfiles, hydrated: profilesReady } = useFamilyProfiles();
+  const [learningRevision, setLearningRevision] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setLearningRevision((value) => value + 1);
+    window.addEventListener("adrianos-learning-updated", refresh);
+    return () => window.removeEventListener("adrianos-learning-updated", refresh);
+  }, []);
+
   const quest = useMemo(
     () => hydrated && profilesReady && hasProfiles
       ? buildWeeklyWorldQuest(activeProfile, games, progress)
       : null,
-    [activeProfile, hasProfiles, hydrated, profilesReady, progress],
+    [activeProfile, hasProfiles, hydrated, learningRevision, profilesReady, progress],
   );
 
   if (!hydrated || !profilesReady) {
