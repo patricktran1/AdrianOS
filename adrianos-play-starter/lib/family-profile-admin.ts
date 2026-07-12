@@ -32,7 +32,6 @@ export type FamilyChildDraft = {
 };
 
 const CUSTOMIZED_KEY = "adrianos-family-customized-v1";
-const STARTER_IDS = new Set(["adrian", "elliot"]);
 
 function cleanName(value: string): string {
   return value.trim().replace(/\s+/g, " ").slice(0, 24);
@@ -91,9 +90,7 @@ function removeDeletedProfileStorage(deletedIds: string[]): void {
 
 export function isStarterFamilyState(family: FamilyState = readFamilyState()): boolean {
   if (typeof window !== "undefined" && window.localStorage.getItem(CUSTOMIZED_KEY) === "yes") return false;
-  if (family.profiles.length === 0) return true;
-  if (family.profiles.length !== 2) return false;
-  return family.profiles.every((profile) => STARTER_IDS.has(profile.id));
+  return family.profiles.length === 0;
 }
 
 export function currentFamilyDrafts(): FamilyChildDraft[] {
