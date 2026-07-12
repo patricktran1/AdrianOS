@@ -17,6 +17,7 @@ const layout = read("app/layout.tsx");
 const setupPage = read("app/family/setup/page.tsx");
 const schoolCard = read("components/CurriculumPathCard.tsx");
 const familyAdmin = read("lib/family-profile-admin.ts");
+const generatedGames = read("lib/generated-games.ts");
 const journeyPage = path.join(root, "app/curriculum/elementary/page.tsx");
 
 if (!scope.includes("ELEMENTARY_MIN_AGE = 4") || !scope.includes("ELEMENTARY_MAX_AGE = 11")) {
@@ -63,4 +64,14 @@ for (const gradeValue of [-1, 0, 1, 2, 3, 4, 5]) {
   if (!milestones.includes(`grade: ${gradeValue},`)) fail(`Grade ${gradeValue} has no milestone pack`);
 }
 
-console.log(`Elementary scope check passed: TK–5, ages 4–11, ${milestoneSkillIds.size} linked skills.`);
+const ageLabels = [...generatedGames.matchAll(/"age":\s*"([^"]+)"/g)].map((match) => match[1]);
+if (ageLabels.length === 0) fail("the generated game catalog has no age labels");
+for (const label of ageLabels) {
+  const numbers = label.match(/\d+/g)?.map(Number) ?? [];
+  if (numbers.length === 0 || numbers.some((value) => value < 4 || value > 11)) {
+    fail(`game age label is outside ages 4–11: ${label}`);
+  }
+  if (label.includes("+")) fail(`open-ended game age labels are not allowed: ${label}`);
+}
+
+console.log(`Elementary scope check passed: TK–5, ages 4–11, ${milestoneSkillIds.size} linked skills, ${ageLabels.length} games.`);
