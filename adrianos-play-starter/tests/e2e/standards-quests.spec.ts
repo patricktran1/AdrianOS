@@ -4,11 +4,14 @@ const PROFILE_ID = "quest-learner";
 const FAMILY_KEY = "adrianos-family-v1";
 const LEARNING_KEY = `adrianos-learning-v1:${PROFILE_ID}`;
 const PROGRESS_KEY = `adrianos-progress-v2:${PROFILE_ID}`;
+const SEED_KEY = "adrianos-quest-test-seeded";
 
 async function seedGradeFiveLearner(page: Page, skills: Record<string, { mastery: number; attempts: number; correct: number }> = {}) {
-  await page.addInitScript(({ familyKey, learningKey, profileId, skills }) => {
+  await page.addInitScript(({ familyKey, learningKey, profileId, seedKey, skills }) => {
+    if (window.localStorage.getItem(seedKey) === "yes") return;
     window.localStorage.clear();
     window.sessionStorage.clear();
+    window.localStorage.setItem(seedKey, "yes");
     window.localStorage.setItem("adrianos-family-customized-v1", "yes");
     window.localStorage.setItem(familyKey, JSON.stringify({
       activeProfileId: profileId,
@@ -49,7 +52,7 @@ async function seedGradeFiveLearner(page: Page, skills: Record<string, { mastery
       }],
       dailyAdventure: null,
     }));
-  }, { familyKey: FAMILY_KEY, learningKey: LEARNING_KEY, profileId: PROFILE_ID, skills });
+  }, { familyKey: FAMILY_KEY, learningKey: LEARNING_KEY, profileId: PROFILE_ID, seedKey: SEED_KEY, skills });
 }
 
 async function chooseCorrectAndAdvance(page: Page, final: boolean) {
@@ -101,7 +104,7 @@ test.describe("TK-5 standards quests", () => {
     }, { progressKey: PROGRESS_KEY, learningKey: LEARNING_KEY })).toMatchObject({
       plays: 1,
       completions: 1,
-      decimalAttempts: 1,
+      decimalAttempts: 7,
     });
   });
 
@@ -115,6 +118,7 @@ test.describe("TK-5 standards quests", () => {
     await expect(claim).toBeVisible();
     await claim.click();
     await expect(page.getByRole("status")).toContainText("5.NBT.A.3 mastered");
+    await expect(page.getByText("TREASURE CLAIMED", { exact: true }).first()).toBeVisible();
 
     const firstReward = await page.evaluate(({ progressKey }) => {
       const progress = JSON.parse(window.localStorage.getItem(progressKey) ?? "{}");
