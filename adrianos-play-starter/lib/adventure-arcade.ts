@@ -47,6 +47,7 @@ const STORY_SLUGS = new Set([
   "space-station-sigma",
   "mystery-temple",
   "cyber-city-five",
+  "story-expedition",
   "question-quest",
   "treasure-map-math",
   "solar-system-explorer",
