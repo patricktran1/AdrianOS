@@ -65,29 +65,10 @@ async function readIntervention(page: Page) {
   }, { learningKey: LEARNING_KEY });
 }
 
-async function forceRetentionDue(page: Page) {
-  await page.evaluate(({ learningKey }) => {
-    const state = JSON.parse(window.localStorage.getItem(learningKey) ?? "{}");
-    state.dailyAdventure = null;
-    state.reviewQueue = (state.reviewQueue ?? [])
-      .filter((item: { gameSlug?: string }) => item.gameSlug !== "adrianos-daily-session")
-      .map((item: { gameSlug?: string; dueAt?: string; data?: { interventionJson?: string } }) => {
-        if (item.gameSlug !== "adrianos-mastery-intervention" || !item.data?.interventionJson) return item;
-        const intervention = JSON.parse(item.data.interventionJson);
-        intervention.phase = "retention";
-        intervention.dueAt = "2000-01-01T00:00:00.000Z";
-        intervention.updatedAt = new Date().toISOString();
-        item.dueAt = intervention.dueAt;
-        item.data.interventionJson = JSON.stringify(intervention);
-        return item;
-      });
-    window.localStorage.setItem(learningKey, JSON.stringify(state));
-  }, { learningKey: LEARNING_KEY });
-}
-
 test.describe("closed-loop mastery recovery", () => {
   test("changes the teaching path, verifies understanding, and checks retention later", async ({ page }) => {
     await seedRepeatedAdditionFriction(page);
+    await page.clock.install({ time: new Date("2026-07-12T12:00:00.000Z") });
     await page.goto("/school", { waitUntil: "domcontentloaded" });
 
     await expect.poll(async () => readIntervention(page)).toMatchObject({
@@ -116,7 +97,7 @@ test.describe("closed-loop mastery recovery", () => {
       return progress.games?.["mastery-lab"]?.completions ?? 0;
     }, { progressKey: PROGRESS_KEY })).toBe(1);
 
-    await forceRetentionDue(page);
+    await page.clock.fastForward(25 * 60 * 60 * 1000);
     await page.goto("/mastery-lab", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("RETENTION CHECK", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Take the memory check →", exact: true }).click();
