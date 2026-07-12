@@ -5,8 +5,6 @@ import { useEffect } from "react";
 import {
   isParentSessionUnlocked,
   lockParentSession,
-  markParentActivity,
-  parentLastActivity,
   PARENT_ACCESS_EVENT,
 } from "@/lib/parent-session-security";
 
@@ -27,6 +25,7 @@ export default function ParentSessionSecurityBridge() {
 
   useEffect(() => {
     let timer: number | null = null;
+    let lastActivity = Date.now();
 
     const clearTimer = () => {
       if (timer !== null) window.clearTimeout(timer);
@@ -44,9 +43,7 @@ export default function ParentSessionSecurityBridge() {
     const arm = () => {
       clearTimer();
       if (!isParentSessionUnlocked()) return;
-      const last = parentLastActivity() ?? Date.now();
-      if (!parentLastActivity()) markParentActivity(last);
-      const remaining = idleTimeout() - (Date.now() - last);
+      const remaining = idleTimeout() - (Date.now() - lastActivity);
       if (remaining <= 0) {
         lock();
         return;
@@ -56,7 +53,12 @@ export default function ParentSessionSecurityBridge() {
 
     const activity = () => {
       if (!isParentSessionUnlocked()) return;
-      markParentActivity();
+      lastActivity = Date.now();
+      arm();
+    };
+
+    const accessChanged = () => {
+      lastActivity = Date.now();
       arm();
     };
 
@@ -67,7 +69,7 @@ export default function ParentSessionSecurityBridge() {
     for (const eventName of ACTIVITY_EVENTS) {
       window.addEventListener(eventName, activity, { passive: true });
     }
-    window.addEventListener(PARENT_ACCESS_EVENT, arm);
+    window.addEventListener(PARENT_ACCESS_EVENT, accessChanged);
     document.addEventListener("visibilitychange", visibility);
     arm();
 
@@ -76,7 +78,7 @@ export default function ParentSessionSecurityBridge() {
       for (const eventName of ACTIVITY_EVENTS) {
         window.removeEventListener(eventName, activity);
       }
-      window.removeEventListener(PARENT_ACCESS_EVENT, arm);
+      window.removeEventListener(PARENT_ACCESS_EVENT, accessChanged);
       document.removeEventListener("visibilitychange", visibility);
     };
   }, [pathname]);
