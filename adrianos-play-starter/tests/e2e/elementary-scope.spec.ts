@@ -1,9 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const FAMILY_KEY = "adrianos-family-v1";
 const LEARNING_KEY = "adrianos-learning-v1:legacy-learner";
 
-async function seedOutOfScopeLegacyProfile(page: Parameters<typeof test>[0]["page"]) {
+async function seedOutOfScopeLegacyProfile(page: Page) {
   await page.addInitScript(({ familyKey, learningKey }) => {
     window.localStorage.clear();
     window.sessionStorage.clear();
