@@ -58,4 +58,7 @@ jobs:
           if [[ -f tests/e2e/math-motion-lab.spec.ts ]]; then
             specs+=(tests/e2e/math-motion-lab.spec.ts)
           fi
+          if [[ -f tests/e2e/game-power-loop.spec.ts ]]; then
+            specs+=(tests/e2e/game-power-loop.spec.ts)
+          fi
           npx playwright test "${specs[@]}"
