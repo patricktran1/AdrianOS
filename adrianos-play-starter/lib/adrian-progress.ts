@@ -8,6 +8,7 @@ export type GameProgress = {
   completions: number;
   bestScore: number;
   lastPlayed: string | null;
+  lastCompleted: string | null;
 };
 
 export type DailyActivity = {
@@ -65,6 +66,7 @@ function normalizeGameProgress(value: unknown): GameProgress {
     completions: Math.max(0, safeNumber(game.completions)),
     bestScore: Math.max(0, safeNumber(game.bestScore)),
     lastPlayed: typeof game.lastPlayed === "string" ? game.lastPlayed : null,
+    lastCompleted: typeof game.lastCompleted === "string" ? game.lastCompleted : null,
   };
 }
 
@@ -225,6 +227,7 @@ export function useAdrianProgress() {
     const earnedCoins = Math.max(0, reward.coins ?? 0);
     const completed = reward.completed ? 1 : 0;
     const nextXp = current.xp + earnedXp;
+    const now = new Date().toISOString();
     const next: AdrianProgress = {
       xp: nextXp,
       coins: current.coins + earnedCoins,
@@ -235,7 +238,8 @@ export function useAdrianProgress() {
           ...game,
           bestScore: Math.max(game.bestScore, Math.max(0, reward.score ?? 0)),
           completions: game.completions + completed,
-          lastPlayed: new Date().toISOString(),
+          lastPlayed: now,
+          lastCompleted: completed ? now : game.lastCompleted,
         },
       },
       activity: updateTodayActivity(current.activity, {
