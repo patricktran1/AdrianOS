@@ -6,13 +6,15 @@ import type { ElementaryGrade } from "@/lib/adrian-elementary-scope";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import { readProfileGrade } from "@/lib/adrian-profile-grade";
 import {
-  claimDailyRemix,
   dailyRemixDateKey,
   dailyRemixMissions,
-  readDailyRemixState,
   REMIX_THEMES,
   type RemixMission,
 } from "@/lib/daily-adventure-remix";
+import {
+  claimDailyRemix,
+  readDailyRemixState,
+} from "@/lib/daily-adventure-remix-state";
 import { useGameSession } from "@/lib/game-session";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -105,7 +107,7 @@ export default function DailyAdventureRemixPage() {
         standardCode: mission.standard,
         dailyRemix: true,
         remixDate: day,
-        grade,
+        grade: grade ?? 0,
         adaptiveSupport: wrongAttempts > 0 || usedHint,
       },
     }, activeProfile.id);
