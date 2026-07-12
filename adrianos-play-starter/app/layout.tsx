@@ -15,18 +15,16 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/icons/adrianos-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/adrianos-192", sizes: "192x192", type: "image/png" },
     ],
-    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/icons/apple-touch", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
     title: "AdrianOS",
     statusBarStyle: "black-translucent",
   },
-  formatDetection: {
-    telephone: false,
-  },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -36,9 +34,7 @@ export const viewport: Viewport = {
   themeColor: "#10131b",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body>
