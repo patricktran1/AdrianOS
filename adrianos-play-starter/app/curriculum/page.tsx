@@ -13,6 +13,7 @@ import { getCurriculumRecommendedSkill } from "@/lib/adrian-curriculum-recommend
 import {
   GRADE_OPTIONS,
   gradeLabel,
+  inferredGradeForAge,
   readProfileGrade,
   writeProfileGrade,
 } from "@/lib/adrian-profile-grade";
@@ -73,7 +74,7 @@ export default function CurriculumPage() {
           >
             {GRADE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
           </select>
-          <small style={fineprint}>Age {activeProfile.age} suggested {gradeLabel(Math.max(-1, activeProfile.age - 5))}. Parent override is synced with the family learning record.</small>
+          <small style={fineprint}>Age {activeProfile.age} suggests {gradeLabel(inferredGradeForAge(activeProfile.age))}. A parent override syncs with the family learning record.</small>
         </div>
       </section>
 
@@ -137,10 +138,11 @@ export default function CurriculumPage() {
                 <h3 style={subjectTitle}>{subject}</h3>
                 <div style={standardsGrid}>
                   {rows.map((standard) => {
-                    const candidates = standard.skillIds
-                      .map((id) => nodes.find((node) => node.id === id))
-                      .filter(Boolean);
-                    const target = candidates.sort((a, b) => (a?.mastery ?? 0) - (b?.mastery ?? 0))[0];
+                    const candidates = standard.skillIds.flatMap((id) => {
+                      const node = nodes.find((item) => item.id === id);
+                      return node ? [node] : [];
+                    });
+                    const target = [...candidates].sort((a, b) => a.mastery - b.mastery)[0];
                     return (
                       <article key={standard.code} style={standardCard}>
                         <div style={standardTop}>
@@ -166,7 +168,7 @@ export default function CurriculumPage() {
         <section style={mapSection}>
           <span style={eyebrow}>AGE-ADAPTIVE FOUNDATIONS</span>
           <h2 style={sectionTitle}>{gradeLabel(grade)} skill progression</h2>
-          <p style={lead}>The detailed California standards pack currently centers the second-grade cohort. For this grade, AdrianOS still uses age gates, prerequisites, mastery, missed-item review, and parent goals to choose an appropriate next skill.</p>
+          <p style={lead}>The detailed California standards pack currently centers the second-grade cohort. Other grades still use age gates, prerequisites, mastery, missed-item review, and parent goals to choose an appropriate next skill.</p>
           <div style={standardsGrid}>
             {nodes.filter((node) => !node.locked).slice(0, 18).map((node) => (
               <article key={node.id} style={standardCard}>
@@ -185,40 +187,40 @@ export default function CurriculumPage() {
   );
 }
 
-const page: React.CSSProperties = { minHeight: "100vh", padding: "0 18px 80px", background: "#10131b", color: "#fff" };
-const topbar: React.CSSProperties = { maxWidth: 1120, minHeight: 74, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 };
+const page: React.CSSProperties = { minHeight: "100vh", padding: "0 18px 80px", background: "#10131b", color: "#fff", overflowX: "hidden" };
+const topbar: React.CSSProperties = { maxWidth: 1120, minHeight: 74, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" };
 const backLink: React.CSSProperties = { color: "#d9ff5b", textDecoration: "none", fontWeight: 950 };
 const parentLink: React.CSSProperties = { padding: "10px 14px", borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", color: "#fff", textDecoration: "none", fontWeight: 900 };
-const hero: React.CSSProperties = { maxWidth: 1120, margin: "0 auto 16px", padding: "clamp(25px,6vw,58px)", borderRadius: 34, display: "grid", gridTemplateColumns: "minmax(0,1.5fr) minmax(240px,.6fr)", gap: 28, alignItems: "end", background: "linear-gradient(145deg,rgba(127,220,255,.12),rgba(198,184,255,.08),#181d28)", border: "1px solid rgba(127,220,255,.28)" };
+const hero: React.CSSProperties = { maxWidth: 1120, margin: "0 auto 16px", padding: "clamp(25px,6vw,58px)", borderRadius: 34, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,280px),1fr))", gap: 28, alignItems: "end", background: "linear-gradient(145deg,rgba(127,220,255,.12),rgba(198,184,255,.08),#181d28)", border: "1px solid rgba(127,220,255,.28)" };
 const eyebrow: React.CSSProperties = { color: "#7fdcff", fontSize: 11, fontWeight: 950, letterSpacing: ".15em" };
 const heroTitle: React.CSSProperties = { margin: "10px 0 14px", fontSize: "clamp(3rem,8vw,6.6rem)", lineHeight: .9, letterSpacing: "-.075em" };
 const lead: React.CSSProperties = { color: "#b7bdc8", lineHeight: 1.6, fontWeight: 700 };
-const heroControls: React.CSSProperties = { display: "grid", gap: 8, padding: 18, borderRadius: 22, background: "rgba(16,19,27,.65)", border: "1px solid rgba(255,255,255,.08)" };
+const heroControls: React.CSSProperties = { display: "grid", gap: 8, padding: 18, borderRadius: 22, background: "rgba(16,19,27,.65)", border: "1px solid rgba(255,255,255,.08)", minWidth: 0 };
 const controlLabel: React.CSSProperties = { color: "#aab1bf", fontSize: 11, fontWeight: 950, letterSpacing: ".12em" };
 const gradeSelect: React.CSSProperties = { width: "100%", padding: "13px 14px", borderRadius: 14, border: "1px solid rgba(255,255,255,.14)", background: "#10131b", color: "#fff", font: "inherit", fontWeight: 900 };
 const fineprint: React.CSSProperties = { color: "#818a99", lineHeight: 1.45 };
 const profileRow: React.CSSProperties = { maxWidth: 1120, margin: "0 auto 16px", display: "flex", gap: 10, flexWrap: "wrap" };
-const profileButton: React.CSSProperties = { minWidth: 160, display: "flex", gap: 10, alignItems: "center", padding: "11px 14px", borderRadius: 18, border: "1px solid rgba(255,255,255,.12)", background: "#181d28", color: "#fff", textAlign: "left", cursor: "pointer" };
+const profileButton: React.CSSProperties = { minWidth: 160, maxWidth: "100%", display: "flex", gap: 10, alignItems: "center", padding: "11px 14px", borderRadius: 18, border: "1px solid rgba(255,255,255,.12)", background: "#181d28", color: "#fff", textAlign: "left", cursor: "pointer" };
 const profileButtonActive: React.CSSProperties = { borderColor: "#d9ff5b", background: "rgba(217,255,91,.08)" };
-const overview: React.CSSProperties = { maxWidth: 1120, margin: "0 auto 16px", padding: 24, borderRadius: 28, background: "#181d28", border: "1px solid rgba(255,255,255,.1)", display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(300px,.8fr)", gap: 24, alignItems: "center" };
+const overview: React.CSSProperties = { maxWidth: 1120, margin: "0 auto 16px", padding: 24, borderRadius: 28, background: "#181d28", border: "1px solid rgba(255,255,255,.1)", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,280px),1fr))", gap: 24, alignItems: "center" };
 const sectionTitle: React.CSSProperties = { margin: "7px 0", fontSize: "clamp(2rem,5vw,3.6rem)", letterSpacing: "-.055em" };
-const statGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 8 };
+const statGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(100px,1fr))", gap: 8 };
 const stat: React.CSSProperties = { display: "grid", gap: 5, padding: 13, borderRadius: 16, background: "#10131b", textAlign: "center" };
-const nextCard: React.CSSProperties = { maxWidth: 1120, margin: "0 auto 16px", padding: "clamp(23px,5vw,38px)", borderRadius: 30, display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 26, alignItems: "end", background: "rgba(217,255,91,.07)", border: "1px solid rgba(217,255,91,.3)" };
+const nextCard: React.CSSProperties = { maxWidth: 1120, margin: "0 auto 16px", padding: "clamp(23px,5vw,38px)", borderRadius: 30, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,260px),1fr))", gap: 26, alignItems: "end", background: "rgba(217,255,91,.07)", border: "1px solid rgba(217,255,91,.3)" };
 const nextTitle: React.CSSProperties = { margin: "8px 0", fontSize: "clamp(2.8rem,7vw,5rem)", letterSpacing: "-.07em" };
 const chips: React.CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", marginTop: 13 };
 const codeChip: React.CSSProperties = { padding: "7px 10px", borderRadius: 999, background: "#7fdcff", color: "#10131b", fontSize: 12, fontWeight: 950 };
 const stageChip: React.CSSProperties = { padding: "7px 10px", borderRadius: 999, background: "#222936", color: "#fff", fontSize: 12, fontWeight: 900 };
 const directChip: React.CSSProperties = { padding: "7px 10px", borderRadius: 999, background: "rgba(217,255,91,.12)", color: "#d9ff5b", fontSize: 11, fontWeight: 950 };
 const supportChip: React.CSSProperties = { padding: "7px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", color: "#aab1bf", fontSize: 11, fontWeight: 900 };
-const startButton: React.CSSProperties = { padding: "15px 21px", borderRadius: 999, background: "#d9ff5b", color: "#10131b", textDecoration: "none", fontWeight: 950, whiteSpace: "nowrap" };
+const startButton: React.CSSProperties = { padding: "15px 21px", borderRadius: 999, background: "#d9ff5b", color: "#10131b", textDecoration: "none", textAlign: "center", fontWeight: 950 };
 const mapSection: React.CSSProperties = { maxWidth: 1120, margin: "0 auto", padding: "clamp(22px,5vw,38px)", borderRadius: 32, background: "#181d28", border: "1px solid rgba(255,255,255,.1)" };
 const sectionHeader: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 20, alignItems: "end", flexWrap: "wrap" };
 const legend: React.CSSProperties = { maxWidth: 430, color: "#8992a1", lineHeight: 1.5, fontSize: 13 };
 const subjectBlock: React.CSSProperties = { marginTop: 30 };
 const subjectTitle: React.CSSProperties = { margin: "0 0 12px", fontSize: 24 };
-const standardsGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 12 };
-const standardCard: React.CSSProperties = { padding: 18, borderRadius: 21, background: "#10131b", border: "1px solid rgba(255,255,255,.09)", display: "grid", alignContent: "start" };
+const standardsGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,250px),1fr))", gap: 12 };
+const standardCard: React.CSSProperties = { minWidth: 0, padding: 18, borderRadius: 21, background: "#10131b", border: "1px solid rgba(255,255,255,.09)", display: "grid", alignContent: "start" };
 const standardTop: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" };
 const standardTitle: React.CSSProperties = { margin: "14px 0 8px", fontSize: 20, letterSpacing: "-.03em" };
 const goalText: React.CSSProperties = { margin: 0, color: "#aeb5c1", lineHeight: 1.5 };
