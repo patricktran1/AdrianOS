@@ -54,6 +54,18 @@ const FEATURED_BY_GRADE: Record<number, {
     replayLabel: "Replay the adventure →",
     mechanics: ["3 worlds", "Boss gates", "Clues + retries", "Fossil combos"],
   },
+  3: {
+    eyebrow: "GRADE 3 FEATURED ADVENTURE",
+    title: "Space Station Sigma",
+    description: "Choose a crew role, repair seven station systems, collect research badges, and restore the final core with Grade 3 math, reading, science, and engineering.",
+    emoji: "🪐🚀",
+    href: "/games/space-station-sigma",
+    slug: "space-station-sigma",
+    completedLabel: "✓ Station restored",
+    startLabel: "Board the station →",
+    replayLabel: "Run another mission →",
+    mechanics: ["Crew powers", "System checkpoints", "Research badges", "Stardust combos"],
+  },
 };
 
 export default function GradeGameSpotlightBridge() {
