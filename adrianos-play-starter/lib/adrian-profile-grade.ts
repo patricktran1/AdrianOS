@@ -2,6 +2,13 @@
 
 import type { ChildProfile } from "@/lib/adrian-profiles";
 import {
+  ELEMENTARY_GRADE_OPTIONS,
+  elementaryGradeLabel,
+  inferredElementaryGradeForAge,
+  normalizeElementaryGrade,
+  type ElementaryGrade,
+} from "@/lib/adrian-elementary-scope";
+import {
   readLearningForProfile,
   writeLearningForProfile,
   type ReviewItem,
@@ -10,19 +17,15 @@ import {
 const GRADE_GAME_SLUG = "adrianos-grade-profile";
 const GRADE_ITEM_ID = "profile-grade";
 
-export function inferredGradeForAge(age: number): number {
-  if (age <= 4) return -1;
-  if (age === 5) return 0;
-  return Math.max(1, Math.min(12, Math.round(age) - 5));
+export function inferredGradeForAge(age: number): ElementaryGrade {
+  return inferredElementaryGradeForAge(age);
 }
 
 export function gradeLabel(grade: number): string {
-  if (grade < 0) return "Pre-K";
-  if (grade === 0) return "Kindergarten";
-  return `Grade ${grade}`;
+  return elementaryGradeLabel(grade);
 }
 
-export function readProfileGrade(profile: Pick<ChildProfile, "id" | "age">): number {
+export function readProfileGrade(profile: Pick<ChildProfile, "id" | "age">): ElementaryGrade {
   if (typeof window === "undefined") return inferredGradeForAge(profile.age);
   const state = readLearningForProfile(profile.id);
   const item = state.reviewQueue.find(
@@ -30,12 +33,12 @@ export function readProfileGrade(profile: Pick<ChildProfile, "id" | "age">): num
   );
   const raw = item?.data?.grade;
   return typeof raw === "number" && Number.isFinite(raw)
-    ? Math.max(-1, Math.min(12, Math.round(raw)))
+    ? normalizeElementaryGrade(raw, profile.age)
     : inferredGradeForAge(profile.age);
 }
 
-export function writeProfileGrade(profileId: string, grade: number): number {
-  const clean = Math.max(-1, Math.min(12, Math.round(grade)));
+export function writeProfileGrade(profileId: string, grade: number): ElementaryGrade {
+  const clean = normalizeElementaryGrade(grade);
   const state = readLearningForProfile(profileId);
   const now = new Date().toISOString();
   const item: ReviewItem = {
@@ -43,13 +46,13 @@ export function writeProfileGrade(profileId: string, grade: number): number {
     gameSlug: GRADE_GAME_SLUG,
     skillId: "profile-grade",
     subject: "Learning Skills",
-    prompt: "Parent-selected curriculum grade",
+    prompt: "Parent-selected elementary curriculum grade",
     correctAnswer: "",
     dueAt: "9999-12-31T23:59:59.999Z",
     updatedAt: now,
     successes: 0,
     status: "resolved",
-    data: { grade: clean, profileSetting: true },
+    data: { grade: clean, profileSetting: true, elementaryScope: true },
   };
   writeLearningForProfile(profileId, {
     ...state,
@@ -63,8 +66,4 @@ export function writeProfileGrade(profileId: string, grade: number): number {
   return clean;
 }
 
-export const GRADE_OPTIONS = [
-  { value: -1, label: "Pre-K" },
-  { value: 0, label: "Kindergarten" },
-  ...Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: `Grade ${index + 1}` })),
-] as const;
+export const GRADE_OPTIONS = ELEMENTARY_GRADE_OPTIONS;

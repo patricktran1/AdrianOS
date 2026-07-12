@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  normalizeElementaryAge,
+  normalizeElementaryGrade,
+} from "@/lib/adrian-elementary-scope";
+import {
   exportFamilyBackup,
   importFamilyBackup,
   readFamilyState,
@@ -42,12 +46,12 @@ function cleanEmoji(value: string): string {
 }
 
 function cleanAge(value: number): number {
-  return Number.isFinite(value) ? Math.max(3, Math.min(18, Math.round(value))) : 7;
+  return normalizeElementaryAge(value);
 }
 
 function cleanGrade(value: number, age: number): number {
   return Number.isFinite(value)
-    ? Math.max(-1, Math.min(12, Math.round(value)))
+    ? normalizeElementaryGrade(value, age)
     : inferredGradeForAge(age);
 }
 
@@ -104,7 +108,7 @@ export function currentFamilyDrafts(): FamilyChildDraft[] {
     return {
       id: profile.id,
       name: profile.name,
-      age: profile.age,
+      age: normalizeElementaryAge(profile.age),
       grade: readProfileGrade(profile),
       emoji: profile.emoji,
       interests: learningProfile.interests,
@@ -116,14 +120,18 @@ export function currentFamilyDrafts(): FamilyChildDraft[] {
 
 export function replaceFamilyChildren(drafts: FamilyChildDraft[]): ChildProfile[] {
   const validDrafts = drafts
-    .map((draft) => ({
-      ...draft,
-      name: cleanName(draft.name),
-      age: cleanAge(draft.age),
-      interests: Array.isArray(draft.interests) ? draft.interests : [],
-      priorities: Array.isArray(draft.priorities) ? draft.priorities : [],
-      sessionMinutes: cleanSessionMinutes(draft.sessionMinutes),
-    }))
+    .map((draft) => {
+      const age = cleanAge(draft.age);
+      return {
+        ...draft,
+        name: cleanName(draft.name),
+        age,
+        grade: cleanGrade(draft.grade, age),
+        interests: Array.isArray(draft.interests) ? draft.interests : [],
+        priorities: Array.isArray(draft.priorities) ? draft.priorities : [],
+        sessionMinutes: cleanSessionMinutes(draft.sessionMinutes),
+      };
+    })
     .filter((draft) => Boolean(draft.name));
   if (validDrafts.length === 0) throw new Error("Add at least one child profile.");
 
@@ -166,7 +174,7 @@ export function replaceFamilyChildren(drafts: FamilyChildDraft[]): ChildProfile[
   if (!importFamilyBackup(backup)) throw new Error("The family profiles could not be saved.");
   profiles.forEach((profile, index) => {
     const draft = validDrafts[index];
-    writeProfileGrade(profile.id, cleanGrade(draft.grade, profile.age));
+    writeProfileGrade(profile.id, draft.grade);
     writeLearningProfile(profile.id, {
       interests: draft.interests,
       priorities: draft.priorities,

@@ -6,7 +6,11 @@ import {
   curriculumPriorityForSkill,
   primaryStandardForSkill,
 } from "@/lib/adrian-curriculum";
-import { readProfileGrade } from "@/lib/adrian-profile-grade";
+import {
+  elementaryMilestoneForSkill,
+  elementaryPriorityForSkill,
+} from "@/lib/adrian-elementary-path";
+import { gradeLabel, readProfileGrade } from "@/lib/adrian-profile-grade";
 
 export function getCurriculumRecommendedSkill(
   profile: Pick<ChildProfile, "id" | "age">,
@@ -25,8 +29,10 @@ export function getCurriculumRecommendedSkill(
 
   const grade = readProfileGrade(profile);
   return [...available].sort((a, b) => {
-    const curriculum = curriculumPriorityForSkill(a.id, grade) - curriculumPriorityForSkill(b.id, grade);
-    if (curriculum !== 0) return curriculum;
+    const standards = curriculumPriorityForSkill(a.id, grade) - curriculumPriorityForSkill(b.id, grade);
+    if (standards !== 0) return standards;
+    const elementary = elementaryPriorityForSkill(a.id, grade) - elementaryPriorityForSkill(b.id, grade);
+    if (elementary !== 0) return elementary;
     const mastery = a.mastery - b.mastery;
     if (mastery !== 0) return mastery;
     if (a.subject !== b.subject) return a.subject.localeCompare(b.subject);
@@ -40,9 +46,14 @@ export function curriculumReasonForSkill(
 ): string | null {
   const grade = readProfileGrade(profile);
   const standard = primaryStandardForSkill(skillId, grade);
-  if (!standard) return null;
-  const evidence = standard.strength === "direct"
-    ? "This activity collects practice evidence for"
-    : "This activity builds background for";
-  return `${evidence} ${standard.code}: ${standard.childGoal}`;
+  if (standard) {
+    const evidence = standard.strength === "direct"
+      ? "This activity collects practice evidence for"
+      : "This activity builds background for";
+    return `${evidence} ${standard.code}: ${standard.childGoal}`;
+  }
+  const milestone = elementaryMilestoneForSkill(skillId, grade);
+  return milestone
+    ? `${gradeLabel(grade)} Elementary Journey: ${milestone.childGoal}`
+    : null;
 }

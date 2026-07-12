@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import BetaFeedbackLauncher from "@/components/BetaFeedbackLauncher";
 import CloudSyncBridge from "@/components/CloudSyncBridge";
+import ElementaryScopeBridge from "@/components/ElementaryScopeBridge";
 import FamilyOnboardingGate from "@/components/FamilyOnboardingGate";
 import InstallAppPrompt from "@/components/InstallAppPrompt";
 import MasteryLoopBridge from "@/components/MasteryLoopBridge";
@@ -13,8 +14,8 @@ import "./mobile-app-shell.css";
 import "./learner-profile-setup.css";
 
 export const metadata: Metadata = {
-  title: "AdrianOS Learning",
-  description: "A parent-managed learning playground with personalized child profiles, School Mode, and cross-device progress.",
+  title: "AdrianOS Elementary Learning",
+  description: "A parent-managed TK–5 learning playground with personalized learner profiles, School Mode, and cross-device progress.",
   applicationName: "AdrianOS Learning",
   manifest: "/manifest.webmanifest",
   icons: {
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         <PWARegistrar />
+        <ElementaryScopeBridge />
         <CloudSyncBridge />
         <WeeklyReportBridge />
         <MasteryLoopBridge />
