@@ -105,7 +105,8 @@ test.describe("TK-5 Story Expedition", () => {
   test("places Story Expedition inside the Story Worlds arcade portal", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "Story worlds" }).click();
-    await expect(page.getByRole("heading", { name: "Story Expedition" })).toBeVisible();
+    const arcade = page.getByRole("region", { name: "Adventure Arcade" });
+    await arcade.getByRole("button", { name: "Story worlds" }).click();
+    await expect(arcade.getByRole("heading", { name: "Story Expedition" })).toBeVisible();
   });
 });
