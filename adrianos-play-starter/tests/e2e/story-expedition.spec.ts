@@ -5,14 +5,6 @@ const PROFILE_ID = "qa-learner";
 const PROGRESS_KEY = `adrianos-progress-v2:${PROFILE_ID}`;
 const LEARNING_KEY = `adrianos-learning-v1:${PROFILE_ID}`;
 
-async function finishCurrentChapter(page: import("@playwright/test").Page, routeLabel?: string) {
-  await page.getByRole("button", { name: "Hunt for evidence →" }).click();
-  await page.locator('button[data-correct="true"]').click();
-  await page.getByRole("button", { name: "Choose the story path →" }).click();
-  if (routeLabel) await page.getByRole("button", { name: routeLabel }).click();
-  else await page.locator("button").filter({ has: page.locator("strong") }).filter({ hasNotText: /Continue|final story vault/i }).first().click();
-}
-
 test.describe("TK-5 Story Expedition", () => {
   test("turns Adrian's Grade 2 reading standards into a branching dinosaur mystery", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
@@ -30,22 +22,29 @@ test.describe("TK-5 Story Expedition", () => {
     await expect(page.getByText("✓ Fluency practice ribbon earned", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Hunt for evidence →" }).click();
-    await page.getByRole("button", { name: "🌙 A moon" }).click();
+    await page.getByRole("button", { name: /A moon/ }).click();
     await expect(page.getByText(/Story clue:/).first()).toBeVisible();
-    await page.getByRole("button", { name: "🌿 A fern" }).click();
+    await page.getByRole("button", { name: /A fern/ }).click();
     await page.getByRole("button", { name: "Choose the story path →" }).click();
-    await page.getByRole("button", { name: "🐾 The muddy footprints" }).click();
+    await page.getByRole("button", { name: /The muddy footprints/ }).click();
     await page.getByRole("button", { name: "Continue the expedition →" }).click();
 
-    for (let chapter = 1; chapter < 4; chapter += 1) {
+    const remainingRoutes = [
+      "Through the cracked window",
+      "Use soft museum gloves",
+      "Help finish the project",
+    ];
+    for (let chapter = 0; chapter < remainingRoutes.length; chapter += 1) {
       await page.getByRole("button", { name: "Hunt for evidence →" }).click();
       await page.locator('button[data-correct="true"]').click();
       await page.getByRole("button", { name: "Choose the story path →" }).click();
-      await page.locator("button").filter({ has: page.locator("strong") }).filter({ hasNotText: /Continue|final story vault/i }).first().click();
-      await page.getByRole("button", { name: chapter === 3 ? "Open the final story vault →" : "Continue the expedition →" }).click();
+      await page.getByRole("button", { name: new RegExp(remainingRoutes[chapter]) }).click();
+      await page.getByRole("button", {
+        name: chapter === remainingRoutes.length - 1 ? "Open the final story vault →" : "Continue the expedition →",
+      }).click();
     }
 
-    await expect(page.getByRole("heading", { name: /QA Learner is an .*!/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /QA Learner .*Story Trailblazer|QA Learner .*Evidence Pathfinder/ })).toBeVisible();
     await expect.poll(async () => page.evaluate(({ progressKey, learningKey }) => {
       const progress = JSON.parse(window.localStorage.getItem(progressKey) ?? "{}");
       const learning = JSON.parse(window.localStorage.getItem(learningKey) ?? "{}");
