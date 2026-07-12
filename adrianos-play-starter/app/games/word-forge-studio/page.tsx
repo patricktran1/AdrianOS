@@ -57,6 +57,7 @@ export default function WordForgeStudio() {
   const [finished, setFinished] = useState(false);
   const [round, setRound] = useState(0);
   const [built, setBuilt] = useState("");
+  const [solved, setSolved] = useState(false);
   const [misses, setMisses] = useState(0);
   const [combo, setCombo] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
@@ -68,28 +69,29 @@ export default function WordForgeStudio() {
   const card = pack?.cards[round] ?? null;
   const letters = useMemo(() => card ? shuffledLetters(card.word, round + misses) : [], [card, misses, round]);
 
-  function resetRound() { setBuilt(""); setMisses(0); setMessage("Tap letters to forge the word."); }
-  function tap(letter: string) { if (!card || built.length >= card.word.length) return; setBuilt((value) => value + letter); }
-  function undo() { setBuilt((value) => value.slice(0, -1)); }
+  function resetRound() { setBuilt(""); setSolved(false); setMisses(0); setMessage("Tap letters to forge the word."); }
+  function tap(letter: string) { if (!card || solved || built.length >= card.word.length) return; setBuilt((value) => value + letter); }
+  function undo() { if (!solved) setBuilt((value) => value.slice(0, -1)); }
 
   function check() {
-    if (!card || !pack) return;
+    if (!card || !pack || solved) return;
     const correct = built.toLowerCase() === card.word;
     recordLearningAttempt({ gameSlug: GAME_SLUG, subject: "Reading", skillId: `spelling-grade-${grade}`, skillLabel: "Word construction and morphology", prompt: `${card.clue} Build the word.`, correctAnswer: card.word, correct, data: { grade: grade ?? 0, standardCode: card.standard, chunk: card.chunk, supportUsed: misses > 0 } }, activeProfile.id);
     if (!correct) {
-      const next = misses + 1; setMisses(next); setCombo(0); setBuilt("");
+      const next = misses + 1; setMisses(next); setCombo(0); setBuilt(""); setSolved(false);
       setMessage(next === 1 ? `Coach clue: build it from ${card.chunk}.` : `Sound map: ${card.word.split("").join(" · ")}`);
       speak(card.word);
       return;
     }
     const nextCombo = combo + 1; setCombo(nextCombo); setBestCombo((value) => Math.max(value, nextCombo));
     setSparks((value) => value + (misses === 0 ? 3 : 1));
+    setSolved(true);
     setMessage(misses === 0 ? "Perfect forge! +3 sparks." : "Word repaired! +1 spark.");
     speak(`${card.word}. ${card.clue}`);
   }
 
   function advance() {
-    if (!pack) return;
+    if (!pack || !solved) return;
     if (round >= pack.cards.length - 1) {
       completeGame({ xp: 35 + sparks * 3 + bestCombo * 2, coins: 8 + sparks, score: sparks * 120 + bestCombo * 40 });
       setFinished(true); return;
@@ -103,8 +105,7 @@ export default function WordForgeStudio() {
   if (!started) return <GameFrame title={pack.title}><main style={{ ...page, background: `radial-gradient(circle at top,${pack.accent}30,#11151d 55%)` }}><section style={hero}><div style={big}>{pack.emoji}</div><span style={{ ...eyebrow, color: pack.accent }}>{card.standard} · GRADE-SPECIFIC SPELLING</span><h1 style={title}>{pack.title}</h1><p style={lead}>{pack.intro}</p><div style={stats}><strong>🔤 5 words</strong><strong>🔥 combo rewards</strong><strong>🔊 hear every word</strong></div><button onClick={() => setStarted(true)} style={{ ...primary, background: pack.accent }}>Start forging →</button></section></main></GameFrame>;
   if (finished) return <GameFrame title={pack.title}><main style={{ ...page, background: `radial-gradient(circle at top,${pack.accent}30,#11151d 55%)` }}><section style={hero}><div style={big}>🏆{pack.emoji}</div><span style={{ ...eyebrow, color: pack.accent }}>WORD FORGE COMPLETE</span><h1 style={title}>{activeProfile.name} forged the full deck!</h1><p style={lead}>Every word was built, heard, and connected to a useful pattern.</p><div style={stats}><strong>✨ {sparks} sparks</strong><strong>🔥 {bestCombo}× best combo</strong><strong>🔤 5 words</strong></div><button onClick={replay} style={{ ...primary, background: pack.accent }}>Forge a new deck →</button></section></main></GameFrame>;
 
-  const correct = built.toLowerCase() === card.word;
-  return <GameFrame title={pack.title}><main style={{ ...page, background: `radial-gradient(circle at top,${pack.accent}25,#11151d 55%)` }}><header style={hud}><strong>{pack.emoji} Word {round + 1}/5</strong><span>✨ {sparks} · 🔥 {combo}×</span></header><div style={track}><div style={{ ...fill, width: `${((round + (correct ? 1 : 0)) / 5) * 100}%`, background: pack.accent }} /></div><section style={cardStyle}><span style={{ ...eyebrow, color: pack.accent }}>{card.standard}</span><h1 style={clue}>{card.clue}</h1><button onClick={() => speak(card.word)} style={listen}>🔊 Hear the word</button><div aria-label="built word" style={slots}>{card.word.split("").map((_, index) => <span key={index} style={{ ...slot, borderColor: index < built.length ? pack.accent : "rgba(255,255,255,.2)" }}>{built[index] ?? ""}</span>)}</div><div style={letterGrid}>{letters.map((letter, index) => <button key={`${letter}-${index}`} onClick={() => tap(letter)} style={letterButton}>{letter}</button>)}</div><div style={actions}><button onClick={undo} style={secondary}>Undo</button><button onClick={check} disabled={built.length !== card.word.length || correct} style={{ ...primary, background: pack.accent }}>Check word</button></div><div role="status" style={teaching}><strong>{misses === 0 ? "FORGE COACH" : "ADAPTIVE COACH"}</strong><p>{message}</p>{correct && <button onClick={advance} style={{ ...primary, background: pack.accent }}>{round === 4 ? "Open the word vault →" : "Next word →"}</button>}</div></section></main></GameFrame>;
+  return <GameFrame title={pack.title}><main style={{ ...page, background: `radial-gradient(circle at top,${pack.accent}25,#11151d 55%)` }}><header style={hud}><strong>{pack.emoji} Word {round + 1}/5</strong><span>✨ {sparks} · 🔥 {combo}×</span></header><div style={track}><div style={{ ...fill, width: `${((round + (solved ? 1 : 0)) / 5) * 100}%`, background: pack.accent }} /></div><section style={cardStyle}><span style={{ ...eyebrow, color: pack.accent }}>{card.standard}</span><h1 style={clue}>{card.clue}</h1><button onClick={() => speak(card.word)} style={listen}>🔊 Hear the word</button><div aria-label="built word" style={slots}>{card.word.split("").map((_, index) => <span key={index} style={{ ...slot, borderColor: index < built.length ? pack.accent : "rgba(255,255,255,.2)" }}>{built[index] ?? ""}</span>)}</div><div style={letterGrid}>{letters.map((letter, index) => <button key={`${letter}-${index}`} onClick={() => tap(letter)} disabled={solved} style={letterButton}>{letter}</button>)}</div><div style={actions}><button onClick={undo} disabled={solved || built.length === 0} style={secondary}>Undo</button><button onClick={check} disabled={built.length !== card.word.length || solved} style={{ ...primary, background: pack.accent }}>Check word</button></div><div role="status" style={teaching}><strong>{misses === 0 ? "FORGE COACH" : "ADAPTIVE COACH"}</strong><p>{message}</p>{solved && <button onClick={advance} style={{ ...primary, background: pack.accent }}>{round === 4 ? "Open the word vault →" : "Next word →"}</button>}</div></section></main></GameFrame>;
 }
 
 const loading: React.CSSProperties = { minHeight: 500, display: "grid", placeItems: "center", background: "#11151d", color: "#fff", fontWeight: 900 };
