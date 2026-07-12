@@ -1,8 +1,8 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
-import { useAdrianProgress } from "@/lib/adrian-progress";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useGameSession } from "@/lib/game-session";
+import { useMemo, useState } from "react";
 
 const GAME_SLUG = "treasure-map-math";
 const LEVELS = [
@@ -21,21 +21,13 @@ function options(answer: number) {
 }
 
 export default function Page() {
-  const { recordPlay, award } = useAdrianProgress();
+  const { completeGame, restartGame } = useGameSession(GAME_SLUG);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [choice, setChoice] = useState<number | null>(null);
   const [done, setDone] = useState(false);
-  const awarded = useRef(false);
   const current = LEVELS[index];
   const choices = useMemo(() => options(current.a), [current.a]);
-
-  useEffect(() => { recordPlay(GAME_SLUG); }, [recordPlay]);
-  useEffect(() => {
-    if (!done || awarded.current) return;
-    awarded.current = true;
-    award(GAME_SLUG, { xp: 16 + score * 4, coins: 4 + score, score, completed: true });
-  }, [done, score, award]);
 
   function pick(value: number) {
     if (choice !== null) return;
@@ -44,18 +36,21 @@ export default function Page() {
   }
 
   function next() {
-    if (index === LEVELS.length - 1) return setDone(true);
+    if (index === LEVELS.length - 1) {
+      completeGame({ xp: 16 + score * 4, coins: 4 + score, score });
+      setDone(true);
+      return;
+    }
     setIndex((value) => value + 1);
     setChoice(null);
   }
 
   function replay() {
-    awarded.current = false;
+    restartGame();
     setIndex(0);
     setScore(0);
     setChoice(null);
     setDone(false);
-    recordPlay(GAME_SLUG);
   }
 
   if (done) return <GameFrame title="Treasure Map Math"><section style={finish}><div style={{fontSize:64}}>🏴‍☠️</div><h1>Treasure Found</h1><p>Score: {score} out of {LEVELS.length}</p><button onClick={replay} style={home}>Play again</button></section></GameFrame>;

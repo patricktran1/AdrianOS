@@ -1,9 +1,9 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
-import { useAdrianProgress } from "@/lib/adrian-progress";
+import { useGameSession } from "@/lib/game-session";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 const GAME_SLUG = "dinosaur-detective";
 
@@ -17,20 +17,15 @@ const DINOSAURS = [
 ];
 
 export default function DinosaurDetectivePage() {
-  const { recordPlay, award } = useAdrianProgress();
+  const { completeGame, restartGame } = useGameSession(GAME_SLUG);
   const [index, setIndex] = useState(0);
   const [clueCount, setClueCount] = useState(1);
   const [choice, setChoice] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
-  const completionRecorded = useRef(false);
   const current = DINOSAURS[index];
   const choices = useMemo(() => [...DINOSAURS].sort(() => Math.random() - 0.5).slice(0, 4), [current]);
   if (!choices.some((d) => d.name === current.name)) choices[0] = current;
-
-  useEffect(() => {
-    recordPlay(GAME_SLUG);
-  }, [recordPlay]);
 
   function choose(name: string) {
     if (choice) return;
@@ -39,15 +34,11 @@ export default function DinosaurDetectivePage() {
   }
 
   function finishGame() {
-    if (!completionRecorded.current) {
-      completionRecorded.current = true;
-      award(GAME_SLUG, {
-        xp: 20 + score * 5,
-        coins: 5 + score,
-        score,
-        completed: true,
-      });
-    }
+    completeGame({
+      xp: 20 + score * 5,
+      coins: 5 + score,
+      score,
+    });
     setFinished(true);
   }
 
@@ -62,13 +53,12 @@ export default function DinosaurDetectivePage() {
   }
 
   function replay() {
-    completionRecorded.current = false;
+    restartGame();
     setIndex(0);
     setClueCount(1);
     setChoice(null);
     setScore(0);
     setFinished(false);
-    recordPlay(GAME_SLUG);
   }
 
   if (finished) {
