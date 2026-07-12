@@ -21,6 +21,11 @@ import {
   curriculumReasonForSkill,
   getCurriculumRecommendedSkill,
 } from "@/lib/adrian-curriculum-recommendation";
+import {
+  interestMatch,
+  readLearningProfile,
+} from "@/lib/adrian-learning-profile";
+import { hasCompletedPlacement } from "@/lib/adrian-placement";
 import type { Game } from "@/lib/games";
 
 export type DailySessionMissionStatus = "pending" | "active" | "complete";
@@ -154,6 +159,74 @@ function writeDailySession(profileId: string, session: DailySession): DailySessi
   return next;
 }
 
+function ageMinimum(ageLabel: string): number {
+  const match = ageLabel.match(/\d+/);
+  return match ? Number(match[0]) : 0;
+}
+
+function ageAppropriate(game: Game, age: number): boolean {
+  if (age <= 4) {
+    return ["memory-match", "music-maker", "guess-who", "pattern-master"].includes(game.slug)
+      || game.subject === "Creativity"
+      || game.subject === "Memory";
+  }
+  return age + 1 >= ageMinimum(game.age);
+}
+
+function personalizedExploreItem(
+  profile: ChildProfile,
+  games: Game[],
+  progress: AdrianProgress,
+  excluded: Set<string>
+): AdventureItem | null {
+  const settings = readLearningProfile(profile.id);
+  if (!settings.configured || (settings.interests.length === 0 && settings.priorities.length === 0)) return null;
+
+  const candidates = games
+    .filter((game) => game.status === "playable" && ageAppropriate(game, profile.age) && !excluded.has(game.slug))
+    .map((game) => {
+      const interest = interestMatch(game, settings.interests);
+      const priority = settings.priorities.includes(game.subject as never);
+      const plays = progress.games[game.slug]?.plays ?? 0;
+      const score = (interest ? 70 : 0) + (priority ? 32 : 0) + Math.max(0, 16 - plays * 2);
+      return { game, interest, priority, score };
+    })
+    .filter((row) => row.score > 20)
+    .sort((a, b) => b.score - a.score || a.game.title.localeCompare(b.game.title));
+
+  const choice = candidates[0];
+  if (!choice) return null;
+  const reason = choice.interest
+    ? `Interest pick: ${profile.name} enjoys ${choice.interest.toLowerCase()}.`
+    : `Parent priority: add a ${choice.game.subject.toLowerCase()} choice.`;
+  return {
+    id: `${localDateKey()}:explore:${choice.game.slug}`,
+    kind: "explore",
+    gameSlug: choice.game.slug,
+    title: choice.game.title,
+    reason,
+    difficulty: "Personalized choice",
+    href: `/games/${choice.game.slug}`,
+    baselinePlays: progress.games[choice.game.slug]?.plays ?? 0,
+  };
+}
+
+function placementItem(profile: ChildProfile, games: Game[], progress: AdrianProgress): AdventureItem | null {
+  if (hasCompletedPlacement(profile.id)) return null;
+  const game = games.find((item) => item.slug === "placement-adventure" && item.status === "playable");
+  if (!game) return null;
+  return {
+    id: `${localDateKey()}:skill:placement-adventure`,
+    kind: "skill",
+    gameSlug: game.slug,
+    title: "Find the right starting point",
+    reason: "A short, low-pressure check tunes the first learning route. It is not a grade or standardized test.",
+    difficulty: "Adaptive starting map",
+    href: `/games/${game.slug}?first=1`,
+    baselinePlays: progress.games[game.slug]?.plays ?? 0,
+  };
+}
+
 function resolveAdventureItems(
   profile: ChildProfile,
   games: Game[],
@@ -161,7 +234,8 @@ function resolveAdventureItems(
 ): AdventureItem[] {
   const state = ensureDailyAdventure(profile, games, progress);
   const items = [...(state.dailyAdventure?.items ?? [])];
-  const skillIndex = items.findIndex((item) => item.kind === "skill");
+  const settings = readLearningProfile(profile.id);
+  const skillIndex = items.findIndex((item) => item.kind === "skill" && item.gameSlug !== "placement-adventure");
   const recommended = getCurriculumRecommendedSkill(profile, getSkillGraph(profile, progress));
 
   if (recommended && skillIndex >= 0) {
@@ -169,17 +243,21 @@ function resolveAdventureItems(
       (item, index) => index !== skillIndex && item.gameSlug === recommended.gameSlug
     );
     if (!duplicate) {
+      const curriculumReason = recommended.goal && !recommended.goalComplete
+        ? `Parent goal: reach ${recommended.goal.targetMastery}% mastery.`
+        : recommended.dueReviews > 0
+          ? `Review ${recommended.dueReviews} missed item${recommended.dueReviews === 1 ? "" : "s"} in this skill.`
+          : curriculumReasonForSkill(profile, recommended.id)
+            ?? "This is the next unlocked skill after its prerequisites.";
+      const priorityReason = settings.priorities.includes(recommended.subject as never)
+        ? `Parent priority: ${recommended.subject}. `
+        : "";
       items[skillIndex] = {
         ...items[skillIndex],
         id: `${state.dailyAdventure?.date ?? localDateKey()}:skill:${recommended.id}`,
         gameSlug: recommended.gameSlug,
         title: recommended.label,
-        reason: recommended.goal && !recommended.goalComplete
-          ? `Parent goal: reach ${recommended.goal.targetMastery}% mastery.`
-          : recommended.dueReviews > 0
-            ? `Review ${recommended.dueReviews} missed item${recommended.dueReviews === 1 ? "" : "s"} in this skill.`
-            : curriculumReasonForSkill(profile, recommended.id)
-              ?? "This is the next unlocked skill after its prerequisites.",
+        reason: `${priorityReason}${curriculumReason}`,
         difficulty: `${recommended.stage} · ${recommended.mastery}%`,
         href: skillHref(recommended),
         baselinePlays: progress.games[recommended.gameSlug]?.plays ?? 0,
@@ -187,19 +265,39 @@ function resolveAdventureItems(
     }
   }
 
+  const excluded = new Set(items.map((item) => item.gameSlug));
+  const personalized = personalizedExploreItem(profile, games, progress, excluded);
+  if (personalized) {
+    const exploreIndex = items.findIndex((item) => item.kind === "explore");
+    if (exploreIndex >= 0) items[exploreIndex] = personalized;
+    else items.push(personalized);
+  }
+
+  const firstPlacement = placementItem(profile, games, progress);
+  if (firstPlacement) {
+    return [firstPlacement, ...items.filter((item) => item.gameSlug !== firstPlacement.gameSlug)].slice(0, 3);
+  }
   return items.slice(0, 3);
 }
 
 function scheduledItems(items: AdventureItem[], mode: LearningDayMode): AdventureItem[] {
   if (mode === "full") return items.slice(0, 3);
   if (mode === "light") {
-    const focused = items.find((item) => item.kind === "review")
+    const focused = items.find((item) => item.gameSlug === "placement-adventure")
+      ?? items.find((item) => item.kind === "review")
       ?? items.find((item) => item.kind === "skill")
       ?? items[0];
     return focused ? [focused] : [];
   }
   const explore = items.find((item) => item.kind === "explore") ?? items[items.length - 1] ?? items[0];
   return explore ? [explore] : [];
+}
+
+function sessionMinutes(profileId: string, mode: LearningDayMode, scheduledMinutes: number): number {
+  const settings = readLearningProfile(profileId);
+  if (!settings.configured) return scheduledMinutes;
+  if (mode === "full") return settings.sessionMinutes;
+  return Math.min(8, settings.sessionMinutes);
 }
 
 export function ensureDailySession(
@@ -222,7 +320,7 @@ export function ensureDailySession(
     startedAt: null,
     completedAt: null,
     currentIndex: 0,
-    recommendedMinutes: plan.minutes,
+    recommendedMinutes: sessionMinutes(profile.id, plan.mode, plan.minutes),
     missions: selectedItems.map((item) => ({
       ...item,
       baselineCompletions: progress.games[item.gameSlug]?.completions ?? 0,
