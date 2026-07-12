@@ -2,10 +2,12 @@ import type { Metadata, Viewport } from "next";
 import BetaFeedbackLauncher from "@/components/BetaFeedbackLauncher";
 import CloudSyncBridge from "@/components/CloudSyncBridge";
 import ElementaryScopeBridge from "@/components/ElementaryScopeBridge";
+import FamilyAccountControl from "@/components/FamilyAccountControl";
 import FamilyOnboardingGate from "@/components/FamilyOnboardingGate";
 import InstallAppPrompt from "@/components/InstallAppPrompt";
 import MasteryLoopBridge from "@/components/MasteryLoopBridge";
 import MobileAppDock from "@/components/MobileAppDock";
+import ParentSessionSecurityBridge from "@/components/ParentSessionSecurityBridge";
 import PWARegistrar from "@/components/PWARegistrar";
 import QuestWorldsBridge from "@/components/QuestWorldsBridge";
 import WeeklyReportBridge from "@/components/WeeklyReportBridge";
@@ -48,10 +50,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <PWARegistrar />
         <ElementaryScopeBridge />
         <CloudSyncBridge />
+        <ParentSessionSecurityBridge />
         <WeeklyReportBridge />
         <MasteryLoopBridge />
         <FamilyOnboardingGate>{children}</FamilyOnboardingGate>
         <QuestWorldsBridge />
+        <FamilyAccountControl />
         <MobileAppDock />
         <InstallAppPrompt />
         <BetaFeedbackLauncher />
