@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCloudSyncStatus } from "@/lib/adrian-cloud-sync";
 import {
   forceSignOutAndEraseDevice,
@@ -17,9 +17,15 @@ export default function FamilyAccountControl() {
   const [step, setStep] = useState<PanelStep>("menu");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [lastEmail, setLastEmail] = useState("");
   const signedIn = Boolean(status.userEmail) && status.phase !== "signed-out";
 
-  if (!signedIn) return null;
+  useEffect(() => {
+    if (status.userEmail) setLastEmail(status.userEmail);
+  }, [status.userEmail]);
+
+  if (!signedIn && !open) return null;
+  const accountEmail = status.userEmail ?? lastEmail;
 
   async function personalDeviceSignOut() {
     setBusy(true);
@@ -72,11 +78,11 @@ export default function FamilyAccountControl() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         style={accountButton}
-        aria-label={`Family account ${status.userEmail}`}
+        aria-label={`Family account ${accountEmail}`}
         aria-expanded={open}
       >
         <span aria-hidden="true">☁️</span>
-        <span style={emailText}>{status.userEmail}</span>
+        <span style={emailText}>{accountEmail}</span>
       </button>
 
       {open && (
@@ -84,14 +90,14 @@ export default function FamilyAccountControl() {
           <div style={panelHeader}>
             <div>
               <span style={eyebrow}>FAMILY ACCOUNT</span>
-              <h2 style={title}>Signed in</h2>
+              <h2 style={title}>{signedIn ? "Signed in" : "Account safety"}</h2>
             </div>
             <button type="button" onClick={closePanel} style={closeButton} aria-label="Close family account menu">×</button>
           </div>
 
           <div style={signedInBox}>
             <small>ACCOUNT</small>
-            <strong style={{ overflowWrap: "anywhere" }}>{status.userEmail}</strong>
+            <strong style={{ overflowWrap: "anywhere" }}>{accountEmail}</strong>
             <span>{status.phase === "synced" ? "Cloud learning is up to date." : status.message}</span>
           </div>
 
