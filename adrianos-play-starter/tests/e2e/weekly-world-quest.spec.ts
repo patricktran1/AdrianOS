@@ -48,10 +48,11 @@ test.describe("Weekly World Quest", () => {
     await page.goto("/world-quest", { waitUntil: "domcontentloaded" });
 
     const quest = page.locator('[data-world-quest="active"]');
-    const missionSlugs = await quest.locator("[data-mission-game]").evaluateAll((elements) =>
+    const missions = quest.locator("[data-mission-game]");
+    await expect(missions).toHaveCount(3);
+    const missionSlugs = await missions.evaluateAll((elements) =>
       elements.map((element) => element.getAttribute("data-mission-game") ?? ""),
     );
-    expect(missionSlugs).toHaveLength(3);
 
     await page.evaluate(({ progressKey, slugs }) => {
       const now = new Date().toISOString();
@@ -99,7 +100,7 @@ test.describe("Weekly World Quest", () => {
     await expect(page.getByRole("heading", { name: "QA Learner restored the entire realm!" })).toBeVisible();
   });
 
-  test("uses parent priorities and learner interests while keeping the weekly lineup stable", async ({ page }) => {
+  test("uses live parent priorities and learner interests while keeping the weekly lineup stable", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.goto("/world-quest", { waitUntil: "domcontentloaded" });
 
@@ -129,8 +130,8 @@ test.describe("Weekly World Quest", () => {
           },
         }],
       }));
+      window.dispatchEvent(new Event("adrianos-learning-updated"));
     }, LEARNING_KEY);
-    await page.reload({ waitUntil: "domcontentloaded" });
 
     const quest = page.locator('[data-world-quest="active"]');
     const powerGate = quest.locator('[data-mission-kind="power"]');
@@ -141,8 +142,29 @@ test.describe("Weekly World Quest", () => {
     const firstLineup = await quest.locator("[data-mission-game]").evaluateAll((elements) =>
       elements.map((element) => element.getAttribute("data-mission-game") ?? ""),
     );
-    await page.reload({ waitUntil: "domcontentloaded" });
-    const secondLineup = await page.locator('[data-world-quest="active"] [data-mission-game]').evaluateAll((elements) =>
+
+    await page.evaluate(({ progressKey, slug }) => {
+      const now = new Date().toISOString();
+      window.localStorage.setItem(progressKey, JSON.stringify({
+        xp: 0,
+        coins: 0,
+        level: 1,
+        games: {
+          [slug]: {
+            plays: 1,
+            completions: 1,
+            bestScore: 300,
+            lastPlayed: now,
+            lastCompleted: now,
+          },
+        },
+        activity: [],
+      }));
+      window.dispatchEvent(new Event("adrianos-progress-updated"));
+    }, { progressKey: PROGRESS_KEY, slug: firstLineup[0] });
+
+    await expect(quest).toHaveAttribute("data-quest-progress", "1");
+    const secondLineup = await quest.locator("[data-mission-game]").evaluateAll((elements) =>
       elements.map((element) => element.getAttribute("data-mission-game") ?? ""),
     );
     expect(secondLineup).toEqual(firstLineup);
