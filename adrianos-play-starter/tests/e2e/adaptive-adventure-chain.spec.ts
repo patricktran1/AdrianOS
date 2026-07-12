@@ -118,4 +118,43 @@ test.describe("Adaptive Adventure Chain", () => {
     await page.waitForTimeout(4_100);
     await expect(page.locator('[data-adventure-chain="active"]')).toHaveCount(0);
   });
+
+  test("cancels a pending next path when the learner immediately replays", async ({ page }) => {
+    await seedQaFamily(page, { clear: true, grade: 2 });
+    await page.goto("/games/story-expedition", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('[data-game-power-loop="active"]')).toBeVisible();
+
+    await page.evaluate((progressKey) => {
+      const timestamp = new Date().toISOString();
+      window.localStorage.setItem(progressKey, JSON.stringify({
+        xp: 40,
+        coins: 4,
+        level: 1,
+        games: {
+          "story-expedition": {
+            plays: 1,
+            completions: 1,
+            bestScore: 420,
+            lastPlayed: timestamp,
+            lastCompleted: timestamp,
+          },
+        },
+        activity: [],
+      }));
+      window.dispatchEvent(new Event("adrianos-progress-updated"));
+    }, PROGRESS_KEY);
+
+    await expect(page.locator('[data-power-moment="active"]')).toBeVisible();
+
+    await page.evaluate((progressKey) => {
+      const progress = JSON.parse(window.localStorage.getItem(progressKey) ?? "{}");
+      progress.games["story-expedition"].plays = 2;
+      progress.games["story-expedition"].lastPlayed = new Date().toISOString();
+      window.localStorage.setItem(progressKey, JSON.stringify(progress));
+      window.dispatchEvent(new Event("adrianos-progress-updated"));
+    }, PROGRESS_KEY);
+
+    await page.waitForTimeout(4_100);
+    await expect(page.locator('[data-adventure-chain="active"]')).toHaveCount(0);
+  });
 });
