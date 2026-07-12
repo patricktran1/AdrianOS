@@ -2,7 +2,10 @@
 
 import { useEffect } from "react";
 import FamilySetup from "@/components/FamilySetup";
-import { ELEMENTARY_AGE_OPTIONS } from "@/lib/adrian-elementary-scope";
+import {
+  ELEMENTARY_AGE_OPTIONS,
+  normalizeElementaryAge,
+} from "@/lib/adrian-elementary-scope";
 
 const allowedAges = new Set(ELEMENTARY_AGE_OPTIONS.map(String));
 
@@ -10,8 +13,14 @@ function applyElementarySetupScope() {
   for (const select of document.querySelectorAll<HTMLSelectElement>(
     'select[aria-label^="Child "][aria-label$=" age"]',
   )) {
+    const originalValue = select.value;
     for (const option of Array.from(select.options)) {
       if (!allowedAges.has(option.value)) option.remove();
+    }
+    if (!allowedAges.has(originalValue)) {
+      const normalized = String(normalizeElementaryAge(Number(originalValue)));
+      select.value = normalized;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
     }
     select.dataset.elementaryScope = "tk5";
     select.title = "AdrianOS supports elementary learners ages 4 through 11.";
