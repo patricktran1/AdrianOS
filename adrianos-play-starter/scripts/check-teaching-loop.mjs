@@ -22,7 +22,7 @@ if (!shellCss.includes("safe-area-inset-top") || !shellCss.includes("safe-area-i
 if (!shellCss.includes(".mobile-app-dock") || !shellCss.includes(".beta-feedback-actions")) {
   failures.push("mobile shell: reachable navigation or feedback action styles are missing");
 }
-if (!feedback.includes("Sign in to send feedback") || !feedback.includes("beta-feedback-actions")) {
+if (!feedback.includes("Sign in or connect family") || !feedback.includes("beta-feedback-signin-button") || !feedback.includes("beta-feedback-actions")) {
   failures.push("feedback: no visible action is guaranteed for signed-out parents");
 }
 
