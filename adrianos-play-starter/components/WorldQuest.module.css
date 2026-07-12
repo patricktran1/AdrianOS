@@ -1,0 +1,471 @@
+.homeCard,
+.pageShell {
+  --quest-accent: #d9ff5b;
+  --quest-accent-2: #7fdcff;
+}
+
+.homeCard {
+  position: relative;
+  margin-top: 24px;
+  padding: clamp(22px, 4vw, 34px);
+  border: 1px solid color-mix(in srgb, var(--quest-accent) 34%, rgba(255,255,255,.1));
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 88% 5%, color-mix(in srgb, var(--quest-accent) 22%, transparent), transparent 34%),
+    radial-gradient(circle at 6% 110%, color-mix(in srgb, var(--quest-accent-2) 17%, transparent), transparent 38%),
+    linear-gradient(145deg, #202737, #151923 64%);
+  box-shadow: 0 28px 75px rgba(0,0,0,.28);
+  overflow: hidden;
+}
+
+.homeCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .18;
+  background-image: radial-gradient(circle, rgba(255,255,255,.72) 0 1px, transparent 1.5px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(to bottom right, black, transparent 68%);
+}
+
+.homeGrid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr);
+  gap: clamp(22px, 5vw, 54px);
+  align-items: center;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--quest-accent);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .16em;
+}
+
+.homeTitle,
+.heroTitle {
+  margin: 10px 0 12px;
+  font-size: clamp(2.4rem, 6vw, 5.2rem);
+  line-height: .9;
+  letter-spacing: -.065em;
+}
+
+.homeCopy,
+.heroCopy,
+.missionReason {
+  color: #b7c0cf;
+  line-height: 1.55;
+  font-weight: 650;
+}
+
+.homeCopy {
+  max-width: 720px;
+  margin: 0;
+}
+
+.homeActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.primaryLink,
+.secondaryLink,
+.missionLink,
+.bossLink {
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 950;
+}
+
+.primaryLink {
+  padding: 13px 19px;
+  background: var(--quest-accent);
+  color: #10131b;
+  box-shadow: 0 13px 34px color-mix(in srgb, var(--quest-accent) 18%, transparent);
+}
+
+.secondaryLink {
+  padding: 12px 17px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(16,19,27,.62);
+  color: #fff;
+}
+
+.progressCard {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 26px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(16,19,27,.76);
+  backdrop-filter: blur(16px);
+}
+
+.progressTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.progressTop strong {
+  font-size: 1.08rem;
+}
+
+.progressTop span {
+  color: var(--quest-accent);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.progressTrack {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #2b3240;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--quest-accent), var(--quest-accent-2));
+  transition: width .3s ease;
+}
+
+.miniGates {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+}
+
+.miniGate {
+  min-height: 72px;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  padding: 8px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: #222936;
+  text-align: center;
+}
+
+.miniGate[data-complete="true"] {
+  border-color: color-mix(in srgb, var(--quest-accent) 54%, rgba(255,255,255,.12));
+  background: color-mix(in srgb, var(--quest-accent) 10%, #222936);
+}
+
+.miniGate span {
+  font-size: 24px;
+}
+
+.miniGate small {
+  color: #aeb7c5;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .07em;
+}
+
+.pageShell {
+  min-height: 100vh;
+  padding: clamp(20px, 4vw, 48px);
+  color: #fff;
+  background:
+    radial-gradient(circle at 50% -10%, color-mix(in srgb, var(--quest-accent) 25%, transparent), transparent 34%),
+    radial-gradient(circle at 0 65%, color-mix(in srgb, var(--quest-accent-2) 14%, transparent), transparent 34%),
+    #10131b;
+  overflow-x: hidden;
+}
+
+.pageInner {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: end;
+  padding: clamp(24px, 6vw, 58px);
+  border-radius: 38px;
+  border: 1px solid color-mix(in srgb, var(--quest-accent) 38%, rgba(255,255,255,.12));
+  background:
+    radial-gradient(circle at 90% 18%, color-mix(in srgb, var(--quest-accent) 24%, transparent), transparent 30%),
+    linear-gradient(145deg, #252d3d, #151923 66%);
+  box-shadow: 0 34px 100px rgba(0,0,0,.38);
+  overflow: hidden;
+}
+
+.heroIcon {
+  font-size: clamp(5rem, 15vw, 10rem);
+  line-height: 1;
+  filter: drop-shadow(0 22px 28px rgba(0,0,0,.32));
+}
+
+.heroMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.pill {
+  padding: 8px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(16,19,27,.62);
+  color: #c8d0dc;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.questPath {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  margin: 28px 0;
+}
+
+.questPath::before {
+  content: "";
+  position: absolute;
+  left: 48px;
+  top: 56px;
+  bottom: 56px;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(var(--quest-accent), var(--quest-accent-2));
+  opacity: .34;
+}
+
+.missionCard,
+.bossCard {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  min-height: 158px;
+  padding: 20px;
+  border-radius: 28px;
+  border: 1px solid rgba(255,255,255,.11);
+  background: linear-gradient(145deg, rgba(36,43,58,.96), rgba(22,27,38,.96));
+  box-shadow: 0 22px 56px rgba(0,0,0,.24);
+}
+
+.missionCard[data-complete="true"] {
+  border-color: color-mix(in srgb, var(--quest-accent) 54%, rgba(255,255,255,.12));
+}
+
+.missionOrb,
+.bossOrb {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--quest-accent) 13%, #222936);
+  border: 1px solid color-mix(in srgb, var(--quest-accent) 35%, rgba(255,255,255,.1));
+  font-size: 36px;
+}
+
+.missionBody small,
+.bossBody small {
+  color: var(--quest-accent);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .15em;
+}
+
+.missionBody h2,
+.bossBody h2 {
+  margin: 6px 0 7px;
+  font-size: clamp(1.5rem, 4vw, 2.35rem);
+  letter-spacing: -.035em;
+}
+
+.missionReason {
+  max-width: 720px;
+  margin: 0;
+}
+
+.missionStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.missionStats span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.055);
+  color: #aeb7c5;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.missionLink,
+.bossLink {
+  min-width: 132px;
+  padding: 12px 16px;
+  background: var(--quest-accent);
+  color: #10131b;
+}
+
+.completeMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 132px;
+  min-height: 50px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--quest-accent) 13%, #222936);
+  color: var(--quest-accent);
+  font-weight: 950;
+}
+
+.bossCard {
+  border-color: color-mix(in srgb, var(--quest-accent-2) 42%, rgba(255,255,255,.12));
+  background:
+    radial-gradient(circle at 8% 50%, color-mix(in srgb, var(--quest-accent-2) 13%, transparent), transparent 28%),
+    linear-gradient(145deg, #292a46, #171925 68%);
+}
+
+.bossCard[data-locked="true"] {
+  opacity: .68;
+}
+
+.bossOrb {
+  background: color-mix(in srgb, var(--quest-accent-2) 13%, #222936);
+  border-color: color-mix(in srgb, var(--quest-accent-2) 35%, rgba(255,255,255,.1));
+}
+
+.lockedButton {
+  min-width: 132px;
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: #222936;
+  color: #8d96a5;
+  font-weight: 950;
+}
+
+.conquered {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: clamp(28px, 6vw, 54px);
+  border-radius: 34px;
+  border: 1px solid color-mix(in srgb, var(--quest-accent) 54%, rgba(255,255,255,.12));
+  background: radial-gradient(circle at 50% 0, color-mix(in srgb, var(--quest-accent) 20%, transparent), transparent 44%), #181d28;
+  text-align: center;
+}
+
+.conqueredIcon {
+  font-size: clamp(4.5rem, 14vw, 8rem);
+}
+
+.conquered h2 {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 4.8rem);
+  letter-spacing: -.055em;
+}
+
+.pageFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 4px 4px;
+  color: #7f8898;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+@media (max-width: 760px) {
+  .homeGrid,
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .heroIcon {
+    order: -1;
+  }
+
+  .missionCard,
+  .bossCard {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .missionOrb,
+  .bossOrb {
+    width: 60px;
+    height: 60px;
+    border-radius: 20px;
+    font-size: 30px;
+  }
+
+  .missionLink,
+  .bossLink,
+  .completeMark,
+  .lockedButton {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .questPath::before {
+    left: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pageShell {
+    padding: 12px;
+  }
+
+  .homeCard,
+  .hero,
+  .missionCard,
+  .bossCard,
+  .conquered {
+    border-radius: 24px;
+  }
+
+  .miniGates {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .missionCard,
+  .bossCard {
+    padding: 16px;
+    gap: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressFill {
+    transition: none;
+  }
+}
