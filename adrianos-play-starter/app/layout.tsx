@@ -7,6 +7,7 @@ import PWARegistrar from "@/components/PWARegistrar";
 import WeeklyReportBridge from "@/components/WeeklyReportBridge";
 import "./globals.css";
 import "./school-mode-controls.css";
+import "./mobile-app-shell.css";
 
 export const metadata: Metadata = {
   title: "AdrianOS Learning",
