@@ -105,17 +105,19 @@ export default function ParentMasteryLoopPortal() {
 
     const mount = () => {
       const main = document.querySelector("main");
-      const commandHost = main?.querySelector("[data-parent-command-center-host]");
       if (!main) return false;
       const existing = main.querySelector<HTMLDivElement>("[data-parent-mastery-loop-host]");
       if (existing) {
         setHost(existing);
         return true;
       }
+      const commandHost = main.querySelector("[data-parent-command-center-host]");
+      const anchor = commandHost ?? main.querySelector("header");
+      if (!anchor) return false;
+
       const node = document.createElement("div");
       node.dataset.parentMasteryLoopHost = "true";
-      if (commandHost) commandHost.insertAdjacentElement("afterend", node);
-      else main.querySelector("header")?.insertAdjacentElement("afterend", node);
+      anchor.insertAdjacentElement("afterend", node);
       mounted = node;
       setHost(node);
       return true;
