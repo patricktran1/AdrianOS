@@ -1,7 +1,7 @@
 "use client";
 
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase-browser";
-import { getActiveProfile } from "@/lib/adrian-profiles";
+import { readFamilyState } from "@/lib/adrian-profiles";
 import { readBetaCohort } from "@/lib/beta-cohort";
 
 const FEEDBACK_TABLE = "adrianos_beta_feedback";
@@ -66,11 +66,12 @@ export async function submitBetaFeedback(input: BetaFeedbackInput): Promise<Beta
     };
   }
 
-  const profile = getActiveProfile();
+  const family = readFamilyState();
+  const profile = family.profiles.find((item) => item.id === family.activeProfileId) ?? family.profiles[0] ?? null;
   const payload = {
     user_id: session.user.id,
-    profile_id: profile.id,
-    profile_name: profile.name,
+    profile_id: profile?.id ?? "no-profile",
+    profile_name: profile?.name ?? "No learner profile",
     cohort: readBetaCohort(),
     rating: Math.round(input.rating),
     category: input.category,
