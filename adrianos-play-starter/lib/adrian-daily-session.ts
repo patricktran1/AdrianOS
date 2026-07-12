@@ -14,10 +14,13 @@ import {
   type LearningDayMode,
 } from "@/lib/adrian-learning-schedule";
 import {
-  getRecommendedSkill,
   getSkillGraph,
   skillHref,
 } from "@/lib/adrian-skill-graph";
+import {
+  curriculumReasonForSkill,
+  getCurriculumRecommendedSkill,
+} from "@/lib/adrian-curriculum-recommendation";
 import type { Game } from "@/lib/games";
 
 export type DailySessionMissionStatus = "pending" | "active" | "complete";
@@ -159,7 +162,7 @@ function resolveAdventureItems(
   const state = ensureDailyAdventure(profile, games, progress);
   const items = [...(state.dailyAdventure?.items ?? [])];
   const skillIndex = items.findIndex((item) => item.kind === "skill");
-  const recommended = getRecommendedSkill(getSkillGraph(profile, progress));
+  const recommended = getCurriculumRecommendedSkill(profile, getSkillGraph(profile, progress));
 
   if (recommended && skillIndex >= 0) {
     const duplicate = items.some(
@@ -175,7 +178,8 @@ function resolveAdventureItems(
           ? `Parent goal: reach ${recommended.goal.targetMastery}% mastery.`
           : recommended.dueReviews > 0
             ? `Review ${recommended.dueReviews} missed item${recommended.dueReviews === 1 ? "" : "s"} in this skill.`
-            : "This is the next unlocked skill after its prerequisites.",
+            : curriculumReasonForSkill(profile, recommended.id)
+              ?? "This is the next unlocked skill after its prerequisites.",
         difficulty: `${recommended.stage} · ${recommended.mastery}%`,
         href: skillHref(recommended),
         baselinePlays: progress.games[recommended.gameSlug]?.plays ?? 0,
