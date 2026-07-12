@@ -29,8 +29,8 @@ const FEATURED_BY_GRADE: Record<number, {
 export default function GradeGameSpotlightBridge() {
   const pathname = usePathname();
   const { activeProfile, hydrated } = useFamilyProfiles();
-  const { progress, ready } = useAdrianProgress();
-  if (pathname !== "/school" || !hydrated || !ready) return null;
+  const { progress, hydrated: progressHydrated } = useAdrianProgress();
+  if (pathname !== "/school" || !hydrated || !progressHydrated) return null;
 
   const grade = readProfileGrade(activeProfile);
   const featured = FEATURED_BY_GRADE[grade];
