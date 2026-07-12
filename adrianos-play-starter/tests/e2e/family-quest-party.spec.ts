@@ -3,6 +3,7 @@ import { seedQaFamily } from "./helpers/seed-family";
 
 async function seedTwoLearners(page: import("@playwright/test").Page) {
   await seedQaFamily(page, { clear: true, grade: 2 });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
   await page.evaluate(() => {
     const family = JSON.parse(window.localStorage.getItem("adrianos-family-v1") ?? "{}");
     family.profiles.push({ id: "tk-buddy", name: "Elliot", age: 4, emoji: "🐣", createdAt: new Date().toISOString() });
