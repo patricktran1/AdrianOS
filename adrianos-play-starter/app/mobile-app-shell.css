@@ -1,0 +1,106 @@
+:root {
+  --adrian-safe-top: env(safe-area-inset-top, 0px);
+  --adrian-safe-right: env(safe-area-inset-right, 0px);
+  --adrian-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --adrian-safe-left: env(safe-area-inset-left, 0px);
+}
+
+body {
+  padding-top: var(--adrian-safe-top);
+  padding-left: var(--adrian-safe-left);
+  padding-right: var(--adrian-safe-right);
+}
+
+.game-topbar {
+  top: var(--adrian-safe-top) !important;
+}
+
+.mobile-app-dock {
+  display: none;
+}
+
+.beta-feedback-actions {
+  position: sticky;
+  bottom: 0;
+  margin: 14px -20px -20px;
+  padding: 14px 20px max(14px, var(--adrian-safe-bottom));
+  background: linear-gradient(to bottom, rgba(24,29,40,.88), #181d28 24%);
+  border-top: 1px solid rgba(255,255,255,.1);
+  z-index: 2;
+}
+
+.beta-feedback-signin-button {
+  width: 100%;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 16px;
+  border-radius: 999px;
+  background: #d9ff5b;
+  color: #10131b;
+  font-weight: 950;
+}
+
+@media (max-width: 700px), (display-mode: standalone) {
+  body {
+    padding-bottom: calc(82px + var(--adrian-safe-bottom));
+  }
+
+  .mobile-app-dock {
+    position: fixed;
+    left: max(8px, var(--adrian-safe-left));
+    right: max(8px, var(--adrian-safe-right));
+    bottom: 0;
+    z-index: 108;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px 8px calc(8px + var(--adrian-safe-bottom));
+    border: 1px solid rgba(255,255,255,.14);
+    border-bottom: 0;
+    border-radius: 22px 22px 0 0;
+    background: rgba(16,19,27,.96);
+    box-shadow: 0 -16px 44px rgba(0,0,0,.38);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile-app-dock-link {
+    min-width: 0;
+    min-height: 50px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 3px;
+    border-radius: 15px;
+    color: #aab1bf;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .02em;
+  }
+
+  .mobile-app-dock-link[data-active="true"] {
+    background: rgba(217,255,91,.12);
+    color: #d9ff5b;
+  }
+
+  .mobile-app-dock-icon {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .beta-feedback-launcher {
+    left: max(10px, var(--adrian-safe-left)) !important;
+    bottom: calc(78px + var(--adrian-safe-bottom)) !important;
+  }
+
+  .beta-feedback-panel {
+    width: min(430px, calc(100vw - 20px - var(--adrian-safe-left) - var(--adrian-safe-right))) !important;
+    max-height: calc(100dvh - var(--adrian-safe-top) - var(--adrian-safe-bottom) - 104px) !important;
+  }
+
+  .game-topbar {
+    min-height: calc(72px + var(--adrian-safe-top));
+    padding-top: max(12px, var(--adrian-safe-top));
+  }
+}

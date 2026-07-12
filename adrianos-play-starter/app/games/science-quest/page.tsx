@@ -5,14 +5,44 @@ import { useAdrianProgress } from "@/lib/adrian-progress";
 import { SCIENCE_QUESTIONS, type ScienceQuestion, type ScienceTopic } from "@/lib/adrian-content-bank";
 import { pickFreshItems, shuffled } from "@/lib/adrian-content-rotation";
 import { getActiveProfile } from "@/lib/adrian-profiles";
-import { getDueReviewItems, recordLearningAttempt } from "@/lib/adrian-learning";
+import { getDueReviewItems, readLearningForProfile, recordLearningAttempt } from "@/lib/adrian-learning";
+import {
+  classifyResponse,
+  responsePoints,
+  responseQualityLabel,
+  scienceTopicHint,
+  type ResponseQuality,
+} from "@/lib/adrian-teaching-loop";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 type Topic = "All" | ScienceTopic;
+type FeedbackStage = "question" | "hint" | "explanation";
 
 const ROUND_SIZE = 8;
 const TOPICS: ScienceTopic[] = ["Earth", "Body", "Space", "Technology"];
+
+function targetLevel(profileId: string, topic: ScienceTopic): 1 | 2 | 3 {
+  const skill = readLearningForProfile(profileId).skills[`science-${topic.toLowerCase()}`];
+  if (!skill || skill.attempts < 3 || skill.mastery < 42) return 1;
+  if (skill.mastery < 74 || skill.attempts < 8) return 2;
+  return 3;
+}
+
+function adaptiveTopicQuestions(profileId: string, topic: ScienceTopic, count: number): ScienceQuestion[] {
+  const level = targetLevel(profileId, topic);
+  const exact = SCIENCE_QUESTIONS.filter((question) => question.topic === topic && question.level === level);
+  const adjacent = SCIENCE_QUESTIONS.filter(
+    (question) => question.topic === topic && Math.abs(question.level - level) <= 1
+  );
+  const pool = exact.length >= count ? exact : adjacent.length >= count ? adjacent : SCIENCE_QUESTIONS.filter((question) => question.topic === topic);
+  return pickFreshItems(
+    pool,
+    Math.min(count, pool.length),
+    `adrianos-content:science:${profileId}:${topic}:level-${level}`,
+    (question) => question.id
+  );
+}
 
 export default function ScienceQuestPage() {
   const { recordPlay, award, progress } = useAdrianProgress();
@@ -22,10 +52,16 @@ export default function ScienceQuestPage() {
   const [choice, setChoice] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [firstTryCorrect, setFirstTryCorrect] = useState(0);
   const [missed, setMissed] = useState<ScienceQuestion[]>([]);
   const [playing, setPlaying] = useState(false);
   const [done, setDone] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [usedHint, setUsedHint] = useState(false);
+  const [feedbackStage, setFeedbackStage] = useState<FeedbackStage>("question");
+  const [quality, setQuality] = useState<ResponseQuality | null>(null);
+  const [message, setMessage] = useState("Choose the answer that best fits the evidence.");
   const autoStarted = useRef(false);
   const profileId = getActiveProfile().id;
   const dueReviews = getDueReviewItems(profileId, "science-quest");
@@ -46,25 +82,18 @@ export default function ScienceQuestPage() {
   }, []);
 
   function normalQuestions(): ScienceQuestion[] {
-    if (topic !== "All") {
-      const pool = SCIENCE_QUESTIONS.filter((question) => question.topic === topic);
-      return pickFreshItems(
-        pool,
-        ROUND_SIZE,
-        `adrianos-content:science:${profileId}:${topic}`,
-        (question) => question.id
-      );
-    }
-
-    const balanced = TOPICS.flatMap((scienceTopic) =>
-      pickFreshItems(
-        SCIENCE_QUESTIONS.filter((question) => question.topic === scienceTopic),
-        2,
-        `adrianos-content:science:${profileId}:${scienceTopic}`,
-        (question) => question.id
-      )
-    );
+    if (topic !== "All") return adaptiveTopicQuestions(profileId, topic, ROUND_SIZE);
+    const balanced = TOPICS.flatMap((scienceTopic) => adaptiveTopicQuestions(profileId, scienceTopic, 2));
     return shuffled(balanced).slice(0, ROUND_SIZE);
+  }
+
+  function resetQuestionState() {
+    setChoice(null);
+    setWrongAttempts(0);
+    setUsedHint(false);
+    setFeedbackStage("question");
+    setQuality(null);
+    setMessage("Choose the answer that best fits the evidence.");
   }
 
   function startGame(useMissed = false, usePersistent = false) {
@@ -80,51 +109,93 @@ export default function ScienceQuestPage() {
 
     setSession(selected);
     setIndex(0);
-    setChoice(null);
     setScore(0);
     setStreak(0);
+    setFirstTryCorrect(0);
     if (!useMissed) setMissed([]);
     setPlaying(true);
     setDone(false);
     setReviewMode(useMissed || usePersistent);
+    resetQuestionState();
     recordPlay("science-quest");
   }
 
-  function answer(value: number) {
-    if (choice !== null || !current) return;
-    setChoice(value);
-    const isCorrect = value === current.answer;
-
+  function saveAttempt(question: ScienceQuestion, correct: boolean) {
     recordLearningAttempt({
       gameSlug: "science-quest",
       subject: "Science",
-      skillId: `science-${current.topic.toLowerCase()}`,
-      skillLabel: `${current.topic} science`,
-      prompt: current.prompt,
-      correctAnswer: current.choices[current.answer],
-      correct: isCorrect,
+      skillId: `science-${question.topic.toLowerCase()}`,
+      skillLabel: `${question.topic} science`,
+      prompt: question.prompt,
+      correctAnswer: question.choices[question.answer],
+      correct,
       review: reviewMode,
       data: {
-        questionId: current.id,
-        topic: current.topic,
-        level: current.level,
+        questionId: question.id,
+        topic: question.topic,
+        level: question.level,
+        usedHint,
+        wrongAttempts,
       },
     }, profileId);
+  }
 
-    if (isCorrect) {
-      const nextStreak = streak + 1;
-      setStreak(nextStreak);
-      setScore((currentScore) => currentScore + 8 + current.level * 3 + Math.min(10, nextStreak * 2));
-    } else {
+  function rememberMiss(question: ScienceQuestion) {
+    setMissed((items) => items.some((item) => item.id === question.id) ? items : [...items, question]);
+  }
+
+  function showHint() {
+    if (!current || feedbackStage === "explanation") return;
+    setUsedHint(true);
+    setFeedbackStage("hint");
+    setMessage(scienceTopicHint(current.topic));
+  }
+
+  function answer(value: number) {
+    if (!current || feedbackStage === "explanation") return;
+    if (choice === value && value !== current.answer) return;
+    setChoice(value);
+    const isCorrect = value === current.answer;
+
+    if (!isCorrect && wrongAttempts === 0) {
+      saveAttempt(current, false);
+      rememberMiss(current);
+      setWrongAttempts(1);
+      setUsedHint(true);
       setStreak(0);
-      setMissed((items) => items.some((item) => item.id === current.id) ? items : [...items, current]);
+      setFeedbackStage("hint");
+      setMessage(scienceTopicHint(current.topic));
+      return;
     }
+
+    if (!isCorrect) {
+      const nextQuality = classifyResponse({ correct: false, wrongAttempts: wrongAttempts + 1, usedHint: true });
+      setWrongAttempts((attempts) => attempts + 1);
+      rememberMiss(current);
+      setQuality(nextQuality);
+      setStreak(0);
+      setFeedbackStage("explanation");
+      setMessage(`The strongest answer is “${current.choices[current.answer]}.” ${current.explanation}`);
+      return;
+    }
+
+    saveAttempt(current, true);
+    const nextQuality = classifyResponse({ correct: true, wrongAttempts, usedHint });
+    const nextStreak = nextQuality === "first-try" ? streak + 1 : 0;
+    const points = responsePoints(8 + current.level * 3 + Math.min(10, nextStreak * 2), nextQuality);
+    setScore((currentScore) => currentScore + points);
+    setStreak(nextStreak);
+    if (nextQuality === "first-try") setFirstTryCorrect((count) => count + 1);
+    setQuality(nextQuality);
+    setFeedbackStage("explanation");
+    setMessage(`${responseQualityLabel(nextQuality)}. +${points} points. ${current.explanation}`);
   }
 
   function next() {
+    if (feedbackStage !== "explanation") return;
     if (index < session.length - 1) {
       setIndex((value) => value + 1);
-      setChoice(null);
+      resetQuestionState();
       return;
     }
 
@@ -140,11 +211,19 @@ export default function ScienceQuestPage() {
       <GameFrame title="Science Quest">
         <section style={panelStyle}>
           <div style={{ fontSize: 68 }}>🔬</div>
-          <span style={eyebrowStyle}>48 SCIENCE MISSIONS</span>
+          <span style={eyebrowStyle}>ADAPTIVE SCIENCE MISSIONS</span>
           <h1 style={titleStyle}>Choose a science world.</h1>
           <p style={mutedStyle}>
-            Each round prioritizes questions this profile has not seen recently and mixes explorer, investigator, and challenge levels.
+            Each topic now starts near this learner’s current mastery. A first miss opens a clue and a retry; the explanation appears before the next question.
           </p>
+          <div style={levelGrid}>
+            {TOPICS.map((scienceTopic) => (
+              <div key={scienceTopic} style={levelCard}>
+                <small>{scienceTopic.toUpperCase()}</small>
+                <strong>Level {targetLevel(profileId, scienceTopic)}</strong>
+              </div>
+            ))}
+          </div>
           <div style={optionRowStyle}>
             {(["All", ...TOPICS] as Topic[]).map((item) => (
               <button key={item} onClick={() => setTopic(item)} style={pillStyle(topic === item)}>{item}</button>
@@ -163,16 +242,22 @@ export default function ScienceQuestPage() {
   }
 
   if (done) {
+    const firstTryAccuracy = session.length > 0 ? Math.round((firstTryCorrect / session.length) * 100) : 0;
     return (
       <GameFrame title="Science Quest">
         <section style={panelStyle}>
           <div style={{ fontSize: 68 }}>{missed.length === 0 ? "🏆" : "🧪"}</div>
           <span style={eyebrowStyle}>{reviewMode ? "REVIEW COMPLETE" : "QUEST COMPLETE"}</span>
           <h1 style={titleStyle}>{score} points</h1>
+          <div style={resultGrid}>
+            <div><small>FIRST TRY</small><strong>{firstTryAccuracy}%</strong></div>
+            <div><small>REVIEW QUEUE</small><strong>{missed.length}</strong></div>
+            <div><small>BEST</small><strong>{Math.max(bestScore, score)}</strong></div>
+          </div>
           <p style={mutedStyle}>
             {missed.length === 0
-              ? "Perfect expedition. Every answer was correct."
-              : `${missed.length} question${missed.length === 1 ? "" : "s"} scheduled for another look.`}
+              ? "Every question was solved independently. The next fresh quest can raise the challenge."
+              : `${missed.length} question${missed.length === 1 ? " is" : "s are"} saved for another look. Supported solves still count as learning.`}
           </p>
           <div style={optionRowStyle}>
             {missed.length > 0 && !reviewMode && <button onClick={() => startGame(true, false)} style={primaryStyle}>Review Missed Questions</button>}
@@ -193,7 +278,7 @@ export default function ScienceQuestPage() {
         <div style={statsStyle}>
           <span>{reviewMode ? "Spaced Review" : current.topic}</span>
           <span>{levelName} · Question {index + 1} of {session.length}</span>
-          <span>Score {score} · Streak {streak}</span>
+          <span>Score {score} · Independent streak {streak}</span>
         </div>
         <section style={panelStyle}>
           <div style={{ fontSize: 64 }}>{current.emoji}</div>
@@ -201,12 +286,13 @@ export default function ScienceQuestPage() {
           <h1 style={{ ...titleStyle, fontSize: "clamp(2rem,6vw,4rem)" }}>{current.prompt}</h1>
           <div style={{ display: "grid", gap: 11 }}>
             {current.choices.map((answerText, answerIndex) => {
-              const showCorrect = choice !== null && answerIndex === current.answer;
+              const showCorrect = feedbackStage === "explanation" && answerIndex === current.answer;
               const showWrong = choice === answerIndex && answerIndex !== current.answer;
               return (
                 <button
                   key={answerText}
                   onClick={() => answer(answerIndex)}
+                  disabled={feedbackStage === "explanation" || showWrong}
                   style={{
                     ...answerStyle,
                     background: showCorrect ? "#d9ff5b" : showWrong ? "#ffb5bf" : "#222936",
@@ -218,13 +304,20 @@ export default function ScienceQuestPage() {
               );
             })}
           </div>
-          {choice !== null && (
-            <div style={feedbackStyle}>
-              <strong style={{ color: correct ? "#d9ff5b" : "#ffb5bf" }}>{correct ? "Correct." : "Good try."}</strong>
-              <p style={mutedStyle}>{current.explanation}</p>
-              <button onClick={next} style={primaryStyle}>{index === session.length - 1 ? "See Results" : "Next Question"}</button>
+
+          <div style={feedbackStyle} aria-live="polite">
+            <div>
+              <small style={feedbackLabel}>{feedbackStage === "question" ? "THINK LIKE A SCIENTIST" : feedbackStage === "hint" ? "CLUE" : quality ? responseQualityLabel(quality).toUpperCase() : "EXPLANATION"}</small>
+              <p style={mutedStyle}>{message}</p>
             </div>
-          )}
+            {feedbackStage === "question" ? (
+              <button type="button" onClick={showHint} style={hintStyle}>Show a clue</button>
+            ) : feedbackStage === "hint" ? (
+              <span style={retryStyle}>Use the clue and choose again.</span>
+            ) : (
+              <button onClick={next} style={primaryStyle}>{index === session.length - 1 ? "See Results" : "Next Question"}</button>
+            )}
+          </div>
         </section>
       </div>
     </GameFrame>
@@ -238,7 +331,13 @@ const mutedStyle: React.CSSProperties = { color: "#aab1bf", lineHeight: 1.55 };
 const optionRowStyle: React.CSSProperties = { display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap", margin: "18px 0" };
 const primaryStyle: React.CSSProperties = { padding: "13px 20px", border: "2px solid #d9ff5b", borderRadius: 999, background: "#d9ff5b", color: "#10131b", fontWeight: 950, cursor: "pointer" };
 const secondaryLinkStyle: React.CSSProperties = { display: "inline-block", padding: "13px 20px", borderRadius: 999, background: "#fff", color: "#10131b", fontWeight: 950, textDecoration: "none" };
-const pillStyle = (active: boolean): React.CSSProperties => ({ padding: "11px 15px", borderRadius: 999, border: active ? "2px solid #d9ff5b" : "1px solid rgba(255,255,255,.15)", background: active ? "rgba(217,255,91,.12)" : "#222936", color: "#fff", fontWeight: 850, cursor: "pointer" });
-const statsStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 14, color: "#aab1bf", fontWeight: 800 };
-const answerStyle: React.CSSProperties = { minHeight: 62, padding: "14px 16px", borderRadius: 17, border: "1px solid rgba(255,255,255,.13)", textAlign: "left", fontSize: 16, fontWeight: 800, cursor: "pointer" };
-const feedbackStyle: React.CSSProperties = { marginTop: 18, paddingTop: 18, borderTop: "1px solid rgba(255,255,255,.1)" };
+const statsStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14, color: "#aab1bf", fontSize: 13, fontWeight: 850 };
+const answerStyle: React.CSSProperties = { minHeight: 66, borderRadius: 18, border: "1px solid rgba(255,255,255,.13)", padding: "14px 16px", textAlign: "left", fontSize: 17, cursor: "pointer" };
+const feedbackStyle: React.CSSProperties = { marginTop: 20, padding: 18, borderRadius: 20, border: "1px solid rgba(127,220,255,.25)", background: "#10131b", display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 16, alignItems: "center", textAlign: "left" };
+const feedbackLabel: React.CSSProperties = { color: "#7fdcff", fontSize: 10, fontWeight: 950, letterSpacing: ".14em" };
+const hintStyle: React.CSSProperties = { padding: "12px 16px", borderRadius: 999, border: "1px solid rgba(127,220,255,.35)", background: "rgba(127,220,255,.1)", color: "#7fdcff", fontWeight: 950, cursor: "pointer" };
+const retryStyle: React.CSSProperties = { maxWidth: 170, color: "#c6b8ff", fontSize: 12, fontWeight: 850, lineHeight: 1.4 };
+const levelGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 8, margin: "22px 0" };
+const levelCard: React.CSSProperties = { display: "grid", gap: 5, padding: 12, borderRadius: 16, background: "#10131b", border: "1px solid rgba(255,255,255,.08)" };
+const resultGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 9, margin: "22px 0" };
+const pillStyle = (active: boolean): React.CSSProperties => ({ padding: "10px 15px", borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", background: active ? "#d9ff5b" : "#222936", color: active ? "#10131b" : "#fff", fontWeight: 900, cursor: "pointer" });
