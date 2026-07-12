@@ -51,6 +51,11 @@ function cleanGrade(value: number, age: number): number {
     : inferredGradeForAge(age);
 }
 
+function cleanSessionMinutes(value: number): 8 | 12 | 18 {
+  if (value === 8 || value === 18) return value;
+  return 12;
+}
+
 function baseSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "student";
 }
@@ -117,7 +122,7 @@ export function replaceFamilyChildren(drafts: FamilyChildDraft[]): ChildProfile[
       age: cleanAge(draft.age),
       interests: Array.isArray(draft.interests) ? draft.interests : [],
       priorities: Array.isArray(draft.priorities) ? draft.priorities : [],
-      sessionMinutes: draft.sessionMinutes === 8 || draft.sessionMinutes === 18 ? draft.sessionMinutes : 12,
+      sessionMinutes: cleanSessionMinutes(draft.sessionMinutes),
     }))
     .filter((draft) => Boolean(draft.name));
   if (validDrafts.length === 0) throw new Error("Add at least one child profile.");
