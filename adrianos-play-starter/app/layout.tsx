@@ -7,6 +7,7 @@ import InstallAppPrompt from "@/components/InstallAppPrompt";
 import MasteryLoopBridge from "@/components/MasteryLoopBridge";
 import MobileAppDock from "@/components/MobileAppDock";
 import PWARegistrar from "@/components/PWARegistrar";
+import QuestWorldsBridge from "@/components/QuestWorldsBridge";
 import WeeklyReportBridge from "@/components/WeeklyReportBridge";
 import "./globals.css";
 import "./school-mode-controls.css";
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <WeeklyReportBridge />
         <MasteryLoopBridge />
         <FamilyOnboardingGate>{children}</FamilyOnboardingGate>
+        <QuestWorldsBridge />
         <MobileAppDock />
         <InstallAppPrompt />
         <BetaFeedbackLauncher />

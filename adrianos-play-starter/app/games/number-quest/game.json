@@ -1,0 +1,10 @@
+{
+  "slug": "number-quest",
+  "title": "Number Quest",
+  "description": "A grade-aware math adventure through counting, place value, multiplication, division, fractions, decimals, measurement, and geometry.",
+  "emoji": "🗺️",
+  "subject": "Math",
+  "age": "Ages 4–11",
+  "status": "playable",
+  "order": 6
+}

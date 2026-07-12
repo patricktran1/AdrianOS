@@ -8,6 +8,7 @@ import {
   curriculumPackLabel,
   curriculumProgress,
   primaryStandardForSkill,
+  type CurriculumStandard,
 } from "@/lib/adrian-curriculum";
 import { getCurriculumRecommendedSkill } from "@/lib/adrian-curriculum-recommendation";
 import {
@@ -17,6 +18,7 @@ import {
   readProfileGrade,
   writeProfileGrade,
 } from "@/lib/adrian-profile-grade";
+import { questPracticeHref } from "@/lib/adrian-quest-system";
 import { getSkillGraph, skillHref } from "@/lib/adrian-skill-graph";
 
 export default function CurriculumPage() {
@@ -27,12 +29,15 @@ export default function CurriculumPage() {
   const grade = profilesReady ? readProfileGrade(activeProfile) : 2;
   const nodes = useMemo(
     () => profilesReady && progressReady ? getSkillGraph(activeProfile, progress) : [],
-    [activeProfile.id, activeProfile.age, profilesReady, progressReady, progress, revision]
+    [activeProfile.id, activeProfile.age, profilesReady, progressReady, progress, revision],
   );
-  const standards = useMemo(() => curriculumProgress(grade, nodes), [grade, nodes]);
+  const standards = useMemo(
+    () => curriculumProgress(grade, nodes, activeProfile.id),
+    [grade, nodes, activeProfile.id, revision],
+  );
   const next = useMemo(
     () => profilesReady ? getCurriculumRecommendedSkill(activeProfile, nodes) : null,
-    [activeProfile.id, activeProfile.age, nodes, profilesReady, revision]
+    [activeProfile.id, activeProfile.age, nodes, profilesReady, revision],
   );
   const nextStandard = next ? primaryStandardForSkill(next.id, grade) : null;
 
@@ -45,15 +50,27 @@ export default function CurriculumPage() {
     setRevision((current) => current + 1);
   }
 
+  function practiceHref(standard: CurriculumStandard) {
+    const node = standard.skillIds
+      .map((id) => nodes.find((item) => item.id === id))
+      .filter(Boolean)
+      .sort((a, b) => (a?.mastery ?? 0) - (b?.mastery ?? 0))[0];
+    return node ? skillHref(node) : questPracticeHref(standard);
+  }
+
   const mastered = standards.filter((standard) => standard.mastered).length;
   const direct = standards.filter((standard) => standard.strength === "direct");
   const subjectGroups = ["Math", "Reading", "Science"] as const;
+  const gradeHeading = grade < 0 ? "CALIFORNIA TK PRIORITY FOUNDATIONS" : `CALIFORNIA ${gradeLabel(grade).toUpperCase()} PRIORITY STANDARDS`;
 
   return (
     <main style={page}>
       <header style={topbar}>
         <Link href="/school" style={backLink}>← School Mode</Link>
-        <Link href="/parent" style={parentLink}>Parent access 🔒</Link>
+        <div style={topLinks}>
+          <Link href="/quests" style={questLink}>Quest worlds</Link>
+          <Link href="/parent" style={parentLink}>Parent access 🔒</Link>
+        </div>
       </header>
 
       <section style={hero}>
@@ -61,7 +78,7 @@ export default function CurriculumPage() {
           <span style={eyebrow}>CURRICULUM-AWARE LEARNING</span>
           <h1 style={heroTitle}>{activeProfile.name}’s learning map</h1>
           <p style={lead}>
-            Games are connected to explicit learning goals. Direct alignments can contribute skill evidence; supporting activities build background without pretending to prove mastery.
+            Every supported grade now has a focused California priority pack. Direct alignments can collect skill evidence; supporting activities build relevant knowledge without claiming full-standard mastery.
           </p>
         </div>
         <div style={heroControls}>
@@ -74,7 +91,7 @@ export default function CurriculumPage() {
           >
             {GRADE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
           </select>
-          <small style={fineprint}>Age {activeProfile.age} suggests {gradeLabel(inferredGradeForAge(activeProfile.age))}. A parent override syncs with the family learning record.</small>
+          <small style={fineprint}>Age {activeProfile.age} suggests {gradeLabel(inferredGradeForAge(activeProfile.age))}. A parent override syncs across the family account.</small>
         </div>
       </section>
 
@@ -92,15 +109,16 @@ export default function CurriculumPage() {
         ))}
       </div>
 
-      <section style={overview}>
+      <section style={overview} aria-label="Curriculum summary">
         <div>
           <span style={eyebrow}>CURRENT PATH</span>
           <h2 style={sectionTitle}>{curriculumPackLabel(activeProfile)}</h2>
+          <p style={{ ...lead, margin: 0 }}>This is a playable priority map, not a claim that AdrianOS replaces a complete classroom curriculum.</p>
         </div>
         <div style={statGrid}>
-          <div style={stat}><strong>{mastered}/{standards.length || nodes.length}</strong><span>{standards.length ? "standards mastered" : "skills available"}</span></div>
-          <div style={stat}><strong>{direct.length || nodes.filter((node) => !node.locked).length}</strong><span>{standards.length ? "direct evidence targets" : "unlocked skills"}</span></div>
-          <div style={stat}><strong>{next?.mastery ?? 0}%</strong><span>next skill mastery</span></div>
+          <div style={stat}><strong>{mastered}/{standards.length}</strong><span>standards mastered</span></div>
+          <div style={stat}><strong>{direct.length}</strong><span>direct evidence targets</span></div>
+          <div style={stat}><strong>{progress.level}</strong><span>learner level</span></div>
         </div>
       </section>
 
@@ -120,77 +138,52 @@ export default function CurriculumPage() {
         </section>
       )}
 
-      {standards.length > 0 ? (
-        <section style={mapSection}>
-          <div style={sectionHeader}>
-            <div>
-              <span style={eyebrow}>CALIFORNIA GRADE 2</span>
-              <h2 style={sectionTitle}>Standards coverage</h2>
-            </div>
-            <p style={legend}>Direct = practice can collect evidence. Supporting = conceptually related enrichment.</p>
+      <section style={mapSection}>
+        <div style={sectionHeader}>
+          <div>
+            <span style={eyebrow}>{gradeHeading}</span>
+            <h2 style={sectionTitle}>Standards coverage</h2>
           </div>
+          <p style={legend}>Direct = AdrianOS can collect evidence on the mapped skill. Supporting = useful concept practice, not proof of the complete performance expectation.</p>
+        </div>
 
-          {subjectGroups.map((subject) => {
-            const rows = standards.filter((standard) => standard.subject === subject);
-            if (rows.length === 0) return null;
-            return (
-              <div key={subject} style={subjectBlock}>
-                <h3 style={subjectTitle}>{subject}</h3>
-                <div style={standardsGrid}>
-                  {rows.map((standard) => {
-                    const candidates = standard.skillIds.flatMap((id) => {
-                      const node = nodes.find((item) => item.id === id);
-                      return node ? [node] : [];
-                    });
-                    const target = [...candidates].sort((a, b) => a.mastery - b.mastery)[0];
-                    return (
-                      <article key={standard.code} style={standardCard}>
-                        <div style={standardTop}>
-                          <span style={codeChip}>{standard.code}</span>
-                          <span style={standard.strength === "direct" ? directChip : supportChip}>
-                            {standard.strength === "direct" ? "Direct evidence" : "Supporting"}
-                          </span>
-                        </div>
-                        <h4 style={standardTitle}>{standard.title}</h4>
-                        <p style={goalText}>{standard.childGoal}</p>
-                        <div style={meterTrack}><div style={{ ...meterFill, width: `${standard.mastery}%` }} /></div>
-                        <div style={meterLabel}><span>{standard.mastery}%</span><span>{standard.mastered ? "Mastered" : standard.available ? "In progress" : "Not unlocked"}</span></div>
-                        {target && <Link href={skillHref(target)} style={practiceLink}>Practice {target.label} →</Link>}
-                      </article>
-                    );
-                  })}
-                </div>
+        {subjectGroups.map((subject) => {
+          const rows = standards.filter((standard) => standard.subject === subject);
+          if (rows.length === 0) return null;
+          return (
+            <div key={subject} style={subjectBlock}>
+              <h3 style={subjectTitle}>{subject}</h3>
+              <div style={standardsGrid}>
+                {rows.map((standard) => (
+                  <article key={standard.code} style={standardCard}>
+                    <div style={standardTop}>
+                      <span style={codeChip}>{standard.code}</span>
+                      <span style={standard.strength === "direct" ? directChip : supportChip}>
+                        {standard.strength === "direct" ? "Direct evidence" : "Supporting"}
+                      </span>
+                    </div>
+                    <h4 style={standardTitle}>{standard.title}</h4>
+                    <p style={goalText}>{standard.childGoal}</p>
+                    <div style={meterTrack}><div style={{ ...meterFill, width: `${standard.mastery}%` }} /></div>
+                    <div style={meterLabel}><span>{standard.mastery}%</span><span>{standard.mastered ? "Mastered" : standard.available ? "In progress" : "Ready to begin"}</span></div>
+                    <Link href={practiceHref(standard)} style={practiceLink}>{standard.mastered ? "Replay quest" : "Play this quest"} →</Link>
+                  </article>
+                ))}
               </div>
-            );
-          })}
-        </section>
-      ) : (
-        <section style={mapSection}>
-          <span style={eyebrow}>AGE-ADAPTIVE FOUNDATIONS</span>
-          <h2 style={sectionTitle}>{gradeLabel(grade)} skill progression</h2>
-          <p style={lead}>The detailed California standards pack currently centers the second-grade cohort. Other grades still use age gates, prerequisites, mastery, missed-item review, and parent goals to choose an appropriate next skill.</p>
-          <div style={standardsGrid}>
-            {nodes.filter((node) => !node.locked).slice(0, 18).map((node) => (
-              <article key={node.id} style={standardCard}>
-                <span style={stageChip}>{node.subject}</span>
-                <h4 style={standardTitle}>{node.label}</h4>
-                <p style={goalText}>{node.description}</p>
-                <div style={meterTrack}><div style={{ ...meterFill, width: `${node.mastery}%` }} /></div>
-                <div style={meterLabel}><span>{node.mastery}%</span><span>{node.stage}</span></div>
-                <Link href={skillHref(node)} style={practiceLink}>Practice →</Link>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
+            </div>
+          );
+        })}
+      </section>
     </main>
   );
 }
 
-const page: React.CSSProperties = { minHeight: "100vh", padding: "0 18px 80px", background: "#10131b", color: "#fff", overflowX: "hidden" };
+const page: React.CSSProperties = { minHeight: "100vh", padding: "0 18px 90px", background: "#10131b", color: "#fff", overflowX: "hidden" };
 const topbar: React.CSSProperties = { maxWidth: 1120, minHeight: 74, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" };
+const topLinks: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
 const backLink: React.CSSProperties = { color: "#d9ff5b", textDecoration: "none", fontWeight: 950 };
 const parentLink: React.CSSProperties = { padding: "10px 14px", borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", color: "#fff", textDecoration: "none", fontWeight: 900 };
+const questLink: React.CSSProperties = { ...parentLink, borderColor: "rgba(198,184,255,.3)", color: "#c6b8ff" };
 const hero: React.CSSProperties = { maxWidth: 1120, margin: "0 auto 16px", padding: "clamp(25px,6vw,58px)", borderRadius: 34, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,280px),1fr))", gap: 28, alignItems: "end", background: "linear-gradient(145deg,rgba(127,220,255,.12),rgba(198,184,255,.08),#181d28)", border: "1px solid rgba(127,220,255,.28)" };
 const eyebrow: React.CSSProperties = { color: "#7fdcff", fontSize: 11, fontWeight: 950, letterSpacing: ".15em" };
 const heroTitle: React.CSSProperties = { margin: "10px 0 14px", fontSize: "clamp(3rem,8vw,6.6rem)", lineHeight: .9, letterSpacing: "-.075em" };
@@ -216,7 +209,7 @@ const supportChip: React.CSSProperties = { padding: "7px 10px", borderRadius: 99
 const startButton: React.CSSProperties = { padding: "15px 21px", borderRadius: 999, background: "#d9ff5b", color: "#10131b", textDecoration: "none", textAlign: "center", fontWeight: 950 };
 const mapSection: React.CSSProperties = { maxWidth: 1120, margin: "0 auto", padding: "clamp(22px,5vw,38px)", borderRadius: 32, background: "#181d28", border: "1px solid rgba(255,255,255,.1)" };
 const sectionHeader: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 20, alignItems: "end", flexWrap: "wrap" };
-const legend: React.CSSProperties = { maxWidth: 430, color: "#8992a1", lineHeight: 1.5, fontSize: 13 };
+const legend: React.CSSProperties = { maxWidth: 500, color: "#8992a1", lineHeight: 1.5, fontSize: 13 };
 const subjectBlock: React.CSSProperties = { marginTop: 30 };
 const subjectTitle: React.CSSProperties = { margin: "0 0 12px", fontSize: 24 };
 const standardsGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,250px),1fr))", gap: 12 };

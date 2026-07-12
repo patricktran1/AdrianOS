@@ -53,7 +53,7 @@ export default function CurriculumPathCard() {
           <div style={actions}>
             {next && <Link href={skillHref(next)} style={startLink}>Practice {next.label} →</Link>}
             <Link href="/curriculum/elementary" style={mapLink}>Open the full Elementary Journey</Link>
-            {grade === 2 && <Link href="/curriculum" style={standardsLink}>See the full learning map</Link>}
+            <Link href="/curriculum" style={standardsLink}>See the full learning map</Link>
           </div>
         </div>
       ) : (
@@ -62,7 +62,7 @@ export default function CurriculumPathCard() {
             <strong>Current grade milestones are strong.</strong>
             <p style={{ ...muted, margin: "5px 0 0" }}>A parent decides when to change the selected learning grade.</p>
           </div>
-          <Link href="/curriculum/elementary" style={mapLink}>Review the Elementary Journey</Link>
+          <Link href="/curriculum" style={mapLink}>Review the standards map</Link>
         </div>
       )}
     </section>
