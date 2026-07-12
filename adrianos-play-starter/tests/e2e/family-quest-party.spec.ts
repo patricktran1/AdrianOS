@@ -27,7 +27,7 @@ test.describe("Family Quest Party", () => {
     await expect(page.getByRole("status")).toContainText("Coach clue:");
     await page.locator('button[data-correct="true"]').click();
 
-    await expect(page.getByText("Elliot's turn!", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Elliot.*turn!/ })).toBeVisible();
     await expect(page.getByRole("heading", { name: "How many party balloons? 🎈🎈🎈" })).toBeVisible();
   });
 
