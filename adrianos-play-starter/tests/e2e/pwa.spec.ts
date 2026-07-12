@@ -35,7 +35,8 @@ test.describe("installable AdrianOS app", () => {
     expect(response.headers()["cache-control"]).toContain("no-cache");
     expect(response.headers()["service-worker-allowed"]).toBe("/");
     const body = await response.text();
-    expect(body).toContain("adrianos-shell-v1");
+    expect(body).toContain("adrianos-shell-v2");
+    expect(body).toContain('"/curriculum"');
     expect(body).toContain("url.origin !== self.location.origin");
     expect(body).toContain('url.pathname.startsWith("/auth/")');
   });
