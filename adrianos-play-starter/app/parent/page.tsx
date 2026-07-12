@@ -2,6 +2,7 @@ import CloudSyncPanel from "@/components/CloudSyncPanel";
 import CoachReportPanel from "@/components/CoachReportPanel";
 import ParentCommandCenterPortal from "@/components/ParentCommandCenterPortal";
 import ParentDashboard from "@/components/ParentDashboard";
+import ParentMasteryLoopPortal from "@/components/ParentMasteryLoopPortal";
 import ParentPortfolioLauncher from "@/components/ParentPortfolioLauncher";
 import ParentProjectLauncher from "@/components/ParentProjectLauncher";
 import ParentSkillGoals from "@/components/ParentSkillGoals";
@@ -15,6 +16,7 @@ export default function ParentPage() {
     <>
       <ParentDashboard games={games} />
       <ParentCommandCenterPortal games={games} />
+      <ParentMasteryLoopPortal />
       <ParentWritingLauncher />
       <ParentProjectLauncher />
       <ParentPortfolioLauncher />
