@@ -18,6 +18,18 @@ const FEATURED_BY_GRADE: Record<number, {
   replayLabel: string;
   mechanics: string[];
 }> = {
+  0: {
+    eyebrow: "KINDERGARTEN FEATURED ADVENTURE",
+    title: "Rainbow Rocket Park",
+    description: "Build a rainbow rocket through six short, touch-first missions with counting, shapes, sounds, story order, motion, and living things.",
+    emoji: "🌈🚀",
+    href: "/games/rainbow-rocket-park",
+    slug: "rainbow-rocket-park",
+    completedLabel: "✓ Rainbow rocket launched",
+    startLabel: "Start building →",
+    replayLabel: "Build another rocket →",
+    mechanics: ["Low-reading play", "Mini launches", "Adaptive clues", "Star combos"],
+  },
   1: {
     eyebrow: "GRADE 1 FEATURED ADVENTURE",
     title: "Robot Rescue City",
