@@ -8,7 +8,6 @@ import {
 } from "@/lib/adrian-adventure-chain";
 import { readAdrianProgress } from "@/lib/adrian-progress";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
-import { totalGameCompletions } from "@/lib/adrian-prize-collections";
 import { games } from "@/lib/generated-games";
 
 function slugFromPath(pathname: string): string {
@@ -34,13 +33,17 @@ export default function AdaptiveAdventureChain() {
   const revealTimerRef = useRef<number | null>(null);
   const firstChoiceRef = useRef<HTMLAnchorElement | null>(null);
 
-  useEffect(() => {
+  function clearChain() {
     setOpen(false);
     setChoices([]);
     if (revealTimerRef.current !== null) {
       window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = null;
     }
+  }
+
+  useEffect(() => {
+    clearChain();
   }, [slug]);
 
   useEffect(() => {
@@ -49,7 +52,10 @@ export default function AdaptiveAdventureChain() {
 
     const refresh = () => {
       const next = readAdrianProgress();
-      const completionGain = totalGameCompletions(next) - totalGameCompletions(previous);
+      const previousGame = previous.games[currentGame.slug];
+      const nextGame = next.games[currentGame.slug];
+      const completionGain = (nextGame?.completions ?? 0) - (previousGame?.completions ?? 0);
+      const playGain = (nextGame?.plays ?? 0) - (previousGame?.plays ?? 0);
 
       if (completionGain > 0) {
         const nextChoices = buildAdventureChain({
@@ -65,6 +71,8 @@ export default function AdaptiveAdventureChain() {
           setOpen(nextChoices.length > 0);
           revealTimerRef.current = null;
         }, 3800);
+      } else if (playGain > 0) {
+        clearChain();
       }
 
       previous = next;
@@ -72,12 +80,7 @@ export default function AdaptiveAdventureChain() {
 
     const reset = () => {
       previous = readAdrianProgress();
-      setOpen(false);
-      setChoices([]);
-      if (revealTimerRef.current !== null) {
-        window.clearTimeout(revealTimerRef.current);
-        revealTimerRef.current = null;
-      }
+      clearChain();
     };
 
     window.addEventListener("adrianos-progress-updated", refresh);
