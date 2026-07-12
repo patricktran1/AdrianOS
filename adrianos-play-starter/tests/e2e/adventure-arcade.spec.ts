@@ -48,7 +48,7 @@ test.describe("Adventure Arcade homepage", () => {
     await expect(recommendation.getByRole("heading", { name: "Daily Adventure Remix" })).toBeVisible();
   });
 
-  test("keeps favorites in the synced learner record and filters by age by default", async ({ page }) => {
+  test("keeps favorites in the synced learner record and filters by age by default", async ({ page, browser }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
@@ -70,9 +70,13 @@ test.describe("Adventure Arcade homepage", () => {
       return item?.data?.favorites ?? "";
     }, LEARNING_KEY)).toContain("dino-time-rescue");
 
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.getByText("MY FAVORITES", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Dino Time Rescue/ })).toBeVisible();
+    const storageState = await page.context().storageState();
+    const restoredContext = await browser.newContext({ storageState });
+    const restoredPage = await restoredContext.newPage();
+    await restoredPage.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(restoredPage.getByText("MY FAVORITES", { exact: true })).toBeVisible();
+    await expect(restoredPage.getByRole("link", { name: /Dino Time Rescue/ })).toBeVisible();
+    await restoredContext.close();
   });
 
   test("fits the grade-aware arcade on an iPhone viewport", async ({ page }) => {
