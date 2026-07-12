@@ -66,13 +66,13 @@ export default function QuestWorldsBridge() {
   );
 }
 
-const card: React.CSSProperties = { width: "min(1040px,calc(100% - 36px))", margin: "16px auto 90px", padding: "clamp(21px,4vw,32px)", borderRadius: 30, background: "linear-gradient(145deg,rgba(198,184,255,.1),rgba(217,255,91,.06),#181d28)", border: "1px solid rgba(198,184,255,.28)", color: "#fff" };
+const card: React.CSSProperties = { width: "min(1040px,calc(100% - 36px))", margin: "16px auto 90px", padding: "clamp(21px,4vw,32px)", borderRadius: 30, background: "linear-gradient(145deg,rgba(198,184,255,.1),rgba(217,255,91,.06),#181d28)", border: "1px solid rgba(198,184,255,.28)", color: "#fff", overflow: "hidden" };
 const header: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 18, flexWrap: "wrap" };
 const eyebrow: React.CSSProperties = { color: "#c6b8ff", fontSize: 11, fontWeight: 950, letterSpacing: ".15em" };
 const title: React.CSSProperties = { margin: "7px 0 8px", fontSize: "clamp(2rem,5vw,3.7rem)", lineHeight: .95, letterSpacing: "-.055em" };
 const muted: React.CSSProperties = { maxWidth: 700, margin: 0, color: "#aab1bf", lineHeight: 1.5, fontWeight: 700 };
 const starBadge: React.CSSProperties = { minWidth: 112, padding: 15, borderRadius: 22, display: "grid", placeItems: "center", background: "#c6b8ff", color: "#10131b" };
-const worldGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 9, marginTop: 22 };
+const worldGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,170px),1fr))", gap: 9, marginTop: 22 };
 const worldCard: React.CSSProperties = { minWidth: 0, display: "grid", gap: 6, padding: 14, borderRadius: 18, background: "#10131b", border: "1px solid rgba(255,255,255,.08)" };
 const completeWorld: React.CSSProperties = { borderColor: "rgba(217,255,91,.35)", background: "rgba(217,255,91,.06)" };
 const worldEmoji: React.CSSProperties = { fontSize: 30 };
