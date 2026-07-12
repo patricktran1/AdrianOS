@@ -5,9 +5,9 @@ import "./globals.css";
 import "./school-mode-controls.css";
 
 export const metadata: Metadata = {
-  title: "AdrianOS Play",
-  description: "A private shelf of games built for Adrian.",
-  applicationName: "AdrianOS Play",
+  title: "AdrianOS Learning",
+  description: "A parent-managed learning playground with personalized child profiles, School Mode, and cross-device progress.",
+  applicationName: "AdrianOS Learning",
 };
 
 export const viewport: Viewport = {
