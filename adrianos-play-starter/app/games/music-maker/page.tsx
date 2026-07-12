@@ -1,8 +1,8 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
-import { useAdrianProgress } from "@/lib/adrian-progress";
-import { useEffect, useRef, useState } from "react";
+import { useGameSession } from "@/lib/game-session";
+import { useState } from "react";
 
 const GAME_SLUG = "music-maker";
 const NOTES = ["C", "D", "E", "F", "G", "A", "B"];
@@ -31,20 +31,12 @@ function playTone(note: string) {
 }
 
 export default function Page() {
-  const { recordPlay, award } = useAdrianProgress();
+  const { completeGame, restartGame } = useGameSession(GAME_SLUG);
   const [index, setIndex] = useState(0);
   const [made, setMade] = useState<string[]>([]);
   const [message, setMessage] = useState("Copy the melody.");
   const [done, setDone] = useState(false);
-  const awarded = useRef(false);
   const current = MELODIES[index];
-
-  useEffect(() => { recordPlay(GAME_SLUG); }, [recordPlay]);
-  useEffect(() => {
-    if (!done || awarded.current) return;
-    awarded.current = true;
-    award(GAME_SLUG, { xp: 35, coins: 10, score: MELODIES.length, completed: true });
-  }, [done, award]);
 
   function add(note: string) {
     playTone(note);
@@ -58,6 +50,7 @@ export default function Page() {
       return;
     }
     if (index === MELODIES.length - 1) {
+      completeGame({ xp: 35, coins: 10, score: MELODIES.length });
       setDone(true);
       return;
     }
@@ -70,12 +63,11 @@ export default function Page() {
   }
 
   function replay() {
-    awarded.current = false;
+    restartGame();
     setIndex(0);
     setMade([]);
     setMessage("Copy the melody.");
     setDone(false);
-    recordPlay(GAME_SLUG);
   }
 
   if (done) return <GameFrame title="Music Maker"><section style={finish}><div style={{fontSize:64}}>🎵</div><h1>Music Maker Complete</h1><p>You copied every melody.</p><button onClick={replay} style={home}>Play again</button></section></GameFrame>;
