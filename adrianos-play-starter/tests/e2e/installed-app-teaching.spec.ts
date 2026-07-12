@@ -27,7 +27,7 @@ test.describe("installed app reachability", () => {
     await expect(dialog).toBeVisible();
 
     const sendAction = page.getByRole("button", { name: "Send feedback" });
-    const signInAction = page.getByRole("link", { name: "Sign in to send feedback" });
+    const signInAction = page.getByRole("link", { name: "Sign in or connect family" });
     const visibleAction = await sendAction.isVisible().catch(() => false) ? sendAction : signInAction;
     await expect(visibleAction).toBeVisible();
 
