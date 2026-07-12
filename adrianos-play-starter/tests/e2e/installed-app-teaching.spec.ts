@@ -39,10 +39,14 @@ test.describe("teach-during-play loop", () => {
   test("Math Blast gives a strategy hint, retry, and worked explanation", async ({ page }) => {
     await seedQaFamily(page, { clear: true });
     await page.goto("/games/math-blast?topic=addition&difficulty=1", { waitUntil: "domcontentloaded" });
+    const addition = page.getByRole("button", { name: "Addition", exact: true });
+    await expect(addition).toBeVisible();
+    await addition.click();
     await page.getByRole("button", { name: /10-Question Mission/ }).click();
 
     await expect(page.getByRole("button", { name: "Show a hint" })).toBeVisible();
     const problemHeading = page.getByRole("heading", { level: 1 }).filter({ hasText: /\d+\s*\+\s*\d+/ }).first();
+    await expect(problemHeading).toBeVisible();
     const prompt = (await problemHeading.textContent()) ?? "";
     const match = prompt.match(/(\d+)\s*\+\s*(\d+)/);
     expect(match).not.toBeNull();
