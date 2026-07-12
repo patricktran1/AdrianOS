@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { createSeededRandom, seededShuffle } from "@/lib/deterministic-random";
 import { useGameSession } from "@/lib/game-session";
 import { useMemo, useState } from "react";
 
@@ -14,10 +15,11 @@ const LEVELS = [
   { q: "You split 8 coins equally between 2 pirates. How many each?", a: 4 },
 ];
 
-function options(answer: number) {
+function options(answer: number, seed: string) {
+  const random = createSeededRandom(seed);
   const values = new Set<number>([answer]);
-  while (values.size < 4) values.add(Math.max(0, answer + Math.floor(Math.random() * 7) - 3));
-  return Array.from(values).sort(() => Math.random() - 0.5);
+  while (values.size < 4) values.add(Math.max(0, answer + Math.floor(random() * 7) - 3));
+  return seededShuffle(Array.from(values), `${seed}:order`);
 }
 
 export default function Page() {
@@ -27,7 +29,7 @@ export default function Page() {
   const [choice, setChoice] = useState<number | null>(null);
   const [done, setDone] = useState(false);
   const current = LEVELS[index];
-  const choices = useMemo(() => options(current.a), [current.a]);
+  const choices = useMemo(() => options(current.a, current.q), [current]);
 
   function pick(value: number) {
     if (choice !== null) return;

@@ -2,6 +2,7 @@
 
 import GameFrame from "@/components/GameFrame";
 import { useAdrianProgress } from "@/lib/adrian-progress";
+import { seededShuffle } from "@/lib/deterministic-random";
 import { getActiveProfile } from "@/lib/adrian-profiles";
 import {
   getDueReviewItems,
@@ -53,11 +54,7 @@ const PATTERNS: PatternCard[] = [
   { id: "alternating-shapes-count", sequence: ["🔵", "🔺🔺", "🔵🔵🔵", "🔺🔺🔺🔺"], answer: "🔵🔵🔵🔵🔵", choices: ["🔺🔺🔺🔺🔺", "🔵🔵🔵🔵", "🔵🔵🔵🔵🔵", "🔺🔺🔺"], explanation: "The color alternates while the number of shapes increases by one.", level: 3, skillId: "logic-multi-step" },
 ];
 
-function shuffled<T>(items: T[]): T[] {
-  return [...items].sort(() => Math.random() - 0.5);
-}
-
-function makeSession(reviewIds: string[] = []): PatternCard[] {
+function makeSession(reviewIds: string[] = [], seed = "initial"): PatternCard[] {
   if (reviewIds.length > 0) {
     const review = reviewIds
       .map((id) => PATTERNS.find((pattern) => pattern.id === id))
@@ -65,10 +62,10 @@ function makeSession(reviewIds: string[] = []): PatternCard[] {
     if (review.length > 0) return review.slice(0, SESSION_LENGTH);
   }
 
-  const foundation = shuffled(PATTERNS.filter((pattern) => pattern.level === 1)).slice(0, 3);
-  const developing = shuffled(PATTERNS.filter((pattern) => pattern.level === 2)).slice(0, 3);
-  const challenge = shuffled(PATTERNS.filter((pattern) => pattern.level === 3)).slice(0, 2);
-  return shuffled([...foundation, ...developing, ...challenge]);
+  const foundation = seededShuffle(PATTERNS.filter((pattern) => pattern.level === 1), `${seed}:foundation`).slice(0, 3);
+  const developing = seededShuffle(PATTERNS.filter((pattern) => pattern.level === 2), `${seed}:developing`).slice(0, 3);
+  const challenge = seededShuffle(PATTERNS.filter((pattern) => pattern.level === 3), `${seed}:challenge`).slice(0, 2);
+  return seededShuffle([...foundation, ...developing, ...challenge], `${seed}:session`);
 }
 
 export default function PatternMasterPage() {
@@ -77,7 +74,7 @@ export default function PatternMasterPage() {
   const dueReviews = getDueReviewItems(profileId, GAME_SLUG);
   const autoStarted = useRef(false);
 
-  const [session, setSession] = useState<PatternCard[]>(() => makeSession());
+  const [session, setSession] = useState<PatternCard[]>(() => makeSession([], "initial"));
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [choice, setChoice] = useState<string | null>(null);
@@ -87,7 +84,7 @@ export default function PatternMasterPage() {
   const current = session[index];
   const bestScore = progress.games[GAME_SLUG]?.bestScore ?? 0;
   const shuffledChoices = useMemo(
-    () => current ? shuffled(current.choices) : [],
+    () => current ? seededShuffle(current.choices, `${current.id}:choices`) : [],
     [current]
   );
 
@@ -107,7 +104,8 @@ export default function PatternMasterPage() {
           .map((item) => typeof item.data?.patternId === "string" ? item.data.patternId : "")
           .filter(Boolean)
       : [];
-    setSession(makeSession(ids));
+    const seed = useReview ? `review:${ids.join(":")}` : `round:${Date.now()}`;
+    setSession(makeSession(ids, seed));
     setIndex(0);
     setScore(0);
     setChoice(null);
