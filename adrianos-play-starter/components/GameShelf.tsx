@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import DailyMissionControl from "@/components/DailyMissionControl";
 import AdventureArcade from "@/components/AdventureArcade";
 import PrizeVault from "@/components/PrizeVault";
 import PlacementBanner from "@/components/PlacementBanner";
@@ -13,6 +14,7 @@ import type { Game } from "@/lib/games";
 export default function GameShelf({ games }: { games: Game[] }) {
   return (
     <>
+      <DailyMissionControl />
       <AdventureArcade games={games} />
       <PrizeVault />
 
