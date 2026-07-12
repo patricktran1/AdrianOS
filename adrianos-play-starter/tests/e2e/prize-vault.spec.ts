@@ -29,22 +29,20 @@ test("shows Grade 2 dragon prizes and unlocks one prize per completed game", asy
   await expect(vault.getByText("Next: 💎 Blue Gem")).toBeVisible();
 });
 
-test("changes the collection across TK and Grade 5 and stays phone safe", async ({ page }) => {
+test("gives TK a distinct empty collection", async ({ page }) => {
   await seedQaFamily(page, { clear: true, grade: -1 });
   await page.goto("/");
   const vault = page.getByRole("region", { name: "Prize Vault" });
   await expect(vault.getByText("Critter Parade")).toBeVisible();
   await expect(vault.getByText("Finish any game to open your first prize.")).toBeVisible();
+});
 
-  await page.evaluate(() => {
-    const key = "adrianos-learning-v1:qa-learner";
-    const learning = JSON.parse(window.localStorage.getItem(key) ?? "{}");
-    learning.reviewQueue = (learning.reviewQueue ?? []).map((row: { id?: string; data?: Record<string, unknown> }) => row.id === "profile-grade" ? { ...row, data: { ...row.data, grade: 5 } } : row);
-    window.localStorage.setItem(key, JSON.stringify(learning));
-  });
-  await page.reload();
-  await expect(page.getByRole("region", { name: "Prize Vault" }).getByText("Cyber City Artifact Grid")).toBeVisible();
-
+test("gives Grade 5 a cyber collection and stays phone safe", async ({ page }) => {
+  await seedQaFamily(page, { clear: true, grade: 5 });
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const vault = page.getByRole("region", { name: "Prize Vault" });
+  await expect(vault.getByText("Cyber City Artifact Grid")).toBeVisible();
+  await expect(vault.getByText("Next: 💾 Data Disk")).toBeVisible();
   await expect.poll(async () => page.evaluate(() => ({ viewport: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }))).toEqual({ viewport: 390, scroll: 390 });
 });
