@@ -7,6 +7,9 @@
     "dev": "npm run generate:games && next dev",
     "build": "npm run generate:games && npm run check:school-controls && npm run check:game-session && next build",
     "start": "next start",
+    "test:games": "playwright test",
+    "test:games:smoke": "playwright test tests/e2e/game-routes.spec.ts",
+    "test:games:completion": "playwright test tests/e2e/game-completion.spec.ts",
     "check:school-controls": "node scripts/check-school-mode-controls.mjs",
     "check:game-session": "node scripts/check-game-session-sdk.mjs"
   },
@@ -17,6 +20,7 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
