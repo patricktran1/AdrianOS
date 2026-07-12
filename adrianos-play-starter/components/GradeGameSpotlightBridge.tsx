@@ -18,6 +18,18 @@ const FEATURED_BY_GRADE: Record<number, {
   replayLabel: string;
   mechanics: string[];
 }> = {
+  [-1]: {
+    eyebrow: "TK FEATURED ADVENTURE",
+    title: "Critter Parade Trail",
+    description: "Guide Pip the fox through a gentle daily trail with read-aloud counting, colors, shapes, patterns, beginning sounds, and nature discoveries.",
+    emoji: "🐣🐾",
+    href: "/games/daily-adventure-remix",
+    slug: "daily-adventure-remix",
+    completedLabel: "✓ Today’s critter trail cleared",
+    startLabel: "Join the parade →",
+    replayLabel: "Walk the trail again →",
+    mechanics: ["Read-aloud play", "Large tap gates", "Gentle clues", "Daily rotation"],
+  },
   0: {
     eyebrow: "KINDERGARTEN FEATURED ADVENTURE",
     title: "Rainbow Rocket Park",
