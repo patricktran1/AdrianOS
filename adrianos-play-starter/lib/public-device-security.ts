@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  getCloudSyncStatus,
-  signOutCloud,
+  refreshCloudAuthStatus,
   syncCloudNow,
 } from "@/lib/adrian-cloud-sync";
 import { lockParentSession } from "@/lib/parent-session-security";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 const APP_STORAGE_PREFIX = "adrianos-";
 
@@ -24,6 +24,15 @@ function removeAppKeys(storage: Storage): void {
   for (const key of keys) storage.removeItem(key);
 }
 
+async function signOutCurrentBrowserSession(): Promise<void> {
+  const client = getSupabaseBrowserClient();
+  if (client) {
+    const { error } = await client.auth.signOut({ scope: "local" });
+    if (error) throw error;
+  }
+  await refreshCloudAuthStatus();
+}
+
 export function eraseAdrianOsDeviceData(): void {
   if (typeof window === "undefined") return;
   removeAppKeys(window.localStorage);
@@ -36,7 +45,7 @@ export function eraseAdrianOsDeviceData(): void {
 
 export async function signOutAndKeepDeviceData(): Promise<DeviceSignOutResult> {
   lockParentSession();
-  await signOutCloud();
+  await signOutCurrentBrowserSession();
   return {
     ok: true,
     erased: false,
@@ -45,21 +54,17 @@ export async function signOutAndKeepDeviceData(): Promise<DeviceSignOutResult> {
 }
 
 export async function syncSignOutAndEraseDevice(): Promise<DeviceSignOutResult> {
-  const status = getCloudSyncStatus();
-  const signedIn = Boolean(status.userEmail) && status.phase !== "signed-out";
-  if (signedIn) {
-    const synced = await syncCloudNow();
-    if (!synced) {
-      return {
-        ok: false,
-        erased: false,
-        message: "Cloud backup could not be confirmed, so nothing was erased from this device.",
-      };
-    }
+  const synced = await syncCloudNow();
+  if (!synced) {
+    return {
+      ok: false,
+      erased: false,
+      message: "Cloud backup could not be confirmed, so nothing was erased from this device.",
+    };
   }
 
   lockParentSession();
-  await signOutCloud();
+  await signOutCurrentBrowserSession();
   eraseAdrianOsDeviceData();
   return {
     ok: true,
@@ -71,7 +76,7 @@ export async function syncSignOutAndEraseDevice(): Promise<DeviceSignOutResult> 
 export async function forceSignOutAndEraseDevice(): Promise<DeviceSignOutResult> {
   lockParentSession();
   try {
-    await signOutCloud();
+    await signOutCurrentBrowserSession();
   } catch {
     // Local family data must still be removable from a shared device when offline.
   }
