@@ -28,7 +28,7 @@ async function signOutCurrentBrowserSession(): Promise<void> {
   const client = getSupabaseBrowserClient();
   if (client) {
     const { error } = await client.auth.signOut({ scope: "local" });
-    if (error) throw error;
+    if (error && !/auth session missing/i.test(error.message)) throw error;
   }
   await refreshCloudAuthStatus();
 }
