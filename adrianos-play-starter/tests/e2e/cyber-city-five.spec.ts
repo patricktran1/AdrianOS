@@ -34,7 +34,7 @@ test.describe("Grade 5 Cyber City Five", () => {
     await expect(page.getByRole("heading", { name: "The eight code fragments align." })).toBeVisible();
     await page.getByRole("button", { name: "Seal the city core →" }).click();
     await expect(page.getByRole("heading", { name: "QA Learner saved Cyber City Five!" })).toBeVisible();
-    await expect(page.getByText("3", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("You defended eight Grade 5 standards and built a unique three-upgrade strategy.")).toBeVisible();
 
     await expect.poll(async () => page.evaluate(({ progressKey, learningKey }) => {
       const progress = JSON.parse(window.localStorage.getItem(progressKey) ?? "{}");
