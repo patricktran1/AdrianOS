@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { runMasteryLoopForProfile } from "@/lib/adrian-mastery-runtime";
 import { readFamilyState } from "@/lib/adrian-profiles";
-import { syncMasteryLoopForProfile } from "@/lib/adrian-mastery-loop";
 
 const SOURCE_EVENTS = [
   "adrianos-learning-updated",
@@ -19,7 +19,7 @@ export default function MasteryLoopBridge() {
     const run = () => {
       if (stopped) return;
       const family = readFamilyState();
-      for (const profile of family.profiles) syncMasteryLoopForProfile(profile.id);
+      for (const profile of family.profiles) runMasteryLoopForProfile(profile.id);
     };
 
     const schedule = (delay = 180) => {
