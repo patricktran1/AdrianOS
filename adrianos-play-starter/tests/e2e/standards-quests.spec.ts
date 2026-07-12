@@ -15,13 +15,7 @@ async function seedGradeFiveLearner(page: Page, skills: Record<string, { mastery
     window.localStorage.setItem("adrianos-family-customized-v1", "yes");
     window.localStorage.setItem(familyKey, JSON.stringify({
       activeProfileId: profileId,
-      profiles: [{
-        id: profileId,
-        name: "Quest Learner",
-        age: 10,
-        emoji: "🧭",
-        createdAt: "2026-07-12T00:00:00.000Z",
-      }],
+      profiles: [{ id: profileId, name: "Quest Learner", age: 10, emoji: "🧭", createdAt: "2026-07-12T00:00:00.000Z" }],
       parentPinHash: null,
     }));
     window.localStorage.setItem(learningKey, JSON.stringify({
@@ -57,7 +51,7 @@ async function seedGradeFiveLearner(page: Page, skills: Record<string, { mastery
 
 async function chooseCorrectAndAdvance(page: Page, final: boolean) {
   await page.locator('button[data-correct="true"]').click();
-  await expect(page.getByText("GATE CLEARED", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(/GATE CLEARED|COMBO ×\d+!/);
   await page.getByRole("button", { name: final ? "Open the treasure →" : "Next gate →", exact: true }).click();
 }
 
@@ -77,13 +71,16 @@ test.describe("TK-5 standards quests", () => {
     await expect(page.getByText("Grade 6", { exact: true })).toHaveCount(0);
   });
 
-  test("Number Quest teaches after a miss and records a six-gate completion", async ({ page }) => {
+  test("Number Quest teaches after a miss, builds a combo, and records completion", async ({ page }) => {
     await seedGradeFiveLearner(page);
     await page.goto("/games/number-quest?focus=math-decimals", { waitUntil: "domcontentloaded" });
 
     await expect(page.getByRole("heading", { name: "Cross six math gates.", exact: true })).toBeVisible();
+    await expect(page.getByText("CYBER CITY 5 · GRADE 5", { exact: true })).toBeVisible();
+    await expect(page.getByText("🛡️ Clue shield ready", { exact: true })).toBeVisible();
     await page.locator('button[data-correct="false"]').first().click();
     await expect(page.getByText("CLUE UNLOCKED", { exact: true })).toBeVisible();
+    await expect(page.getByText("🛡️ Shield used", { exact: true })).toBeVisible();
     await page.locator('button[data-correct="true"]').click();
     await expect(page.getByText("GATE CLEARED", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Next gate →", exact: true }).click();
@@ -92,7 +89,8 @@ test.describe("TK-5 standards quests", () => {
       await chooseCorrectAndAdvance(page, gate === 6);
     }
 
-    await expect(page.getByRole("heading", { name: "The number gate is open.", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Cyber City 5 is saved.", exact: true })).toBeVisible();
+    await expect(page.getByText(/best combo ×5/)).toBeVisible();
     await expect.poll(async () => page.evaluate(({ progressKey, learningKey }) => {
       const progress = JSON.parse(window.localStorage.getItem(progressKey) ?? "{}");
       const learning = JSON.parse(window.localStorage.getItem(learningKey) ?? "{}");
@@ -101,17 +99,11 @@ test.describe("TK-5 standards quests", () => {
         completions: progress.games?.["number-quest"]?.completions ?? 0,
         decimalAttempts: learning.skills?.["math-decimals"]?.attempts ?? 0,
       };
-    }, { progressKey: PROGRESS_KEY, learningKey: LEARNING_KEY })).toMatchObject({
-      plays: 1,
-      completions: 1,
-      decimalAttempts: 7,
-    });
+    }, { progressKey: PROGRESS_KEY, learningKey: LEARNING_KEY })).toMatchObject({ plays: 1, completions: 1, decimalAttempts: 7 });
   });
 
   test("mastery treasure can be claimed only once", async ({ page }) => {
-    await seedGradeFiveLearner(page, {
-      "math-decimals": { mastery: 92, attempts: 6, correct: 6 },
-    });
+    await seedGradeFiveLearner(page, { "math-decimals": { mastery: 92, attempts: 6, correct: 6 } });
     await page.goto("/quests", { waitUntil: "domcontentloaded" });
 
     const claim = page.getByRole("button", { name: /Claim 20 XP \+ 6 coins/ }).first();
@@ -144,9 +136,6 @@ test.describe("TK-5 standards quests", () => {
     const worlds = page.getByLabel("Curriculum quest worlds");
     await expect(worlds).toBeVisible();
     await expect(worlds.getByText("Number Kingdom", { exact: true })).toBeVisible();
-    await expect.poll(async () => page.evaluate(() => ({
-      viewport: window.innerWidth,
-      scroll: document.documentElement.scrollWidth,
-    }))).toEqual({ viewport: 390, scroll: 390 });
+    await expect.poll(async () => page.evaluate(() => ({ viewport: window.innerWidth, scroll: document.documentElement.scrollWidth }))).toEqual({ viewport: 390, scroll: 390 });
   });
 });
