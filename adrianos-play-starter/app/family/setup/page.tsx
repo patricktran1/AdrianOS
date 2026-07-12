@@ -1,5 +1,5 @@
-import FamilySetup from "@/components/FamilySetup";
+import ElementaryFamilySetup from "@/components/ElementaryFamilySetup";
 
 export default function FamilySetupPage() {
-  return <FamilySetup />;
+  return <ElementaryFamilySetup />;
 }
