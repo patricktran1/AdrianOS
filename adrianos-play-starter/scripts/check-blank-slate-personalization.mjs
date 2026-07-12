@@ -14,6 +14,7 @@ const gate = await source("components/FamilyOnboardingGate.tsx");
 const setup = await source("components/FamilySetup.tsx");
 const learnerProfile = await source("lib/adrian-learning-profile.ts");
 const dailySession = await source("lib/adrian-daily-session.ts");
+const placement = await source("app/games/placement-adventure/page.tsx");
 const layout = await source("app/layout.tsx");
 
 if (!profiles.includes('activeProfileId: ""') || !profiles.includes("profiles: []")) {
@@ -37,8 +38,14 @@ if (!setup.includes("LEARNER_INTERESTS") || !setup.includes("LEARNING_PRIORITIES
 if (!learnerProfile.includes("learner-profile-settings") || !learnerProfile.includes("writeLearningForProfile")) {
   failures.push("personalization: learner settings are not stored in synced learning state");
 }
-for (const contract of ["hasCompletedPlacement", "personalizedExploreItem", "Parent priority:", "sessionMinutes(profile.id"]) {
+for (const contract of ["hasCompletedPlacement", "personalizedExploreItem", "Parent priority:", "placementFirst"]) {
   if (!dailySession.includes(contract)) failures.push(`daily session: missing ${contract}`);
+}
+if (!dailySession.includes('if (placement) return [placement]')) {
+  failures.push("daily session: a first placement map can be displaced by a free or light day");
+}
+if (!placement.includes("useFamilyProfiles") || placement.includes("getActiveProfile")) {
+  failures.push("placement: profile rendering is not hydration-safe");
 }
 
 if (failures.length) {
