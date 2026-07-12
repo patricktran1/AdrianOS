@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { useAdrianProgress } from "@/lib/adrian-progress";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import { readProfileGrade } from "@/lib/adrian-profile-grade";
-import { readDailyRemixState, REMIX_THEMES } from "@/lib/daily-adventure-remix";
+import { REMIX_THEMES } from "@/lib/daily-adventure-remix";
+import { readDailyRemixState } from "@/lib/daily-adventure-remix-state";
 
 export default function DailyAdventureRemixBridge() {
   const pathname = usePathname();
@@ -29,7 +30,7 @@ export default function DailyAdventureRemixBridge() {
         <div style={chips}>
           <span style={chip}>🔥 {daily.streak} day streak</span>
           <span style={chip}>🎲 Daily rotation</span>
-          <span style={chip}>💎 One treasure claim</span>
+          <span style={chip}>💎 One synced treasure claim</span>
         </div>
       </div>
       <div style={actions}>
