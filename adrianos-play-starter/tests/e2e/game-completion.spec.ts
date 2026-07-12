@@ -15,6 +15,14 @@ type CompletionRecipe = {
   playToCompletion: (page: Page) => Promise<void>;
 };
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function accessibleNameEndingWith(value: string | number): RegExp {
+  return new RegExp(`${escapeRegExp(String(value))}$`);
+}
+
 async function readGameProgress(page: Page, slug: string): Promise<GameProgress> {
   return page.evaluate(({ key, gameSlug }) => {
     const raw = window.localStorage.getItem(key);
@@ -35,7 +43,7 @@ async function completeButtonQuiz(
   finalLabel: string,
 ) {
   for (let index = 0; index < answers.length; index += 1) {
-    await page.getByRole("button", { name: String(answers[index]), exact: true }).click();
+    await page.getByRole("button", { name: accessibleNameEndingWith(answers[index]) }).click();
     await page.getByRole("button", {
       name: index === answers.length - 1 ? finalLabel : nextLabel,
       exact: true,
