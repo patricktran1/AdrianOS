@@ -20,12 +20,12 @@ function isStandaloneMode(): boolean {
 
 export default function InstallAppPrompt() {
   const pathname = usePathname();
-  const { activeProfile, hydrated } = useFamilyProfiles();
+  const { activeProfile, hydrated, hasProfiles } = useFamilyProfiles();
   const [visible, setVisible] = useState(false);
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
   const [installing, setInstalling] = useState(false);
 
-  const allowedPath = pathname === "/" || pathname === "/parent";
+  const allowedPath = (pathname === "/" || pathname === "/parent") && hasProfiles;
 
   useEffect(() => {
     if (!allowedPath || isStandaloneMode()) return;
@@ -51,7 +51,7 @@ export default function InstallAppPrompt() {
     };
   }, [allowedPath]);
 
-  if (!allowedPath || !visible || !hydrated) return null;
+  if (!allowedPath || !visible || !hydrated || !hasProfiles) return null;
 
   async function install() {
     if (!installEvent) return;
