@@ -31,7 +31,7 @@ test.describe("curriculum-aware learning paths", () => {
     await page.getByLabel("Learning grade").selectOption("3");
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.getByLabel("Learning grade")).toHaveValue("3");
-    await expect(page.getByText("California Grade 3 priority standards")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "California Grade 3 priority standards", exact: true })).toBeVisible();
     await expect(page.getByText("3.OA.A.1", { exact: true })).toBeVisible();
 
     const learning = await page.evaluate(() => {
