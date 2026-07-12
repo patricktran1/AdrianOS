@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { seededShuffle } from "@/lib/deterministic-random";
 import { useGameSession } from "@/lib/game-session";
 import { useMemo, useState } from "react";
 
@@ -23,7 +24,7 @@ export default function SolarSystemExplorerPage() {
   const [choice, setChoice] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
   const current = QUESTIONS[index];
-  const choices = useMemo(() => [...current.choices].sort(() => Math.random() - 0.5), [current]);
+  const choices = useMemo(() => seededShuffle(current.choices, current.prompt), [current]);
 
   function choose(value: string) {
     if (choice) return;
