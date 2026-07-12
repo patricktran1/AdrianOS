@@ -3,11 +3,12 @@ import { seedQaFamily } from "./helpers/seed-family";
 
 async function seedTwoLearners(page: import("@playwright/test").Page) {
   await seedQaFamily(page, { clear: true, grade: 2 });
-  await page.goto("/", { waitUntil: "domcontentloaded" });
-  await page.evaluate(() => {
+  await page.addInitScript(() => {
     const family = JSON.parse(window.localStorage.getItem("adrianos-family-v1") ?? "{}");
-    family.profiles.push({ id: "tk-buddy", name: "Elliot", age: 4, emoji: "🐣", createdAt: new Date().toISOString() });
-    window.localStorage.setItem("adrianos-family-v1", JSON.stringify(family));
+    if (!family.profiles?.some((profile: { id?: string }) => profile.id === "tk-buddy")) {
+      family.profiles = [...(family.profiles ?? []), { id: "tk-buddy", name: "Elliot", age: 4, emoji: "🐣", createdAt: new Date().toISOString() }];
+      window.localStorage.setItem("adrianos-family-v1", JSON.stringify(family));
+    }
     window.localStorage.setItem("adrianos-learning-v1:tk-buddy", JSON.stringify({
       skills: {},
       reviewQueue: [{ id: "profile-grade", gameSlug: "adrianos-grade-profile", skillId: "profile-grade", subject: "Learning Skills", prompt: "grade", correctAnswer: "", dueAt: "9999-12-31T23:59:59.999Z", updatedAt: new Date().toISOString(), successes: 0, status: "resolved", data: { grade: -1 } }]
