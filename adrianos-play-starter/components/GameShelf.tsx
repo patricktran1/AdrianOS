@@ -1,177 +1,37 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import type { Game } from "@/lib/games";
-import ProgressPill from "@/components/ProgressPill";
+import AdventureArcade from "@/components/AdventureArcade";
 import PlacementBanner from "@/components/PlacementBanner";
 import SchoolModeBanner from "@/components/SchoolModeBanner";
 import TodaysAdventure from "@/components/TodaysAdventure";
 import SkillMap from "@/components/SkillMap";
 import HomeHub from "@/components/HomeHub";
-import { useAdrianProgress } from "@/lib/adrian-progress";
-
-const RECENT_KEY = "adrianos-recent-games";
-
-function getRecent(): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
-  } catch {
-    return [];
-  }
-}
+import type { Game } from "@/lib/games";
 
 export default function GameShelf({ games }: { games: Game[] }) {
-  const [recent, setRecent] = useState<string[]>([]);
-  const [filter, setFilter] = useState("All");
-  const { progress } = useAdrianProgress();
-
-  useEffect(() => {
-    setRecent(getRecent());
-  }, []);
-
-  const subjects = useMemo(
-    () => ["All", ...Array.from(new Set(games.map((game) => game.subject)))],
-    [games]
-  );
-
-  const visibleGames =
-    filter === "All" ? games : games.filter((game) => game.subject === filter);
-
-  function remember(slug: string) {
-    const updated = [slug, ...getRecent().filter((item) => item !== slug)].slice(0, 4);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
-    setRecent(updated);
-  }
-
   return (
     <>
-      <section className="hero">
-        <div>
-          <span className="eyebrow">ADRIANOS LEARNING</span>
-          <h1>Pick a game.<br />Grow a superpower.</h1>
-          <p>
-            A parent-managed learning playground for logic, reading, math,
-            creativity, curiosity, and whatever we build next.
-          </p>
-          <div style={{ marginTop: 22 }}>
-            <ProgressPill large />
-          </div>
-        </div>
-        <div className="hero-orb" aria-hidden="true">
-          <span>PLAY</span>
-        </div>
-      </section>
+      <AdventureArcade games={games} />
 
       <SchoolModeBanner />
+      <PlacementBanner />
+      <TodaysAdventure games={games} />
+      <SkillMap games={games} />
+      <HomeHub games={games} />
 
       <div style={parentCtaRow}>
         <Link href="/parent" style={parentCta}>
           <span style={{ fontSize: 32 }}>🔐</span>
           <span>
             <strong style={{ display: "block", fontSize: 18 }}>Parent Dashboard</strong>
-            <small style={{ display: "block", marginTop: 3, opacity: .72 }}>Reports, goals, profiles, schedule, and cloud sync</small>
+            <small style={{ display: "block", marginTop: 3, opacity: .72 }}>
+              Reports, goals, profiles, schedule, and cloud sync
+            </small>
           </span>
           <span style={{ marginLeft: "auto", fontSize: 24 }}>→</span>
         </Link>
       </div>
-
-      <PlacementBanner />
-      <TodaysAdventure games={games} />
-      <SkillMap games={games} />
-      <HomeHub games={games} />
-
-      {recent.length > 0 && (
-        <section className="section">
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">JUMP BACK IN</span>
-              <h2>Recently played</h2>
-            </div>
-          </div>
-          <div className="recent-row">
-            {recent.map((slug) => {
-              const game = games.find((item) => item.slug === slug);
-              if (!game || game.status !== "playable") return null;
-              return (
-                <Link
-                  key={slug}
-                  href={`/games/${slug}`}
-                  onClick={() => remember(slug)}
-                  className="recent-pill"
-                >
-                  <span>{game.emoji}</span>
-                  {game.title}
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      <section className="section">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">GAME LIBRARY</span>
-            <h2>Choose your next mission</h2>
-          </div>
-          <div className="filters" aria-label="Filter games">
-            {subjects.map((subject) => (
-              <button
-                key={subject}
-                className={filter === subject ? "filter active" : "filter"}
-                onClick={() => setFilter(subject)}
-              >
-                {subject}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="game-grid">
-          {visibleGames.map((game) => {
-            const playable = game.status === "playable";
-            const bestScore = progress.games[game.slug]?.bestScore ?? 0;
-            const card = (
-              <article className={`game-card ${!playable ? "disabled" : ""}`}>
-                <div className="game-icon" aria-hidden="true">{game.emoji}</div>
-                <div className="game-meta">
-                  <span>{game.subject}</span>
-                  <span>{game.age}</span>
-                </div>
-                <h3>{game.title}</h3>
-                <p>{game.description}</p>
-                {bestScore > 0 && (
-                  <div style={{ marginTop: 14, color: "#c6b8ff", fontWeight: 850, fontSize: 13 }}>
-                    Personal best: {bestScore}
-                  </div>
-                )}
-                <div className="card-footer">
-                  <span className="play-label">
-                    {playable ? "PLAY NOW" : "ADD EXISTING GAME"}
-                  </span>
-                  <span className="arrow" aria-hidden="true">↗</span>
-                </div>
-              </article>
-            );
-
-            return playable ? (
-              <Link
-                key={game.slug}
-                href={`/games/${game.slug}`}
-                onClick={() => remember(game.slug)}
-                className="card-link"
-              >
-                {card}
-              </Link>
-            ) : (
-              <Link key={game.slug} href={`/games/${game.slug}`} className="card-link">
-                {card}
-              </Link>
-            );
-          })}
-        </div>
-      </section>
 
       <footer>
         <span>Built first for Adrian, now opening to more curious kids.</span>
@@ -181,5 +41,24 @@ export default function GameShelf({ games }: { games: Game[] }) {
   );
 }
 
-const parentCtaRow: React.CSSProperties = { display: "flex", justifyContent: "flex-end", margin: "16px 0 4px" };
-const parentCta: React.CSSProperties = { width: "min(430px,100%)", minHeight: 82, display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", borderRadius: 22, border: "1px solid rgba(255,255,255,.14)", background: "#222936", color: "#fff", textDecoration: "none", fontWeight: 900, boxShadow: "0 18px 45px rgba(0,0,0,.22)" };
+const parentCtaRow: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "flex-end",
+  margin: "20px 0 4px",
+};
+
+const parentCta: React.CSSProperties = {
+  width: "min(430px,100%)",
+  minHeight: 82,
+  display: "flex",
+  alignItems: "center",
+  gap: 14,
+  padding: "16px 20px",
+  borderRadius: 22,
+  border: "1px solid rgba(255,255,255,.14)",
+  background: "#222936",
+  color: "#fff",
+  textDecoration: "none",
+  fontWeight: 900,
+  boxShadow: "0 18px 45px rgba(0,0,0,.22)",
+};
