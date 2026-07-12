@@ -1,6 +1,6 @@
 # AdrianOS Learning
 
-A parent-managed learning playground built with Next.js. It includes educational games, School Mode, multiple child profiles, parent reporting, optional Supabase cloud sync, and structured family-beta feedback.
+A parent-managed learning playground built with Next.js. It includes educational games, School Mode, multiple child profiles, parent reporting, optional Supabase cloud sync, structured family-beta feedback, and an installable family-device experience.
 
 ## Run locally
 
@@ -17,6 +17,7 @@ Useful routes:
 - `/join?cohort=adrian-2nd-grade` — Adrian’s 2nd grade share link
 - `/join?cohort=piedmont-families` — Piedmont families share link
 - `/family/setup?local=1` — local-only family profile setup
+- `/install` — iPhone, Android, and computer installation guide
 - `/school` — child School Mode
 - `/parent` — parent dashboard
 
@@ -61,6 +62,16 @@ The parent authenticates. Child profiles never require their own email or Google
 - Share-link cohort tags are stored locally and attached to parent feedback.
 - The global Parent feedback launcher records rating, category, message, child profile, cohort, page, and device context for signed-in households.
 
+## Installable family app
+
+- `app/manifest.ts` launches installed copies directly into School Mode.
+- `/install` detects iPhone/iPad, Android, or desktop and gives platform-specific instructions.
+- The active child remains device-local, so the installed app resumes the most recently selected learner.
+- `public/sw.js` caches the app shell and previously visited same-origin pages and assets.
+- The service worker skips API, auth, Supabase, and all cross-origin traffic.
+- `/offline` explains which actions still require a connection.
+- Generated 192px, 512px, and Apple touch icons are validated in browser QA.
+
 ## Production Google OAuth smoke
 
 `.github/workflows/production-auth-smoke.yml` runs after every successful `main` build. It opens the production `/join` page, presses Continue with Google, and verifies:
@@ -90,5 +101,4 @@ app/games/spelling-sprint/page.tsx
 
 - Broader game-session SDK migration
 - Adaptive difficulty and mastery recommendations
-- Installable PWA experience
 - Parent-controlled cohort and classroom sharing

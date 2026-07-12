@@ -9,7 +9,7 @@ import "@/app/family-beta.css";
 
 const BENEFITS = [
   ["👨‍👩‍👧‍👦", "One parent account", "A parent signs in once and creates a separate learning profile for each child."],
-  ["📱", "Computer and iPhone", "Progress follows the family account, so a child can continue on another signed-in device."],
+  ["📱", "Install on family devices", "Add AdrianOS to an iPhone, tablet, or computer so School Mode is one tap away."],
   ["🧭", "Guided learning", "School Mode builds a short route while Parent Mode shows progress and the next growth area."],
   ["🛡️", "Children do not sign in", "No child email or Google account is required. Profiles remain controlled by the parent."],
 ] as const;
@@ -33,6 +33,7 @@ export default function FamilyBetaLanding() {
   }
 
   const localHref = `/family/setup?local=1&cohort=${encodeURIComponent(cohort)}`;
+  const installHref = `/install?cohort=${encodeURIComponent(cohort)}`;
 
   return (
     <main className="family-beta-page">
@@ -54,6 +55,7 @@ export default function FamilyBetaLanding() {
               {busy ? "Opening Google…" : "Continue with Google"}
             </button>
             <Link href={localHref} className="family-beta-secondary">Try it on this device</Link>
+            <Link href={installHref} className="family-beta-secondary">Install AdrianOS</Link>
           </div>
           {!configured && (
             <p className="family-beta-message">Google family accounts are not configured on this deployment yet. The local-device preview is available.</p>
