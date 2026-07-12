@@ -7,6 +7,7 @@ import { getSubjectMastery, readLearningForProfile } from "@/lib/adrian-learning
 import { readProgressForProfile } from "@/lib/adrian-progress";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import type { Game } from "@/lib/games";
+import "@/app/parent-command-center.css";
 
 const EVENTS = [
   "adrianos-progress-updated",
@@ -35,6 +36,12 @@ function lastSevenDays(): string[] {
   });
 }
 
+function openParentTool(label: string) {
+  const button = Array.from(document.querySelectorAll<HTMLButtonElement>("aside > button"))
+    .find((item) => item.textContent?.includes(label));
+  button?.click();
+}
+
 export default function ParentCommandCenter({ games }: { games: Game[] }) {
   const { family, activeProfile, switchProfile, hydrated } = useFamilyProfiles();
   const [revision, setRevision] = useState(0);
@@ -60,11 +67,10 @@ export default function ParentCommandCenter({ games }: { games: Game[] }) {
     ).length;
     const completedToday = session?.missions.filter((mission) => mission.status === "complete").length ?? 0;
     const totalToday = session?.missions.length ?? 0;
-    const week = lastSevenDays().map((date) => {
+    const weeklyCompletions = lastSevenDays().reduce((sum, date) => {
       const activity = progress.activity.find((item) => item.date === date);
-      return activity?.completions ?? 0;
-    });
-    const weeklyCompletions = week.reduce((sum, value) => sum + value, 0);
+      return sum + (activity?.completions ?? 0);
+    }, 0);
     const strongest = mastery[0] ?? null;
     const nextFocus = [...mastery]
       .filter((row) => row.gamesPlayed > 0)
@@ -126,7 +132,7 @@ export default function ParentCommandCenter({ games }: { games: Game[] }) {
         </div>
       </div>
 
-      <div style={heroGrid}>
+      <div className="parent-command-hero" style={heroGrid}>
         <article style={statusCard}>
           <div style={statusTopline}>
             <span style={statusDot(snapshot.allDone)} />
@@ -148,7 +154,7 @@ export default function ParentCommandCenter({ games }: { games: Game[] }) {
           </div>
           <div style={actionRow}>
             <Link href="/school" style={primaryLink}>{snapshot.allDone ? "View School Mode" : "Open today’s route"}</Link>
-            <Link href="/weekly-report" style={secondaryLink}>Weekly report</Link>
+            <button type="button" onClick={() => openParentTool("Weekly report")} style={secondaryButton}>Weekly report</button>
           </div>
         </article>
 
@@ -162,18 +168,18 @@ export default function ParentCommandCenter({ games }: { games: Game[] }) {
               <span>{snapshot.currentMission.reason}</span>
             </div>
           )}
-          <Link href="/skill-goals" style={textLink}>Adjust learning goals →</Link>
+          <button type="button" onClick={() => openParentTool("Skill goals")} style={textButton}>Adjust learning goals →</button>
         </aside>
       </div>
 
-      <div style={metricGrid}>
+      <div className="parent-command-metrics" style={metricGrid}>
         <Metric label="Today" value={`${snapshot.completedToday}/${snapshot.totalToday || 0}`} detail="missions" />
         <Metric label="Streak" value={String(snapshot.streak)} detail={snapshot.streak === 1 ? "day" : "days"} />
         <Metric label="This week" value={String(snapshot.weeklyCompletions)} detail="completed" />
         <Metric label="Level" value={String(snapshot.progress.level)} detail={`${snapshot.progress.xp} XP`} />
       </div>
 
-      <div style={insightGrid}>
+      <div className="parent-command-insights" style={insightGrid}>
         <Insight
           label="STRONGEST AREA"
           title={snapshot.strongest ? snapshot.strongest.subject : "Still learning"}
@@ -195,23 +201,11 @@ export default function ParentCommandCenter({ games }: { games: Game[] }) {
 }
 
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return (
-    <div style={metricCard}>
-      <small>{label}</small>
-      <strong>{value}</strong>
-      <span>{detail}</span>
-    </div>
-  );
+  return <div style={metricCard}><small>{label}</small><strong>{value}</strong><span>{detail}</span></div>;
 }
 
 function Insight({ label, title, detail }: { label: string; title: string; detail: string }) {
-  return (
-    <article style={insightCard}>
-      <small>{label}</small>
-      <strong>{title}</strong>
-      <p>{detail}</p>
-    </article>
-  );
+  return <article style={insightCard}><small>{label}</small><strong>{title}</strong><p>{detail}</p></article>;
 }
 
 function statusDot(done: boolean): React.CSSProperties {
@@ -240,11 +234,11 @@ const progressTrack: React.CSSProperties = { height: 12, borderRadius: 999, back
 const progressFill: React.CSSProperties = { height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#7fdcff,#c6b8ff,#d9ff5b)", transition: "width .25s ease" };
 const actionRow: React.CSSProperties = { display: "flex", gap: 10, flexWrap: "wrap", marginTop: 22 };
 const primaryLink: React.CSSProperties = { padding: "13px 18px", borderRadius: 999, background: "#d9ff5b", color: "#10131b", textDecoration: "none", fontWeight: 950 };
-const secondaryLink: React.CSSProperties = { padding: "13px 18px", borderRadius: 999, background: "#222936", color: "#fff", textDecoration: "none", fontWeight: 900, border: "1px solid rgba(255,255,255,.12)" };
+const secondaryButton: React.CSSProperties = { padding: "13px 18px", borderRadius: 999, background: "#222936", color: "#fff", fontWeight: 900, border: "1px solid rgba(255,255,255,.12)", cursor: "pointer" };
 const attentionCard: React.CSSProperties = { padding: 24, borderRadius: 28, background: "#181d28", border: "1px solid rgba(255,255,255,.11)", display: "grid", alignContent: "start", gap: 14 };
 const attentionHeadline: React.CSSProperties = { margin: 0, fontSize: "clamp(1.7rem,4vw,2.6rem)", lineHeight: 1, letterSpacing: "-.045em" };
 const nextMissionBox: React.CSSProperties = { display: "grid", gap: 6, padding: 15, borderRadius: 18, background: "#222936", color: "#aab1bf" };
-const textLink: React.CSSProperties = { color: "#d9ff5b", fontWeight: 900, textDecoration: "none" };
+const textButton: React.CSSProperties = { width: "fit-content", padding: 0, border: 0, background: "transparent", color: "#d9ff5b", fontWeight: 900, cursor: "pointer" };
 const metricGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 10 };
 const metricCard: React.CSSProperties = { display: "grid", gap: 4, padding: 16, borderRadius: 19, background: "#181d28", border: "1px solid rgba(255,255,255,.09)" };
 const insightGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 10 };
