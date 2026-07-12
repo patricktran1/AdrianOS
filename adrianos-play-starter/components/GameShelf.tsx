@@ -3,6 +3,7 @@
 import Link from "next/link";
 import DailyMissionControl from "@/components/DailyMissionControl";
 import AdventureArcade from "@/components/AdventureArcade";
+import WorldQuestCard from "@/components/WorldQuestCard";
 import PrizeVault from "@/components/PrizeVault";
 import PlacementBanner from "@/components/PlacementBanner";
 import SchoolModeBanner from "@/components/SchoolModeBanner";
@@ -16,6 +17,7 @@ export default function GameShelf({ games }: { games: Game[] }) {
     <>
       <DailyMissionControl />
       <AdventureArcade games={games} />
+      <WorldQuestCard games={games} />
       <PrizeVault />
 
       <SchoolModeBanner />
