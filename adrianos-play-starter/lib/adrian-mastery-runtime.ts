@@ -7,6 +7,36 @@ const INTERVENTION_GAME_SLUG = "adrianos-mastery-intervention";
 const DAILY_SESSION_GAME_SLUG = "adrianos-daily-session";
 const MASTERY_LAB_SLUG = "mastery-lab";
 
+const SKILL_LABELS: Record<string, string> = {
+  "math-addition": "Addition",
+  "math-subtraction": "Subtraction",
+  "math-money": "Money math",
+  "math-word-problems": "Math word problems",
+  "reading-spelling-easy": "Short-word spelling",
+  "reading-spelling-medium": "Medium-word spelling",
+  "reading-spelling-hard": "Advanced spelling",
+  "reading-comprehension-detail": "Finding story details",
+  "reading-sequencing": "Story sequencing",
+  "reading-vocabulary": "Vocabulary in context",
+  "reading-inference": "Reading inference",
+  "science-earth": "Earth science",
+  "science-body": "Human body",
+  "science-space": "Space science",
+  "science-technology": "Technology systems",
+  "memory-matching": "Visual matching",
+  "memory-working-memory": "Working memory",
+  "logic-patterns": "Recognizing patterns",
+  "logic-multi-step": "Multi-step reasoning",
+};
+
+function humanizeSkill(skillId: string): string {
+  return SKILL_LABELS[skillId] ?? skillId
+    .split("-")
+    .filter(Boolean)
+    .map((word) => word[0]?.toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 function parseIntervention(item: ReviewItem): MasteryIntervention | null {
   if (item.gameSlug !== INTERVENTION_GAME_SLUG || typeof item.data?.interventionJson !== "string") return null;
   try {
@@ -63,26 +93,37 @@ function hasDueLoopWithoutMission(profileId: string): boolean {
   return !adventureHasLab && !sessionHasLab;
 }
 
-function normalizeMonitoringStatus(profileId: string): void {
+function normalizeInterventionRows(profileId: string): void {
   const state = readLearningForProfile(profileId);
   let changed = false;
   const reviewQueue = state.reviewQueue.map((item) => {
     const intervention = parseIntervention(item);
-    if (!intervention || intervention.phase !== "monitoring" || item.status === "resolved") return item;
+    if (!intervention) return item;
+    const skillLabel = intervention.skillLabel === intervention.skillId
+      ? humanizeSkill(intervention.skillId)
+      : intervention.skillLabel;
+    const status = intervention.phase === "monitoring" ? "resolved" as const : item.status;
+    if (skillLabel === intervention.skillLabel && status === item.status) return item;
     changed = true;
-    return { ...item, status: "resolved" as const };
+    const normalized = { ...intervention, skillLabel };
+    return {
+      ...item,
+      prompt: `Mastery recovery: ${skillLabel}`,
+      status,
+      data: { ...item.data, interventionJson: JSON.stringify(normalized) },
+    };
   });
   if (changed) writeLearningForProfile(profileId, { ...state, reviewQueue });
 }
 
 export function runMasteryLoopForProfile(profileId: string): MasteryIntervention[] {
   if (!hasUnseenEvidence(profileId) && !hasDueLoopWithoutMission(profileId)) {
-    normalizeMonitoringStatus(profileId);
+    normalizeInterventionRows(profileId);
     return readLearningForProfile(profileId).reviewQueue
       .map(parseIntervention)
       .filter((item): item is MasteryIntervention => Boolean(item));
   }
   const rows = syncMasteryLoopForProfile(profileId);
-  normalizeMonitoringStatus(profileId);
+  normalizeInterventionRows(profileId);
   return rows;
 }
