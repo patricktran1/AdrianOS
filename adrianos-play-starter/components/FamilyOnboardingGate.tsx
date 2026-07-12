@@ -11,6 +11,7 @@ const PROFILE_REQUIRED_PREFIXES = [
   "/curriculum",
   "/portfolio",
   "/daily-session",
+  "/mastery-lab",
   "/coach",
 ];
 
