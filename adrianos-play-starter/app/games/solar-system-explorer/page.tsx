@@ -1,8 +1,8 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
-import { useAdrianProgress } from "@/lib/adrian-progress";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useGameSession } from "@/lib/game-session";
+import { useMemo, useState } from "react";
 
 const GAME_SLUG = "solar-system-explorer";
 const QUESTIONS = [
@@ -17,21 +17,13 @@ const QUESTIONS = [
 ];
 
 export default function SolarSystemExplorerPage() {
-  const { recordPlay, award } = useAdrianProgress();
+  const { completeGame, restartGame } = useGameSession(GAME_SLUG);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [choice, setChoice] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
-  const awarded = useRef(false);
   const current = QUESTIONS[index];
   const choices = useMemo(() => [...current.choices].sort(() => Math.random() - 0.5), [current]);
-
-  useEffect(() => { recordPlay(GAME_SLUG); }, [recordPlay]);
-  useEffect(() => {
-    if (!finished || awarded.current) return;
-    awarded.current = true;
-    award(GAME_SLUG, { xp: 18 + score * 3, coins: 4 + Math.floor(score / 2), score, completed: true });
-  }, [finished, score, award]);
 
   function choose(value: string) {
     if (choice) return;
@@ -40,18 +32,21 @@ export default function SolarSystemExplorerPage() {
   }
 
   function next() {
-    if (index === QUESTIONS.length - 1) return setFinished(true);
+    if (index === QUESTIONS.length - 1) {
+      completeGame({ xp: 18 + score * 3, coins: 4 + Math.floor(score / 2), score });
+      setFinished(true);
+      return;
+    }
     setIndex((value) => value + 1);
     setChoice(null);
   }
 
   function replay() {
-    awarded.current = false;
+    restartGame();
     setIndex(0);
     setScore(0);
     setChoice(null);
     setFinished(false);
-    recordPlay(GAME_SLUG);
   }
 
   if (finished) {
