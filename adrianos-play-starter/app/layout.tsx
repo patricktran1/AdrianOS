@@ -3,6 +3,7 @@ import BetaFeedbackLauncher from "@/components/BetaFeedbackLauncher";
 import CloudSyncBridge from "@/components/CloudSyncBridge";
 import FamilyOnboardingGate from "@/components/FamilyOnboardingGate";
 import InstallAppPrompt from "@/components/InstallAppPrompt";
+import MasteryLoopBridge from "@/components/MasteryLoopBridge";
 import MobileAppDock from "@/components/MobileAppDock";
 import PWARegistrar from "@/components/PWARegistrar";
 import WeeklyReportBridge from "@/components/WeeklyReportBridge";
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <PWARegistrar />
         <CloudSyncBridge />
         <WeeklyReportBridge />
+        <MasteryLoopBridge />
         <FamilyOnboardingGate>{children}</FamilyOnboardingGate>
         <MobileAppDock />
         <InstallAppPrompt />
