@@ -1,0 +1,26 @@
+@media (max-width: 860px) {
+  .parent-command-hero {
+    grid-template-columns: 1fr !important;
+  }
+
+  .parent-command-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .parent-command-insights {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .parent-command-metrics {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .parent-command-hero a,
+  .parent-command-hero button {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+}
