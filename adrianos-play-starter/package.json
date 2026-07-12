@@ -5,7 +5,7 @@
   "scripts": {
     "generate:games": "node scripts/generate-games.mjs",
     "dev": "npm run generate:games && next dev",
-    "build": "npm run generate:games && npm run check:school-controls && npm run check:game-session && npm run check:curriculum && npm run check:teaching-loop && next build",
+    "build": "npm run generate:games && npm run check:school-controls && npm run check:game-session && npm run check:curriculum && npm run check:teaching-loop && npm run check:blank-slate && next build",
     "start": "next start",
     "test:games": "playwright test",
     "test:games:smoke": "playwright test tests/e2e/game-routes.spec.ts",
@@ -13,7 +13,8 @@
     "check:school-controls": "node scripts/check-school-mode-controls.mjs",
     "check:game-session": "node scripts/check-game-session-sdk.mjs",
     "check:curriculum": "node scripts/check-curriculum-map.mjs",
-    "check:teaching-loop": "node scripts/check-teaching-loop.mjs"
+    "check:teaching-loop": "node scripts/check-teaching-loop.mjs",
+    "check:blank-slate": "node scripts/check-blank-slate-personalization.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",

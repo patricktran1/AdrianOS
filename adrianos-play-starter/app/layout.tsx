@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import BetaFeedbackLauncher from "@/components/BetaFeedbackLauncher";
 import CloudSyncBridge from "@/components/CloudSyncBridge";
+import FamilyOnboardingGate from "@/components/FamilyOnboardingGate";
 import InstallAppPrompt from "@/components/InstallAppPrompt";
 import MobileAppDock from "@/components/MobileAppDock";
 import PWARegistrar from "@/components/PWARegistrar";
@@ -8,6 +9,7 @@ import WeeklyReportBridge from "@/components/WeeklyReportBridge";
 import "./globals.css";
 import "./school-mode-controls.css";
 import "./mobile-app-shell.css";
+import "./learner-profile-setup.css";
 
 export const metadata: Metadata = {
   title: "AdrianOS Learning",
@@ -43,7 +45,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <PWARegistrar />
         <CloudSyncBridge />
         <WeeklyReportBridge />
-        {children}
+        <FamilyOnboardingGate>{children}</FamilyOnboardingGate>
         <MobileAppDock />
         <InstallAppPrompt />
         <BetaFeedbackLauncher />

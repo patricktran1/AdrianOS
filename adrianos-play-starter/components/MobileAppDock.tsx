@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useFamilyProfiles } from "@/lib/adrian-profiles";
 
 const ITEMS = [
   { href: "/", label: "Home", icon: "⌂" },
@@ -11,6 +12,8 @@ const ITEMS = [
 
 export default function MobileAppDock() {
   const pathname = usePathname();
+  const { hydrated, hasProfiles } = useFamilyProfiles();
+  if (!hydrated || !hasProfiles) return null;
   if (pathname === "/join" || pathname.startsWith("/family/setup") || pathname === "/install") return null;
 
   return (

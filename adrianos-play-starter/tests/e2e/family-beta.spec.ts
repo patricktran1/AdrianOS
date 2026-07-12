@@ -10,13 +10,13 @@ test.describe("family beta onboarding", () => {
     await expect(page.getByText("Children do not sign in")).toBeVisible();
   });
 
-  test("creates multiple child profiles without keeping starter children", async ({ page }) => {
+  test("creates multiple learner profiles without keeping starter children", async ({ page }) => {
     await page.goto("/family/setup?local=1", { waitUntil: "domcontentloaded" });
 
     await expect(page.getByRole("heading", { name: "Who is learning?" })).toBeVisible();
     await page.getByLabel("Child 1 name").fill("Maya");
     await page.getByLabel("Child 1 age").selectOption("8");
-    await page.getByRole("button", { name: "+ Add another child" }).click();
+    await page.getByRole("button", { name: "+ Add another learner" }).click();
     await page.getByLabel("Child 2 name").fill("Leo");
     await page.getByLabel("Child 2 age").selectOption("7");
     await page.getByRole("checkbox").check();
@@ -39,10 +39,10 @@ test.describe("family beta onboarding", () => {
     await expect(page).toHaveURL(/\/school$/);
 
     await page.goto("/family/setup?manage=1&local=1", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "Manage your learners." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tune each learning path." })).toBeVisible();
     await expect(page.getByLabel("Child 1 name")).toHaveValue("Avery");
     await page.getByLabel("Child 1 name").fill("Avery T.");
-    await page.getByRole("button", { name: "Save child profiles" }).click();
+    await page.getByRole("button", { name: "Save learner profiles" }).click();
     await expect(page).toHaveURL(/\/school$/);
     await expect(page.getByRole("button", { name: /Avery T\./ })).toBeVisible();
   });

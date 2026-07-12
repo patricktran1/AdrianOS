@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import CurriculumPathCard from "@/components/CurriculumPathCard";
+import LearningProfileCard from "@/components/LearningProfileCard";
 import ProjectStudioCard from "@/components/ProjectStudioCard";
 import WritingStudioCard from "@/components/WritingStudioCard";
 import { useAdrianProgress } from "@/lib/adrian-progress";
@@ -137,13 +138,14 @@ export default function SchoolPage() {
         </div>
       </section>
 
+      <LearningProfileCard />
       <CurriculumPathCard />
 
       {!allComplete && currentMission && (
         <section style={missionCard}>
           <div style={missionNumber}>{session.currentIndex + 1}</div>
           <div style={{ minWidth: 0 }}>
-            <span style={missionKind}>{currentMission.kind === "review" ? "REVIEW" : currentMission.kind === "explore" ? "EXPLORE" : "NEXT SKILL"}</span>
+            <span style={missionKind}>{currentMission.gameSlug === "placement-adventure" ? "STARTING MAP" : currentMission.kind === "review" ? "REVIEW" : currentMission.kind === "explore" ? "EXPLORE" : "NEXT SKILL"}</span>
             <h2 style={missionTitle}>{currentMission.title}</h2>
             <p style={{ ...muted, margin: 0 }}>{currentMission.reason}</p>
           </div>

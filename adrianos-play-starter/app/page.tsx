@@ -1,14 +1,6 @@
-import FamilyProfileBar from "@/components/FamilyProfileBar";
-import GameShelf from "@/components/GameShelf";
+import HomeExperience from "@/components/HomeExperience";
 import { games } from "@/lib/generated-games";
 
 export default function Home() {
-  return (
-    <>
-      <FamilyProfileBar />
-      <main className="shell">
-        <GameShelf games={games} />
-      </main>
-    </>
-  );
+  return <HomeExperience games={games} />;
 }

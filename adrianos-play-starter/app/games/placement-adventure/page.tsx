@@ -1,7 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
-import { getActiveProfile } from "@/lib/adrian-profiles";
+import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import { readProgressForProfile, useAdrianProgress } from "@/lib/adrian-progress";
 import {
   readPlacementReport,
@@ -583,7 +583,7 @@ function formatDuration(seconds: number): string {
 }
 
 export default function PlacementAdventurePage() {
-  const profile = getActiveProfile();
+  const { activeProfile: profile, hydrated: profilesReady } = useFamilyProfiles();
   const { recordPlay, award } = useAdrianProgress();
   const [screen, setScreen] = useState<Screen>("intro");
   const [current, setCurrent] = useState<PlacementQuestion | null>(null);
@@ -591,10 +591,17 @@ export default function PlacementAdventurePage() {
   const [selected, setSelected] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
   const [showFlash, setShowFlash] = useState(false);
-  const [report, setReport] = useState<PlacementReport | null>(() => readPlacementReport(profile.id));
+  const [report, setReport] = useState<PlacementReport | null>(null);
   const [reward, setReward] = useState({ xp: 0, coins: 0 });
   const startedAt = useRef(0);
-  const hadPlacement = useRef(Boolean(readPlacementReport(profile.id)));
+  const hadPlacement = useRef(false);
+
+  useEffect(() => {
+    if (!profilesReady) return;
+    const currentReport = readPlacementReport(profile.id);
+    setReport(currentReport);
+    hadPlacement.current = Boolean(currentReport);
+  }, [profile.id, profilesReady]);
 
   useEffect(() => {
     if (!current?.flash) {
