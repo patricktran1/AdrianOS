@@ -1,5 +1,6 @@
 import type { ChildProfile } from "@/lib/adrian-profiles";
 import { gradeLabel, readProfileGrade } from "@/lib/adrian-profile-grade";
+import { readLearningForProfile } from "@/lib/adrian-learning";
 import { ELEMENTARY_PRIORITY_STANDARDS } from "@/lib/adrian-grade-standards";
 
 export type CurriculumFramework = "CA CCSS Math" | "CA CCSS ELA" | "CA NGSS" | "CA TK Foundations";
@@ -75,8 +76,26 @@ export function curriculumPriorityForSkill(skillId: string, grade: number): numb
   return 3;
 }
 
-export function curriculumProgress(grade: number, nodes: CurriculumSkillNode[]) {
+export function curriculumProgress(
+  grade: number,
+  nodes: CurriculumSkillNode[],
+  profileId?: string,
+) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
+  if (profileId && typeof window !== "undefined") {
+    const learning = readLearningForProfile(profileId);
+    for (const [id, skill] of Object.entries(learning.skills)) {
+      if (!byId.has(id)) {
+        byId.set(id, {
+          id,
+          mastery: skill.mastery,
+          locked: false,
+          stage: skill.mastery >= 85 ? "Mastered" : skill.mastery >= 55 ? "Practicing" : "Exploring",
+        });
+      }
+    }
+  }
+
   return standardsForGrade(grade).map((standard) => {
     const evidence = standard.skillIds.map((id) => byId.get(id)).filter(Boolean) as CurriculumSkillNode[];
     const mastery = evidence.length > 0
