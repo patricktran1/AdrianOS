@@ -1,4 +1,5 @@
 import type { ChildProfile } from "@/lib/adrian-profiles";
+import { gradeLabel, readProfileGrade } from "@/lib/adrian-profile-grade";
 
 export type CurriculumFramework = "CA CCSS Math" | "CA CCSS ELA" | "CA NGSS";
 export type CurriculumStrength = "direct" | "supporting" | "enrichment";
@@ -20,30 +21,6 @@ export type CurriculumSkillNode = {
   locked: boolean;
   stage: string;
 };
-
-export const GRADE_OPTIONS = [
-  { value: -1, label: "Pre-K" },
-  { value: 0, label: "Kindergarten" },
-  ...Array.from({ length: 12 }, (_, index) => ({ value: index + 1, label: `Grade ${index + 1}` })),
-] as const;
-
-export function inferredGradeForAge(age: number): number {
-  if (age <= 4) return -1;
-  if (age === 5) return 0;
-  return Math.max(1, Math.min(12, age - 5));
-}
-
-export function profileGrade(profile: Pick<ChildProfile, "age" | "grade">): number {
-  return typeof profile.grade === "number" && Number.isFinite(profile.grade)
-    ? Math.max(-1, Math.min(12, Math.round(profile.grade)))
-    : inferredGradeForAge(profile.age);
-}
-
-export function gradeLabel(grade: number): string {
-  if (grade < 0) return "Pre-K";
-  if (grade === 0) return "Kindergarten";
-  return `Grade ${grade}`;
-}
 
 // Initial standards pack for the Piedmont second-grade family beta.
 // "Direct" means the linked activity can collect evidence on the named skill.
@@ -260,7 +237,7 @@ export function curriculumProgress(grade: number, nodes: CurriculumSkillNode[]) 
   });
 }
 
-export function curriculumPackLabel(profile: Pick<ChildProfile, "age" | "grade">): string {
-  const grade = profileGrade(profile);
+export function curriculumPackLabel(profile: Pick<ChildProfile, "id" | "age">): string {
+  const grade = readProfileGrade(profile);
   return grade === 2 ? "California Grade 2 learning path" : `${gradeLabel(grade)} age-adaptive foundations`;
 }
