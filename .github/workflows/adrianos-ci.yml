@@ -64,6 +64,9 @@ jobs:
           if [[ -f tests/e2e/adaptive-adventure-chain.spec.ts ]]; then
             specs+=(tests/e2e/adaptive-adventure-chain.spec.ts)
           fi
+          if [[ -f tests/e2e/weekly-world-quest.spec.ts ]]; then
+            specs+=(tests/e2e/weekly-world-quest.spec.ts)
+          fi
           npx playwright test "${specs[@]}"
 
       - name: Run full AdrianOS browser matrix
