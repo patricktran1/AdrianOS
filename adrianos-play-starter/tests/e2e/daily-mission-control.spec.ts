@@ -25,6 +25,7 @@ test.describe("Daily Mission Control", () => {
     await expect(control.getByLabel("Memory systems clear: complete")).toBeVisible();
     await expect(control.locator(".primary-mission-button")).toHaveAttribute("href", "/games/daily-adventure-remix");
     await expect(control.locator(".primary-mission-button")).toContainText("Run today’s remix");
+    await expect(page.getByRole("region", { name: "Adventure Arcade" })).toBeVisible();
   });
 
   test("puts a due memory rescue ahead of the normal route", async ({ page }) => {
