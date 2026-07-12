@@ -1,7 +1,7 @@
 "use client";
 
-import { useAdrianProgress } from "@/lib/adrian-progress";
-import { useEffect, useRef, useState } from "react";
+import { useGameSession } from "@/lib/game-session";
+import { useState } from "react";
 
 const GAME_SLUG = "question-quest";
 const QUESTIONS = [
@@ -48,23 +48,12 @@ const QUESTIONS = [
 ];
 
 export default function QuestionQuest() {
-  const { recordPlay, award } = useAdrianProgress();
+  const { completeGame, restartGame } = useGameSession(GAME_SLUG);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [choice, setChoice] = useState<number | null>(null);
   const [finished, setFinished] = useState(false);
-  const completionRecorded = useRef(false);
   const current = QUESTIONS[index];
-
-  useEffect(() => {
-    recordPlay(GAME_SLUG);
-  }, [recordPlay]);
-
-  useEffect(() => {
-    if (!finished || completionRecorded.current) return;
-    completionRecorded.current = true;
-    award(GAME_SLUG, { xp: 16 + score * 5, coins: 5, score, completed: true });
-  }, [finished, score, award]);
 
   function answer(answerIndex: number) {
     if (choice !== null) return;
@@ -74,6 +63,7 @@ export default function QuestionQuest() {
 
   function next() {
     if (index === QUESTIONS.length - 1) {
+      completeGame({ xp: 16 + score * 5, coins: 5, score });
       setFinished(true);
       return;
     }
@@ -82,12 +72,11 @@ export default function QuestionQuest() {
   }
 
   function restart() {
-    completionRecorded.current = false;
+    restartGame();
     setIndex(0);
     setScore(0);
     setChoice(null);
     setFinished(false);
-    recordPlay(GAME_SLUG);
   }
 
   if (finished) {
