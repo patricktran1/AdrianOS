@@ -48,11 +48,11 @@ export default function GameShelf({ games }: { games: Game[] }) {
     <>
       <section className="hero">
         <div>
-          <span className="eyebrow">ADRIANOS PLAY</span>
+          <span className="eyebrow">ADRIANOS LEARNING</span>
           <h1>Pick a game.<br />Grow a superpower.</h1>
           <p>
-            A private game shelf for logic, memory, curiosity, and whatever we
-            dream up next.
+            A parent-managed learning playground for logic, reading, math,
+            creativity, curiosity, and whatever we build next.
           </p>
           <div style={{ marginTop: 22 }}>
             <ProgressPill large />
@@ -70,7 +70,7 @@ export default function GameShelf({ games }: { games: Game[] }) {
           <span style={{ fontSize: 32 }}>🔐</span>
           <span>
             <strong style={{ display: "block", fontSize: 18 }}>Parent Dashboard</strong>
-            <small style={{ display: "block", marginTop: 3, opacity: .72 }}>Reports, goals, schedule, and cloud sync</small>
+            <small style={{ display: "block", marginTop: 3, opacity: .72 }}>Reports, goals, profiles, schedule, and cloud sync</small>
           </span>
           <span style={{ marginLeft: "auto", fontSize: 24 }}>→</span>
         </Link>
@@ -174,8 +174,8 @@ export default function GameShelf({ games }: { games: Game[] }) {
       </section>
 
       <footer>
-        <span>Built for Adrian.</span>
-        <span>No ads. No feeds. Just play.</span>
+        <span>Built first for Adrian, now opening to more curious kids.</span>
+        <span>No ads. No feeds. Parent-managed learning.</span>
       </footer>
     </>
   );

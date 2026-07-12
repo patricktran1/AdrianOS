@@ -6,6 +6,7 @@ import {
   refreshCloudAuthStatus,
   syncCloudNow,
 } from "@/lib/adrian-cloud-sync";
+import { isFamilySetupPending } from "@/lib/family-beta-account";
 import {
   getSupabaseBrowserClient,
   isSupabaseConfigured,
@@ -29,11 +30,11 @@ export default function CloudSyncBridge() {
     let stopped = false;
 
     const scheduleSync = (delay = 1400) => {
-      if (stopped) return;
+      if (stopped || isFamilySetupPending()) return;
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         timer = null;
-        void syncCloudNow();
+        if (!isFamilySetupPending()) void syncCloudNow();
       }, delay);
     };
 
