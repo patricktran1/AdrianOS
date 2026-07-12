@@ -1,7 +1,8 @@
-const CACHE_VERSION = "adrianos-shell-v1";
+const CACHE_VERSION = "adrianos-shell-v2";
 const APP_SHELL = [
   "/",
   "/school",
+  "/curriculum",
   "/install",
   "/offline",
   "/manifest.webmanifest",
