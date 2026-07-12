@@ -30,6 +30,7 @@ export default function AdaptiveAdventureChain() {
   const { activeProfile } = useFamilyProfiles();
   const [choices, setChoices] = useState<AdventureChainChoice[]>([]);
   const [open, setOpen] = useState(false);
+  const [controllerReady, setControllerReady] = useState(false);
   const revealTimerRef = useRef<number | null>(null);
   const firstChoiceRef = useRef<HTMLAnchorElement | null>(null);
 
@@ -43,11 +44,13 @@ export default function AdaptiveAdventureChain() {
   }
 
   useEffect(() => {
+    setControllerReady(false);
     clearChain();
   }, [slug]);
 
   useEffect(() => {
     if (!currentGame) return;
+    setControllerReady(false);
     let previous = readAdrianProgress();
 
     const refresh = () => {
@@ -85,6 +88,7 @@ export default function AdaptiveAdventureChain() {
 
     window.addEventListener("adrianos-progress-updated", refresh);
     window.addEventListener("adrianos-family-updated", reset);
+    setControllerReady(true);
     return () => {
       window.removeEventListener("adrianos-progress-updated", refresh);
       window.removeEventListener("adrianos-family-updated", reset);
@@ -105,63 +109,74 @@ export default function AdaptiveAdventureChain() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [open]);
 
-  if (!open || choices.length === 0 || !currentGame) return null;
+  if (!currentGame) return null;
 
   return (
-    <div className="adventure-chain-backdrop" data-adventure-chain="active">
-      <section
-        className="adventure-chain"
-        role="dialog"
-        aria-labelledby="adventure-chain-title"
-        aria-describedby="adventure-chain-copy"
-      >
-        <button
-          type="button"
-          className="adventure-chain-close"
-          aria-label="Close next adventure choices"
-          onClick={() => setOpen(false)}
-        >
-          ×
-        </button>
+    <>
+      <span
+        hidden
+        data-adventure-chain-controller="active"
+        data-controller-ready={controllerReady ? "true" : "false"}
+        data-current-game={currentGame.slug}
+      />
 
-        <header className="adventure-chain-heading">
-          <span className="adventure-chain-orbit" aria-hidden="true">{currentGame.emoji}</span>
-          <div>
-            <small>VICTORY PATH</small>
-            <h2 id="adventure-chain-title">Choose what happens next</h2>
-            <p id="adventure-chain-copy">
-              Three paths, personalized from {activeProfile.name}&apos;s real play and mastery evidence.
-            </p>
-          </div>
-        </header>
-
-        <div className="adventure-chain-grid">
-          {choices.map((choice, index) => (
-            <a
-              key={`${choice.kind}:${choice.gameSlug}`}
-              ref={index === 0 ? firstChoiceRef : undefined}
-              className="adventure-chain-card"
-              href={choice.href}
-              data-chain-kind={choice.kind}
-              data-chain-game={choice.gameSlug}
+      {open && choices.length > 0 && (
+        <div className="adventure-chain-backdrop" data-adventure-chain="active">
+          <section
+            className="adventure-chain"
+            role="dialog"
+            aria-labelledby="adventure-chain-title"
+            aria-describedby="adventure-chain-copy"
+          >
+            <button
+              type="button"
+              className="adventure-chain-close"
+              aria-label="Close next adventure choices"
+              onClick={() => setOpen(false)}
             >
-              <span className="adventure-chain-kind-icon" aria-hidden="true">
-                {KIND_ICONS[choice.kind]}
-              </span>
-              <small>{choice.eyebrow}</small>
-              <span className="adventure-chain-game-icon" aria-hidden="true">{choice.emoji}</span>
-              <strong>{choice.title}</strong>
-              <p>{choice.reason}</p>
-              <span className="adventure-chain-go">GO →</span>
-            </a>
-          ))}
-        </div>
+              ×
+            </button>
 
-        <footer className="adventure-chain-footer">
-          <a href={pathname}>↻ Replay this mission</a>
-          <a href="/">Mission Control</a>
-        </footer>
-      </section>
-    </div>
+            <header className="adventure-chain-heading">
+              <span className="adventure-chain-orbit" aria-hidden="true">{currentGame.emoji}</span>
+              <div>
+                <small>VICTORY PATH</small>
+                <h2 id="adventure-chain-title">Choose what happens next</h2>
+                <p id="adventure-chain-copy">
+                  Three paths, personalized from {activeProfile.name}&apos;s real play and mastery evidence.
+                </p>
+              </div>
+            </header>
+
+            <div className="adventure-chain-grid">
+              {choices.map((choice, index) => (
+                <a
+                  key={`${choice.kind}:${choice.gameSlug}`}
+                  ref={index === 0 ? firstChoiceRef : undefined}
+                  className="adventure-chain-card"
+                  href={choice.href}
+                  data-chain-kind={choice.kind}
+                  data-chain-game={choice.gameSlug}
+                >
+                  <span className="adventure-chain-kind-icon" aria-hidden="true">
+                    {KIND_ICONS[choice.kind]}
+                  </span>
+                  <small>{choice.eyebrow}</small>
+                  <span className="adventure-chain-game-icon" aria-hidden="true">{choice.emoji}</span>
+                  <strong>{choice.title}</strong>
+                  <p>{choice.reason}</p>
+                  <span className="adventure-chain-go">GO →</span>
+                </a>
+              ))}
+            </div>
+
+            <footer className="adventure-chain-footer">
+              <a href={pathname}>↻ Replay this mission</a>
+              <a href="/">Mission Control</a>
+            </footer>
+          </section>
+        </div>
+      )}
+    </>
   );
 }
