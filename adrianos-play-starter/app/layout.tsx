@@ -4,6 +4,7 @@ import CloudSyncBridge from "@/components/CloudSyncBridge";
 import ElementaryScopeBridge from "@/components/ElementaryScopeBridge";
 import FamilyAccountControl from "@/components/FamilyAccountControl";
 import FamilyOnboardingGate from "@/components/FamilyOnboardingGate";
+import GradeGameSpotlightBridge from "@/components/GradeGameSpotlightBridge";
 import InstallAppPrompt from "@/components/InstallAppPrompt";
 import MasteryLoopBridge from "@/components/MasteryLoopBridge";
 import MobileAppDock from "@/components/MobileAppDock";
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <WeeklyReportBridge />
         <MasteryLoopBridge />
         <FamilyOnboardingGate>{children}</FamilyOnboardingGate>
+        <GradeGameSpotlightBridge />
         <QuestWorldsBridge />
         <FamilyAccountControl />
         <MobileAppDock />
