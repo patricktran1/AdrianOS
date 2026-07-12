@@ -18,12 +18,15 @@ export default function FamilyAccountControl() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [lastEmail, setLastEmail] = useState("");
+  const [ready, setReady] = useState(false);
   const signedIn = Boolean(status.userEmail) && status.phase !== "signed-out";
 
   useEffect(() => {
+    setReady(true);
     if (status.userEmail) setLastEmail(status.userEmail);
   }, [status.userEmail]);
 
+  if (!ready) return null;
   if (!signedIn && !open) return <span data-testid="family-account-control-ready" hidden />;
   const accountEmail = status.userEmail ?? lastEmail;
 
