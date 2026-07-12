@@ -17,22 +17,40 @@ import {
   type FamilyChildDraft,
 } from "@/lib/family-profile-admin";
 import { GRADE_OPTIONS, inferredGradeForAge } from "@/lib/adrian-profile-grade";
+import {
+  LEARNER_INTERESTS,
+  LEARNING_PRIORITIES,
+  SESSION_LENGTHS,
+  type LearnerInterest,
+  type LearningPriority,
+} from "@/lib/adrian-learning-profile";
 import { isSupabaseConfigured } from "@/lib/supabase-browser";
 import "@/app/family-beta.css";
 
-const EMPTY_CHILD: FamilyChildDraft = { name: "", age: 7, grade: 2, emoji: "⭐" };
+function emptyChild(emoji = "⭐"): FamilyChildDraft {
+  return {
+    name: "",
+    age: 7,
+    grade: 2,
+    emoji,
+    interests: [],
+    priorities: ["Math", "Reading"],
+    sessionMinutes: 12,
+  };
+}
 
 type Phase = "checking" | "signed-out" | "editing" | "restoring" | "saving" | "error";
 
 function starterDrafts(manage: boolean): FamilyChildDraft[] {
-  if (manage || !isStarterFamilyState()) return currentFamilyDrafts();
-  return [{ ...EMPTY_CHILD }];
+  const current = currentFamilyDrafts();
+  if (current.length > 0 && (manage || !isStarterFamilyState())) return current;
+  return [emptyChild()];
 }
 
 export default function FamilySetup() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("checking");
-  const [drafts, setDrafts] = useState<FamilyChildDraft[]>([{ ...EMPTY_CHILD }]);
+  const [drafts, setDrafts] = useState<FamilyChildDraft[]>([emptyChild()]);
   const [message, setMessage] = useState("Checking the family account…");
   const [email, setEmail] = useState<string | null>(null);
   const [cloudAccount, setCloudAccount] = useState(false);
@@ -89,8 +107,8 @@ export default function FamilySetup() {
           return;
         }
         if (manage) {
-          setDrafts(currentFamilyDrafts());
-          setMessage("Family learning is synced. Edit the child profiles below.");
+          setDrafts(starterDrafts(true));
+          setMessage("Family learning is synced. Edit each learner’s profile below.");
           setPhase("editing");
         } else {
           router.replace("/school");
@@ -119,8 +137,30 @@ export default function FamilySetup() {
     updateDraft(index, { age, grade: inferredGradeForAge(age) });
   }
 
+  function toggleInterest(index: number, interest: LearnerInterest) {
+    const current = drafts[index]?.interests ?? [];
+    updateDraft(index, {
+      interests: current.includes(interest)
+        ? current.filter((item) => item !== interest)
+        : [...current, interest],
+    });
+  }
+
+  function togglePriority(index: number, priority: LearningPriority) {
+    const current = drafts[index]?.priorities ?? [];
+    if (!current.includes(priority) && current.length >= 3) {
+      setMessage("Choose up to three learning priorities per child.");
+      return;
+    }
+    updateDraft(index, {
+      priorities: current.includes(priority)
+        ? current.filter((item) => item !== priority)
+        : [...current, priority],
+    });
+  }
+
   function addChild() {
-    setDrafts((current) => [...current, { ...EMPTY_CHILD, emoji: current.length % 2 ? "🦖" : "🚀" }]);
+    setDrafts((current) => [...current, emptyChild(current.length % 2 ? "🦖" : "🚀")]);
   }
 
   function removeChild(index: number) {
@@ -145,7 +185,7 @@ export default function FamilySetup() {
     }
 
     setPhase("saving");
-    setMessage("Saving the family profiles…");
+    setMessage("Building each learner’s personalized starting route…");
     try {
       replaceFamilyChildren(drafts);
       if (cloudAccount) {
@@ -170,12 +210,15 @@ export default function FamilySetup() {
       <div className="family-setup-shell">
         <header className="family-setup-header">
           <div>
-            <span className="family-beta-eyebrow">PARENT-MANAGED FAMILY ACCOUNT</span>
-            <h1>{manageMode ? "Manage your learners." : "Who is learning?"}</h1>
-            <p>Create one profile per child with an age and learning grade. AdrianOS uses the grade for curriculum goals and the age for developmental fit.</p>
+            <span className="family-beta-eyebrow">PARENT-MANAGED LEARNER PROFILES</span>
+            <h1>{manageMode ? "Tune each learning path." : "Who is learning?"}</h1>
+            <p>
+              Create one private profile per child. Age controls developmental fit, grade selects curriculum goals,
+              and interests plus parent priorities shape the daily route.
+            </p>
           </div>
-          <Link href={manageMode ? "/parent" : "/join"} className="family-beta-secondary">
-            {manageMode ? "Back to Parent Mode" : "Back"}
+          <Link href={manageMode ? "/parent" : "/"} className="family-beta-secondary">
+            {manageMode ? "Back to Parent Mode" : "Back home"}
           </Link>
         </header>
 
@@ -215,10 +258,10 @@ export default function FamilySetup() {
             <>
               <div className="family-setup-account">
                 <span>
-                  <strong>{cloudAccount ? "Synced family profiles" : "Profiles on this device"}</strong><br />
+                  <strong>{cloudAccount ? "Synced learner profiles" : "Profiles on this device"}</strong><br />
                   <small>{message}</small>
                 </span>
-                <span className="family-beta-chip">{drafts.length} CHILD{drafts.length === 1 ? "" : "REN"}</span>
+                <span className="family-beta-chip">{drafts.length} LEARNER{drafts.length === 1 ? "" : "S"}</span>
               </div>
 
               <div className="family-setup-grid">
@@ -256,20 +299,72 @@ export default function FamilySetup() {
                         <option value={option.value} key={option.value}>{option.label}</option>
                       ))}
                     </select>
+
+                    <div className="family-child-personalization">
+                      <fieldset className="family-choice-group">
+                        <legend>What does {draft.name.trim() || "this learner"} love?</legend>
+                        <small>Interest picks make practice more inviting. Choose any that fit.</small>
+                        <div className="family-choice-chips">
+                          {LEARNER_INTERESTS.map((interest) => (
+                            <button
+                              key={interest}
+                              type="button"
+                              aria-pressed={draft.interests.includes(interest)}
+                              className={draft.interests.includes(interest) ? "family-choice-chip active" : "family-choice-chip"}
+                              onClick={() => toggleInterest(index, interest)}
+                            >
+                              {interest}
+                            </button>
+                          ))}
+                        </div>
+                      </fieldset>
+
+                      <fieldset className="family-choice-group">
+                        <legend>What should AdrianOS strengthen?</legend>
+                        <small>Choose up to three parent priorities. Grade-level needs and missed work still come first.</small>
+                        <div className="family-choice-chips">
+                          {LEARNING_PRIORITIES.map((priority) => (
+                            <button
+                              key={priority}
+                              type="button"
+                              aria-pressed={draft.priorities.includes(priority)}
+                              className={draft.priorities.includes(priority) ? "family-choice-chip active" : "family-choice-chip"}
+                              onClick={() => togglePriority(index, priority)}
+                            >
+                              {priority}
+                            </button>
+                          ))}
+                        </div>
+                      </fieldset>
+
+                      <label className="family-session-length">
+                        <span><strong>Daily guided session</strong><small>Parents can change the weekly schedule later.</small></span>
+                        <select
+                          aria-label={`Child ${index + 1} daily session length`}
+                          value={draft.sessionMinutes}
+                          onChange={(event) => updateDraft(index, { sessionMinutes: Number(event.target.value) as 8 | 12 | 18 })}
+                        >
+                          {SESSION_LENGTHS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
                     <button
                       type="button"
                       className="family-setup-danger"
                       disabled={drafts.length === 1}
                       onClick={() => removeChild(index)}
                     >
-                      Remove
+                      Remove learner
                     </button>
                   </div>
                 ))}
               </div>
 
               <div className="family-setup-toolbar">
-                <button type="button" className="family-setup-secondary" onClick={addChild}>+ Add another child</button>
+                <button type="button" className="family-setup-secondary" onClick={addChild}>+ Add another learner</button>
               </div>
 
               {!manageMode && (
@@ -290,10 +385,10 @@ export default function FamilySetup() {
                   disabled={phase === "saving"}
                   onClick={() => void saveFamily()}
                 >
-                  {phase === "saving" ? "Saving family…" : manageMode ? "Save child profiles" : "Create family and open School Mode"}
+                  {phase === "saving" ? "Building learning routes…" : manageMode ? "Save learner profiles" : "Create family and personalize School Mode"}
                 </button>
               </div>
-              <p className="family-setup-muted">Children do not receive accounts or provide an email address. The parent controls profiles, grade selection, and cloud access.</p>
+              <p className="family-setup-muted">Children do not receive accounts or provide email addresses. The parent controls profiles, learning priorities, grade selection, and cloud access.</p>
             </>
           )}
         </section>
