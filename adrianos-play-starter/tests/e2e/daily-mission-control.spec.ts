@@ -21,8 +21,8 @@ test.describe("Daily Mission Control", () => {
     const control = page.getByRole("region", { name: "Daily mission control" });
     await expect(control).toBeVisible();
     await expect(control.getByRole("heading", { name: "QA Learner’s launch plan" })).toBeVisible();
-    await expect(control.getByLabel("1 of 4 missions complete")).toBeVisible();
-    await expect(control.getByLabel("Memory systems clear: complete")).toBeVisible();
+    await expect(control.locator('[aria-label="1 of 4 missions complete"]')).toBeVisible();
+    await expect(control.getByRole("article", { name: "Memory systems clear: complete" })).toBeVisible();
     await expect(control.locator(".primary-mission-button")).toHaveAttribute("href", "/games/daily-adventure-remix");
     await expect(control.locator(".primary-mission-button")).toContainText("Run today’s remix");
     await expect(page.getByRole("region", { name: "Adventure Arcade" })).toBeVisible();
@@ -57,8 +57,8 @@ test.describe("Daily Mission Control", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
     const control = page.getByRole("region", { name: "Daily mission control" });
-    await expect(control.getByLabel("0 of 4 missions complete")).toBeVisible();
-    await expect(control.getByLabel("Rescue 1 skill: ready")).toBeVisible();
+    await expect(control.locator('[aria-label="0 of 4 missions complete"]')).toBeVisible();
+    await expect(control.getByRole("article", { name: "Rescue 1 skill: ready" })).toBeVisible();
     await expect(control.locator(".primary-mission-button")).toHaveAttribute("href", "/games/mastery-rescue-lab");
     await expect(control.locator(".primary-mission-button")).toContainText("Rescue 1 skill");
   });
@@ -116,8 +116,8 @@ test.describe("Daily Mission Control", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
     const control = page.getByRole("region", { name: "Daily mission control" });
-    await expect(control.getByLabel("4 of 4 missions complete")).toBeVisible();
-    await expect(control.getByText("DAILY LAUNCH COMPLETE", { exact: true })).toBeVisible();
+    await expect(control.locator('[aria-label="4 of 4 missions complete"]')).toBeVisible();
+    await expect(control.getByText(/DAILY LAUNCH COMPLETE/)).toBeVisible();
     await expect(control.locator(".primary-mission-button")).toHaveAttribute("href", "/games/family-quest-party");
     await expect(control.locator(".primary-mission-button")).toContainText("Play a bonus quest");
   });
