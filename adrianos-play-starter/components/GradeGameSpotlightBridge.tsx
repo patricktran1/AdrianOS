@@ -13,8 +13,23 @@ const FEATURED_BY_GRADE: Record<number, {
   emoji: string;
   href: string;
   slug: string;
+  completedLabel: string;
+  startLabel: string;
+  replayLabel: string;
   mechanics: string[];
 }> = {
+  1: {
+    eyebrow: "GRADE 1 FEATURED ADVENTURE",
+    title: "Robot Rescue City",
+    description: "Choose a helper bot, repair six city zones, earn robot parts, and rebuild the rescue machine with Grade 1 math, reading, phonics, science, and engineering.",
+    emoji: "🏙️🤖",
+    href: "/games/robot-rescue-city",
+    slug: "robot-rescue-city",
+    completedLabel: "✓ City power restored",
+    startLabel: "Launch the rescue →",
+    replayLabel: "Rebuild the robot →",
+    mechanics: ["Build a robot", "Garage checkpoints", "Adaptive clues", "Power combos"],
+  },
   2: {
     eyebrow: "GRADE 2 FEATURED ADVENTURE",
     title: "Dino Time Rescue",
@@ -22,6 +37,9 @@ const FEATURED_BY_GRADE: Record<number, {
     emoji: "🌀🦖",
     href: "/games/dino-time-rescue",
     slug: "dino-time-rescue",
+    completedLabel: "✓ Timeline rescued",
+    startLabel: "Start the rescue →",
+    replayLabel: "Replay the adventure →",
     mechanics: ["3 worlds", "Boss gates", "Clues + retries", "Fossil combos"],
   },
 };
@@ -51,8 +69,8 @@ export default function GradeGameSpotlightBridge() {
         </div>
       </div>
       <div style={actionStack}>
-        {completed && <span style={completedBadge}>✓ Timeline rescued</span>}
-        <Link href={featured.href} style={playButton}>{completed ? "Replay the adventure →" : "Start the rescue →"}</Link>
+        {completed && <span style={completedBadge}>{featured.completedLabel}</span>}
+        <Link href={featured.href} style={playButton}>{completed ? featured.replayLabel : featured.startLabel}</Link>
       </div>
     </section>
   );
