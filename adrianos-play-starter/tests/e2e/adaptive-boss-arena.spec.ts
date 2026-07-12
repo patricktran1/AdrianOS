@@ -10,7 +10,7 @@ async function start(page: import("@playwright/test").Page) {
 }
 
 test.describe("Adaptive Boss Arena", () => {
-  test("raises difficulty after an independent hit and records adaptive evidence", async ({ page }) => {
+  test("raises difficulty after an independent hit and records mastery evidence", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await start(page);
 
@@ -21,19 +21,27 @@ test.describe("Adaptive Boss Arena", () => {
     await expect(page.getByText("ROUND 2 · POWER ATTACK", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Which detail proves the nest was safe?" })).toBeVisible();
 
-    const level = await page.evaluate((key) => {
+    const skill = await page.evaluate((key) => {
       const learning = JSON.parse(window.localStorage.getItem(key) ?? "{}");
-      return learning.reviewQueue?.find((row: { data?: { adaptiveLevel?: string } }) => row.data?.adaptiveLevel)?.data?.adaptiveLevel;
+      return learning.skills?.["math-word-problems"];
     }, LEARNING_KEY);
-    expect(level).toBe("easy");
+    expect(skill?.attempts).toBe(1);
+    expect(skill?.correct).toBe(1);
   });
 
-  test("activates coach mode after a miss and keeps the next round supported", async ({ page }) => {
+  test("activates coach mode after a miss, records adaptive review evidence, and keeps the next round supported", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await start(page);
 
     await page.locator('button[data-correct="false"]').first().click();
     await expect(page.getByText("COACH MODE", { exact: true })).toBeVisible();
+
+    const reviewLevel = await page.evaluate((key) => {
+      const learning = JSON.parse(window.localStorage.getItem(key) ?? "{}");
+      return learning.reviewQueue?.find((row: { data?: { adaptiveLevel?: string } }) => row.data?.adaptiveLevel)?.data?.adaptiveLevel;
+    }, LEARNING_KEY);
+    expect(reviewLevel).toBe("easy");
+
     await page.locator('button[data-correct="true"]').click();
     await page.getByRole("button", { name: "Next adaptive round →", exact: true }).click();
 
