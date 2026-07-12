@@ -93,15 +93,35 @@ function hasDueLoopWithoutMission(profileId: string): boolean {
   return !adventureHasLab && !sessionHasLab;
 }
 
+function skillIdFromMission(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as { id?: unknown; gameSlug?: unknown };
+  if (row.gameSlug !== MASTERY_LAB_SLUG || typeof row.id !== "string") return null;
+  const marker = ":mastery-lab:";
+  const index = row.id.lastIndexOf(marker);
+  return index >= 0 ? row.id.slice(index + marker.length) : null;
+}
+
+function normalizeMission<T extends Record<string, unknown>>(mission: T, labels: Map<string, string>): T {
+  const skillId = skillIdFromMission(mission);
+  if (!skillId) return mission;
+  const label = labels.get(skillId) ?? humanizeSkill(skillId);
+  const title = `${label} Mastery Lab`;
+  return mission.title === title ? mission : { ...mission, title };
+}
+
 function normalizeInterventionRows(profileId: string): void {
   const state = readLearningForProfile(profileId);
   let changed = false;
+  const labels = new Map<string, string>();
+
   const reviewQueue = state.reviewQueue.map((item) => {
     const intervention = parseIntervention(item);
     if (!intervention) return item;
     const skillLabel = intervention.skillLabel === intervention.skillId
       ? humanizeSkill(intervention.skillId)
       : intervention.skillLabel;
+    labels.set(intervention.skillId, skillLabel);
     const status = intervention.phase === "monitoring" ? "resolved" as const : item.status;
     if (skillLabel === intervention.skillLabel && status === item.status) return item;
     changed = true;
@@ -113,7 +133,42 @@ function normalizeInterventionRows(profileId: string): void {
       data: { ...item.data, interventionJson: JSON.stringify(normalized) },
     };
   });
-  if (changed) writeLearningForProfile(profileId, { ...state, reviewQueue });
+
+  const dailyAdventure = state.dailyAdventure
+    ? {
+        ...state.dailyAdventure,
+        items: state.dailyAdventure.items.map((item) => {
+          const next = normalizeMission(item as unknown as Record<string, unknown>, labels) as unknown as typeof item;
+          if (next !== item) changed = true;
+          return next;
+        }),
+      }
+    : null;
+
+  const normalizedQueue = reviewQueue.map((item) => {
+    if (item.gameSlug !== DAILY_SESSION_GAME_SLUG || typeof item.data?.sessionJson !== "string") return item;
+    try {
+      const session = JSON.parse(item.data.sessionJson) as Record<string, unknown>;
+      if (!Array.isArray(session.missions)) return item;
+      let sessionChanged = false;
+      const missions = session.missions.map((mission) => {
+        if (!mission || typeof mission !== "object") return mission;
+        const next = normalizeMission(mission as Record<string, unknown>, labels);
+        if (next !== mission) sessionChanged = true;
+        return next;
+      });
+      if (!sessionChanged) return item;
+      changed = true;
+      return {
+        ...item,
+        data: { ...item.data, sessionJson: JSON.stringify({ ...session, missions }) },
+      };
+    } catch {
+      return item;
+    }
+  });
+
+  if (changed) writeLearningForProfile(profileId, { ...state, dailyAdventure, reviewQueue: normalizedQueue });
 }
 
 export function runMasteryLoopForProfile(profileId: string): MasteryIntervention[] {
