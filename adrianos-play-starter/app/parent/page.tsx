@@ -1,5 +1,6 @@
 import CloudSyncPanel from "@/components/CloudSyncPanel";
 import CoachReportPanel from "@/components/CoachReportPanel";
+import ParentCommandCenterPortal from "@/components/ParentCommandCenterPortal";
 import ParentDashboard from "@/components/ParentDashboard";
 import ParentPortfolioLauncher from "@/components/ParentPortfolioLauncher";
 import ParentProjectLauncher from "@/components/ParentProjectLauncher";
@@ -13,6 +14,7 @@ export default function ParentPage() {
   return (
     <>
       <ParentDashboard games={games} />
+      <ParentCommandCenterPortal games={games} />
       <ParentWritingLauncher />
       <ParentProjectLauncher />
       <ParentPortfolioLauncher />
