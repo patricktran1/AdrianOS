@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { seededShuffle } from "@/lib/deterministic-random";
 import { useGameSession } from "@/lib/game-session";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -24,8 +25,13 @@ export default function DinosaurDetectivePage() {
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
   const current = DINOSAURS[index];
-  const choices = useMemo(() => [...DINOSAURS].sort(() => Math.random() - 0.5).slice(0, 4), [current]);
-  if (!choices.some((d) => d.name === current.name)) choices[0] = current;
+  const choices = useMemo(() => {
+    const distractors = seededShuffle(
+      DINOSAURS.filter((dinosaur) => dinosaur.name !== current.name),
+      `${current.name}:distractors`,
+    ).slice(0, 3);
+    return seededShuffle([current, ...distractors], `${current.name}:choices`);
+  }, [current]);
 
   function choose(name: string) {
     if (choice) return;
