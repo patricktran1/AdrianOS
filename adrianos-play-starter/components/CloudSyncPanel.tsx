@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   pullCloudNow,
-  signOutCloud,
   syncCloudNow,
   useCloudSyncStatus,
 } from "@/lib/adrian-cloud-sync";
@@ -12,6 +11,7 @@ import {
   beginEmailFamilySignIn,
   beginGoogleFamilySignIn,
 } from "@/lib/family-beta-account";
+import { signOutAndKeepDeviceData } from "@/lib/public-device-security";
 import { isSupabaseConfigured } from "@/lib/supabase-browser";
 
 export default function CloudSyncPanel() {
@@ -30,6 +30,16 @@ export default function CloudSyncPanel() {
   async function emailSignIn() {
     const result = await beginEmailFamilySignIn(email);
     setActionMessage(result.message);
+  }
+
+  async function signOut() {
+    setActionMessage("Signing out this browser session…");
+    try {
+      await signOutAndKeepDeviceData();
+      window.location.replace("/");
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : "Could not sign out.");
+    }
   }
 
   return (
@@ -106,12 +116,12 @@ export default function CloudSyncPanel() {
                 <button onClick={() => void pullCloudNow()} style={secondaryButton}>
                   Restore this device
                 </button>
-                <button onClick={() => void signOutCloud()} style={secondaryButton}>
-                  Sign out
+                <button onClick={() => void signOut()} style={secondaryButton}>
+                  Sign out on this device
                 </button>
               </div>
               <p style={smallText}>
-                AdrianOS remains local-first. Offline changes stay on this device and merge after it reconnects.
+                AdrianOS remains local-first. Offline changes stay on this device and merge after it reconnects. On a shared computer, use the account button at the top right to sign out and erase the local family copy.
               </p>
             </>
           )}
