@@ -8,7 +8,7 @@ export type GameProgress = {
   completions: number;
   bestScore: number;
   lastPlayed: string | null;
-  lastCompleted: string | null;
+  lastCompleted?: string | null;
 };
 
 export type DailyActivity = {
