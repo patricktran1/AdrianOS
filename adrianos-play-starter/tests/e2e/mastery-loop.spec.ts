@@ -1,14 +1,35 @@
 import { expect, test, type Page } from "@playwright/test";
-import { seedQaFamily } from "./helpers/seed-family";
 
 const PROFILE_ID = "qa-learner";
 const LEARNING_KEY = `adrianos-learning-v1:${PROFILE_ID}`;
 const PROGRESS_KEY = `adrianos-progress-v2:${PROFILE_ID}`;
 
-async function seedRepeatedAdditionFriction(page: Page) {
-  await seedQaFamily(page, { clear: true });
-  await page.addInitScript(({ learningKey }) => {
+async function seedRepeatedAdditionFriction(page: Page, options: { parentUnlocked?: boolean } = {}) {
+  await page.addInitScript(({ learningKey, parentUnlocked }) => {
+    if (window.sessionStorage.getItem("mastery-loop-fixture-ready") === "yes") {
+      if (parentUnlocked) {
+        window.sessionStorage.setItem("adrianos-parent-unlocked", "yes");
+        window.sessionStorage.setItem("adrianos-weekly-report-unlocked", "yes");
+        window.sessionStorage.setItem("adrianos-skill-goals-unlocked", "yes");
+      }
+      return;
+    }
+
+    window.localStorage.clear();
+    window.sessionStorage.clear();
     const now = "2026-07-12T00:00:00.000Z";
+    window.localStorage.setItem("adrianos-family-v1", JSON.stringify({
+      activeProfileId: "qa-learner",
+      profiles: [{
+        id: "qa-learner",
+        name: "QA Learner",
+        age: 7,
+        emoji: "⭐",
+        createdAt: now,
+      }],
+      parentPinHash: null,
+    }));
+    window.localStorage.setItem("adrianos-family-customized-v1", "yes");
     window.localStorage.setItem(learningKey, JSON.stringify({
       version: 1,
       updatedAt: now,
@@ -54,7 +75,13 @@ async function seedRepeatedAdditionFriction(page: Page) {
       ],
       dailyAdventure: null,
     }));
-  }, { learningKey: LEARNING_KEY });
+    if (parentUnlocked) {
+      window.sessionStorage.setItem("adrianos-parent-unlocked", "yes");
+      window.sessionStorage.setItem("adrianos-weekly-report-unlocked", "yes");
+      window.sessionStorage.setItem("adrianos-skill-goals-unlocked", "yes");
+    }
+    window.sessionStorage.setItem("mastery-loop-fixture-ready", "yes");
+  }, { learningKey: LEARNING_KEY, parentUnlocked: options.parentUnlocked === true });
 }
 
 async function readIntervention(page: Page) {
@@ -111,12 +138,7 @@ test.describe("closed-loop mastery recovery", () => {
   });
 
   test("shows recovery status to the parent without exposing internal skill slugs", async ({ page }) => {
-    await seedRepeatedAdditionFriction(page);
-    await page.addInitScript(() => {
-      window.sessionStorage.setItem("adrianos-parent-unlocked", "yes");
-      window.sessionStorage.setItem("adrianos-weekly-report-unlocked", "yes");
-      window.sessionStorage.setItem("adrianos-skill-goals-unlocked", "yes");
-    });
+    await seedRepeatedAdditionFriction(page, { parentUnlocked: true });
     await page.goto("/parent", { waitUntil: "domcontentloaded" });
 
     const recovery = page.getByLabel("Mastery recovery loops");
