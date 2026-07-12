@@ -66,6 +66,18 @@ const FEATURED_BY_GRADE: Record<number, {
     replayLabel: "Run another mission →",
     mechanics: ["Crew powers", "System checkpoints", "Research badges", "Stardust combos"],
   },
+  4: {
+    eyebrow: "GRADE 4 FEATURED ADVENTURE",
+    title: "Mystery Temple",
+    description: "Choose a relic, chart your own five-room route, collect runes, and unlock an ancient vault with Grade 4 math, reading, science, and strategy.",
+    emoji: "🗿☀️",
+    href: "/games/mystery-temple",
+    slug: "mystery-temple",
+    completedLabel: "✓ Sun Dial Vault unlocked",
+    startLabel: "Enter the temple →",
+    replayLabel: "Choose a new route →",
+    mechanics: ["Branching routes", "Relic powers", "Rune collection", "Adaptive clues"],
+  },
 };
 
 export default function GradeGameSpotlightBridge() {
