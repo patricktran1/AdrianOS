@@ -24,7 +24,9 @@ test.describe("AdrianOS game feel engine", () => {
   test("turns verified progress into visible XP, coin, and quest-clear feedback", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.goto("/games/story-expedition", { waitUntil: "domcontentloaded" });
-    await expect(page.locator('[data-game-feel-shell="active"]')).toBeVisible();
+    const shell = page.locator('[data-game-feel-shell="active"]');
+    await expect(shell).toBeVisible();
+    await expect(shell).toHaveAttribute("data-game-feel-ready", "true");
 
     await page.evaluate(({ progressKey }) => {
       const now = new Date().toISOString();
