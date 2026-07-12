@@ -1,0 +1,131 @@
+"use client";
+
+import {
+  exportFamilyBackup,
+  importFamilyBackup,
+  readFamilyState,
+  type ChildProfile,
+  type FamilyBackup,
+  type FamilyState,
+} from "@/lib/adrian-profiles";
+
+export type FamilyChildDraft = {
+  id?: string;
+  name: string;
+  age: number;
+  emoji: string;
+};
+
+const CUSTOMIZED_KEY = "adrianos-family-customized-v1";
+const STARTER_IDS = new Set(["adrian", "elliot"]);
+
+function cleanName(value: string): string {
+  return value.trim().replace(/\s+/g, " ").slice(0, 24);
+}
+
+function cleanEmoji(value: string): string {
+  return value.trim().slice(0, 8) || "⭐";
+}
+
+function cleanAge(value: number): number {
+  return Number.isFinite(value) ? Math.max(3, Math.min(18, Math.round(value))) : 7;
+}
+
+function baseSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "student";
+}
+
+function uniqueId(name: string, used: Set<string>): string {
+  const base = baseSlug(name);
+  let candidate = base;
+  let index = 2;
+  while (used.has(candidate)) {
+    candidate = `${base}-${index}`;
+    index += 1;
+  }
+  used.add(candidate);
+  return candidate;
+}
+
+function isValidExistingId(value: string | undefined, used: Set<string>): value is string {
+  return Boolean(value && /^[a-z0-9-]{1,40}$/.test(value) && !used.has(value));
+}
+
+function keepProfileData(source: Record<string, unknown> | undefined, ids: Set<string>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const id of ids) {
+    if (source?.[id] && typeof source[id] === "object") result[id] = source[id];
+  }
+  return result;
+}
+
+function removeDeletedProfileStorage(deletedIds: string[]): void {
+  if (typeof window === "undefined") return;
+  for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.localStorage.key(index);
+    if (!key || !key.startsWith("adrianos-")) continue;
+    if (deletedIds.some((id) => key.endsWith(`:${id}`))) window.localStorage.removeItem(key);
+  }
+}
+
+export function isStarterFamilyState(family: FamilyState = readFamilyState()): boolean {
+  if (typeof window !== "undefined" && window.localStorage.getItem(CUSTOMIZED_KEY) === "yes") return false;
+  if (family.profiles.length !== 2) return false;
+  return family.profiles.every((profile) => STARTER_IDS.has(profile.id));
+}
+
+export function currentFamilyDrafts(): FamilyChildDraft[] {
+  return readFamilyState().profiles.map((profile) => ({
+    id: profile.id,
+    name: profile.name,
+    age: profile.age,
+    emoji: profile.emoji,
+  }));
+}
+
+export function replaceFamilyChildren(drafts: FamilyChildDraft[]): ChildProfile[] {
+  const validDrafts = drafts
+    .map((draft) => ({ ...draft, name: cleanName(draft.name) }))
+    .filter((draft) => Boolean(draft.name));
+  if (validDrafts.length === 0) throw new Error("Add at least one child profile.");
+
+  const existing = exportFamilyBackup();
+  const oldIds = new Set(existing.family.profiles.map((profile) => profile.id));
+  const used = new Set<string>();
+  const now = new Date().toISOString();
+  const profiles: ChildProfile[] = validDrafts.map((draft) => {
+    const id = isValidExistingId(draft.id, used) ? draft.id : uniqueId(draft.name, used);
+    if (draft.id === id) used.add(id);
+    const previous = existing.family.profiles.find((profile) => profile.id === id);
+    return {
+      id,
+      name: draft.name,
+      age: cleanAge(draft.age),
+      emoji: cleanEmoji(draft.emoji),
+      createdAt: previous?.createdAt ?? now,
+    };
+  });
+
+  const ids = new Set(profiles.map((profile) => profile.id));
+  const backup: FamilyBackup = {
+    ...existing,
+    exportedAt: now,
+    family: {
+      ...existing.family,
+      profiles,
+      activeProfileId: ids.has(existing.family.activeProfileId)
+        ? existing.family.activeProfileId
+        : profiles[0].id,
+    },
+    progressByProfile: keepProfileData(existing.progressByProfile, ids),
+    hubByProfile: keepProfileData(existing.hubByProfile, ids),
+    learningByProfile: keepProfileData(existing.learningByProfile, ids),
+    coachByProfile: keepProfileData(existing.coachByProfile, ids),
+  };
+
+  const deletedIds = [...oldIds].filter((id) => !ids.has(id));
+  removeDeletedProfileStorage(deletedIds);
+  if (!importFamilyBackup(backup)) throw new Error("The family profiles could not be saved.");
+  window.localStorage.setItem(CUSTOMIZED_KEY, "yes");
+  return profiles;
+}
