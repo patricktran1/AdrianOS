@@ -78,6 +78,18 @@ const FEATURED_BY_GRADE: Record<number, {
     replayLabel: "Choose a new route →",
     mechanics: ["Branching routes", "Relic powers", "Rune collection", "Adaptive clues"],
   },
+  5: {
+    eyebrow: "GRADE 5 FEATURED ADVENTURE",
+    title: "Cyber City Five",
+    description: "Choose a defense program, protect eight districts, manage network threat, and build a custom upgrade stack with Grade 5 math, reading, and science.",
+    emoji: "🌐🛡️",
+    href: "/games/cyber-city-five",
+    slug: "cyber-city-five",
+    completedLabel: "✓ City network secured",
+    startLabel: "Enter the network →",
+    replayLabel: "Build a new defense →",
+    mechanics: ["Upgrade forks", "Threat management", "Program powers", "Code fragments"],
+  },
 };
 
 export default function GradeGameSpotlightBridge() {
