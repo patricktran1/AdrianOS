@@ -32,28 +32,23 @@ const PROGRESS_PREFIX = "adrianos-progress-v2:";
 const HUB_PREFIX = "adrianos-home-hub-v2:";
 const LEARNING_PREFIX = "adrianos-learning-v1:";
 const COACH_PREFIX = "adrianos-coach-v1:";
+const CUSTOMIZED_KEY = "adrianos-family-customized-v1";
+const LEGACY_STARTER_IDS = new Set(["adrian", "elliot"]);
 
-const DEFAULT_PROFILES: ChildProfile[] = [
-  {
-    id: "adrian",
-    name: "Adrian",
-    age: 7,
-    emoji: "🚀",
-    createdAt: "2026-07-10T00:00:00.000Z",
-  },
-  {
-    id: "elliot",
-    name: "Elliot",
-    age: 3,
-    emoji: "🦖",
-    createdAt: "2026-07-10T00:00:00.000Z",
-  },
-];
-
-const DEFAULT_FAMILY: FamilyState = {
-  activeProfileId: "adrian",
-  profiles: DEFAULT_PROFILES,
+const EMPTY_FAMILY: FamilyState = {
+  activeProfileId: "",
+  profiles: [],
   parentPinHash: null,
+};
+
+// Internal-only fallback for components that hydrate before the first-run gate redirects.
+// It is never persisted or shown on the blank-slate homepage.
+const UNCONFIGURED_PROFILE: ChildProfile = {
+  id: "unconfigured-learner",
+  name: "Learner",
+  age: 7,
+  emoji: "⭐",
+  createdAt: "1970-01-01T00:00:00.000Z",
 };
 
 function cleanProfile(value: unknown, fallbackIndex: number): ChildProfile | null {
@@ -79,21 +74,20 @@ function cleanProfile(value: unknown, fallbackIndex: number): ChildProfile | nul
 }
 
 function normalizeFamily(value: unknown): FamilyState {
-  if (!value || typeof value !== "object") return DEFAULT_FAMILY;
+  if (!value || typeof value !== "object") return { ...EMPTY_FAMILY, profiles: [] };
   const raw = value as Partial<FamilyState>;
   const profiles = Array.isArray(raw.profiles)
     ? raw.profiles
         .map((profile, index) => cleanProfile(profile, index))
         .filter((profile): profile is ChildProfile => Boolean(profile))
     : [];
-  const safeProfiles = profiles.length > 0 ? profiles : DEFAULT_PROFILES;
-  const activeProfileId = safeProfiles.some((profile) => profile.id === raw.activeProfileId)
+  const activeProfileId = profiles.some((profile) => profile.id === raw.activeProfileId)
     ? String(raw.activeProfileId)
-    : safeProfiles[0].id;
+    : profiles[0]?.id ?? "";
 
   return {
     activeProfileId,
-    profiles: safeProfiles,
+    profiles,
     parentPinHash:
       typeof raw.parentPinHash === "string" && raw.parentPinHash
         ? raw.parentPinHash
@@ -101,15 +95,67 @@ function normalizeFamily(value: unknown): FamilyState {
   };
 }
 
+function isLegacyStarterFamily(family: FamilyState): boolean {
+  return family.profiles.length === 2
+    && family.profiles.every((profile) => LEGACY_STARTER_IDS.has(profile.id));
+}
+
+function legacyStarterHasRealProgress(): boolean {
+  if (typeof window === "undefined") return false;
+  for (const profileId of LEGACY_STARTER_IDS) {
+    const raw = window.localStorage.getItem(`${PROGRESS_PREFIX}${profileId}`);
+    if (!raw) continue;
+    try {
+      const progress = JSON.parse(raw) as {
+        xp?: unknown;
+        coins?: unknown;
+        games?: Record<string, { plays?: unknown; completions?: unknown; bestScore?: unknown }>;
+      };
+      if (Number(progress.xp ?? 0) > 0 || Number(progress.coins ?? 0) > 0) return true;
+      if (Object.values(progress.games ?? {}).some((game) =>
+        Number(game.plays ?? 0) > 0
+        || Number(game.completions ?? 0) > 0
+        || Number(game.bestScore ?? 0) > 0
+      )) return true;
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
+function removeUntouchedLegacyStarterData(): void {
+  if (typeof window === "undefined") return;
+  for (const profileId of LEGACY_STARTER_IDS) {
+    window.localStorage.removeItem(`${PROGRESS_PREFIX}${profileId}`);
+    window.localStorage.removeItem(`${HUB_PREFIX}${profileId}`);
+    window.localStorage.removeItem(`${LEARNING_PREFIX}${profileId}`);
+    window.localStorage.removeItem(`${COACH_PREFIX}${profileId}`);
+  }
+}
+
+function migrateUntouchedLegacyStarter(family: FamilyState): FamilyState {
+  if (typeof window === "undefined") return family;
+  if (window.localStorage.getItem(CUSTOMIZED_KEY) === "yes") return family;
+  if (!isLegacyStarterFamily(family) || legacyStarterHasRealProgress()) return family;
+
+  removeUntouchedLegacyStarterData();
+  const empty = { ...EMPTY_FAMILY, profiles: [] };
+  window.localStorage.setItem(FAMILY_KEY, JSON.stringify(empty));
+  return empty;
+}
+
 export function readFamilyState(): FamilyState {
-  if (typeof window === "undefined") return DEFAULT_FAMILY;
+  if (typeof window === "undefined") return { ...EMPTY_FAMILY, profiles: [] };
   try {
     const raw = window.localStorage.getItem(FAMILY_KEY);
-    const family = raw ? normalizeFamily(JSON.parse(raw)) : DEFAULT_FAMILY;
+    const family = migrateUntouchedLegacyStarter(raw ? normalizeFamily(JSON.parse(raw)) : { ...EMPTY_FAMILY, profiles: [] });
     if (!raw) window.localStorage.setItem(FAMILY_KEY, JSON.stringify(family));
     return family;
   } catch {
-    return DEFAULT_FAMILY;
+    const family = { ...EMPTY_FAMILY, profiles: [] };
+    window.localStorage.setItem(FAMILY_KEY, JSON.stringify(family));
+    return family;
   }
 }
 
@@ -120,12 +166,16 @@ function writeFamilyState(family: FamilyState): FamilyState {
   return family;
 }
 
+export function hasChildProfiles(family: FamilyState = readFamilyState()): boolean {
+  return family.profiles.length > 0;
+}
+
 export function getActiveProfile(): ChildProfile {
   const family = readFamilyState();
   return (
     family.profiles.find((profile) => profile.id === family.activeProfileId) ??
     family.profiles[0] ??
-    DEFAULT_PROFILES[0]
+    UNCONFIGURED_PROFILE
   );
 }
 
@@ -225,7 +275,7 @@ export function importFamilyBackup(value: unknown): boolean {
 }
 
 export function useFamilyProfiles() {
-  const [family, setFamily] = useState<FamilyState>(DEFAULT_FAMILY);
+  const [family, setFamily] = useState<FamilyState>({ ...EMPTY_FAMILY, profiles: [] });
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -289,11 +339,12 @@ export function useFamilyProfiles() {
   const activeProfile =
     family.profiles.find((profile) => profile.id === family.activeProfileId) ??
     family.profiles[0] ??
-    DEFAULT_PROFILES[0];
+    UNCONFIGURED_PROFILE;
 
   return {
     family,
     activeProfile,
+    hasProfiles: family.profiles.length > 0,
     hydrated,
     switchProfile,
     updateProfile,
