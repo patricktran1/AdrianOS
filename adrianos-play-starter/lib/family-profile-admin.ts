@@ -8,11 +8,17 @@ import {
   type FamilyBackup,
   type FamilyState,
 } from "@/lib/adrian-profiles";
+import {
+  inferredGradeForAge,
+  readProfileGrade,
+  writeProfileGrade,
+} from "@/lib/adrian-profile-grade";
 
 export type FamilyChildDraft = {
   id?: string;
   name: string;
   age: number;
+  grade: number;
   emoji: string;
 };
 
@@ -29,6 +35,12 @@ function cleanEmoji(value: string): string {
 
 function cleanAge(value: number): number {
   return Number.isFinite(value) ? Math.max(3, Math.min(18, Math.round(value))) : 7;
+}
+
+function cleanGrade(value: number, age: number): number {
+  return Number.isFinite(value)
+    ? Math.max(-1, Math.min(12, Math.round(value)))
+    : inferredGradeForAge(age);
 }
 
 function baseSlug(name: string): string {
@@ -79,13 +91,14 @@ export function currentFamilyDrafts(): FamilyChildDraft[] {
     id: profile.id,
     name: profile.name,
     age: profile.age,
+    grade: readProfileGrade(profile),
     emoji: profile.emoji,
   }));
 }
 
 export function replaceFamilyChildren(drafts: FamilyChildDraft[]): ChildProfile[] {
   const validDrafts = drafts
-    .map((draft) => ({ ...draft, name: cleanName(draft.name) }))
+    .map((draft) => ({ ...draft, name: cleanName(draft.name), age: cleanAge(draft.age) }))
     .filter((draft) => Boolean(draft.name));
   if (validDrafts.length === 0) throw new Error("Add at least one child profile.");
 
@@ -100,7 +113,7 @@ export function replaceFamilyChildren(drafts: FamilyChildDraft[]): ChildProfile[
     return {
       id,
       name: draft.name,
-      age: cleanAge(draft.age),
+      age: draft.age,
       emoji: cleanEmoji(draft.emoji),
       createdAt: previous?.createdAt ?? now,
     };
@@ -126,6 +139,9 @@ export function replaceFamilyChildren(drafts: FamilyChildDraft[]): ChildProfile[
   const deletedIds = [...oldIds].filter((id) => !ids.has(id));
   removeDeletedProfileStorage(deletedIds);
   if (!importFamilyBackup(backup)) throw new Error("The family profiles could not be saved.");
+  profiles.forEach((profile, index) => {
+    writeProfileGrade(profile.id, cleanGrade(validDrafts[index].grade, profile.age));
+  });
   window.localStorage.setItem(CUSTOMIZED_KEY, "yes");
   return profiles;
 }
