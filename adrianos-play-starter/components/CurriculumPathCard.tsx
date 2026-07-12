@@ -22,13 +22,14 @@ export default function CurriculumPathCard() {
   const readiness = elementaryGradeReadiness(grade, nodes);
   const milestone = nextElementaryMilestone(grade, nodes);
   const next = getCurriculumRecommendedSkill(activeProfile, nodes);
+  const pathTitle = grade === 2 ? "California Grade 2 learning path" : `${gradeLabel(grade)} elementary learning path`;
 
   return (
-    <section style={card} aria-label="TK through Grade 5 Elementary Journey">
+    <section style={card} aria-label="Curriculum learning path">
       <div style={header}>
         <div style={{ minWidth: 0 }}>
           <span style={eyebrow}>TK–5 ELEMENTARY JOURNEY</span>
-          <h2 style={title}>{gradeLabel(grade)} learning path</h2>
+          <h2 style={title}>{pathTitle}</h2>
           <p style={scopeCopy}>AdrianOS intentionally ends at Grade 5. Grade drives the learning sequence; age adjusts developmental presentation.</p>
         </div>
         <div style={readinessBadge}>
@@ -40,7 +41,7 @@ export default function CurriculumPathCard() {
       {milestone ? (
         <div style={nextGrid}>
           <div style={{ minWidth: 0 }}>
-            <small style={label}>NEXT GRADE MILESTONE · {milestone.area.toUpperCase()}</small>
+            <small style={label}>NEXT BEST SKILL · {milestone.area.toUpperCase()}</small>
             <h3 style={skillTitle}>{milestone.title}</h3>
             <p style={muted}>{milestone.childGoal}</p>
             <div style={tags}>
@@ -52,7 +53,7 @@ export default function CurriculumPathCard() {
           <div style={actions}>
             {next && <Link href={skillHref(next)} style={startLink}>Practice {next.label} →</Link>}
             <Link href="/curriculum/elementary" style={mapLink}>Open the full Elementary Journey</Link>
-            {grade === 2 && <Link href="/curriculum" style={standardsLink}>See California Grade 2 standards</Link>}
+            {grade === 2 && <Link href="/curriculum" style={standardsLink}>See the full learning map</Link>}
           </div>
         </div>
       ) : (
