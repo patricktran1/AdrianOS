@@ -50,6 +50,10 @@ async function assertGameRenders(page: Page, slug: string) {
   await expect(feelShell).toHaveAttribute("data-game-slug", slug);
   await expect(feelShell.locator(".game-feel-ambient")).toHaveCount(1);
 
+  const powerLoop = page.locator('[data-game-power-loop="active"]');
+  await expect(powerLoop, `${slug} should receive the shared game power loop`).toBeVisible();
+  await expect(powerLoop).toHaveAttribute("data-power-ready", "true");
+
   const bodyText = await page.locator("body").innerText();
   expect(bodyText).not.toMatch(/Application error|Internal Server Error|This page could not be found/i);
 

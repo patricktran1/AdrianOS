@@ -1,0 +1,231 @@
+.game-power-controls {
+  position: fixed;
+  top: 82px;
+  right: 14px;
+  z-index: 145;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  opacity: 1;
+  transition: opacity .2s ease;
+}
+
+.game-power-controls[data-power-ready="false"] { opacity: 0; }
+
+.game-power-trigger {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--game-accent) 44%, rgba(255,255,255,.16));
+  background: rgba(16,19,27,.9);
+  color: #fff;
+  box-shadow: 0 12px 32px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.08);
+  backdrop-filter: blur(16px);
+  cursor: pointer;
+}
+
+.game-power-trigger:hover,
+.game-power-trigger:focus-visible {
+  border-color: var(--game-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--game-accent) 20%, transparent), 0 14px 36px rgba(0,0,0,.3);
+}
+
+.game-power-trigger strong {
+  font-size: 10px;
+  letter-spacing: .14em;
+}
+
+.game-power-panel {
+  width: min(270px, calc(100vw - 28px));
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.15);
+  background: linear-gradient(155deg, rgba(34,41,54,.98), rgba(16,19,27,.98));
+  color: #fff;
+  box-shadow: 0 24px 70px rgba(0,0,0,.44);
+  backdrop-filter: blur(20px);
+  transform-origin: top right;
+  animation: gamePowerPanelIn .18s ease-out both;
+}
+
+.game-power-panel-label {
+  padding: 2px 4px 5px;
+  color: var(--game-accent);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .16em;
+}
+
+.game-power-panel button {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.055);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.game-power-panel button:hover,
+.game-power-panel button:focus-visible {
+  border-color: color-mix(in srgb, var(--game-accent) 56%, rgba(255,255,255,.12));
+  background: color-mix(in srgb, var(--game-accent) 10%, rgba(255,255,255,.055));
+}
+
+.game-power-panel button:disabled {
+  opacity: .52;
+  cursor: not-allowed;
+}
+
+.game-power-panel button > span:first-child { font-size: 23px; }
+.game-power-panel button > span:last-child { display: grid; gap: 2px; }
+.game-power-panel button strong { font-size: 14px; }
+.game-power-panel button small { color: #aeb7c5; font-size: 11px; }
+
+.game-power-streak {
+  position: fixed;
+  top: 84px;
+  left: 50%;
+  z-index: 140;
+  width: min(230px, calc(100vw - 150px));
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 7px 9px;
+  padding: 8px 12px 9px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--game-accent) 55%, rgba(255,255,255,.12));
+  background: rgba(16,19,27,.92);
+  color: #fff;
+  box-shadow: 0 14px 38px rgba(0,0,0,.3), 0 0 28px color-mix(in srgb, var(--game-accent) 18%, transparent);
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: gamePowerStreakIn .28s cubic-bezier(.2,.9,.2,1.18) both;
+}
+
+.game-power-streak span { font-size: 21px; }
+.game-power-streak strong { font-size: 10px; letter-spacing: .12em; }
+.game-power-streak i {
+  grid-column: 1 / -1;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--game-accent), var(--game-accent-2));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--game-accent) 50%, transparent);
+  transition: width .24s ease;
+}
+
+.game-power-moment {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  z-index: 190;
+  width: min(470px, calc(100vw - 28px));
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: clamp(24px, 6vw, 42px);
+  border-radius: 34px;
+  border: 1px solid color-mix(in srgb, var(--game-accent) 60%, white 12%);
+  background:
+    radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--game-accent) 24%, transparent), transparent 48%),
+    linear-gradient(155deg, rgba(34,41,54,.99), rgba(16,19,27,.99));
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 34px 110px rgba(0,0,0,.6), 0 0 0 8px color-mix(in srgb, var(--game-accent) 8%, transparent);
+  pointer-events: none;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
+  animation: gamePowerMomentIn .48s cubic-bezier(.16,.88,.26,1.18) both;
+}
+
+.game-power-moment-rays {
+  position: absolute;
+  inset: -60%;
+  opacity: .23;
+  background: repeating-conic-gradient(from 0deg, var(--game-accent) 0 7deg, transparent 7deg 19deg);
+  animation: gamePowerRays 8s linear infinite;
+}
+
+.game-power-moment > *:not(.game-power-moment-rays) { position: relative; z-index: 1; }
+.game-power-moment-icon {
+  font-size: clamp(4.7rem, 18vw, 8rem);
+  line-height: 1;
+  filter: drop-shadow(0 16px 24px rgba(0,0,0,.36));
+  animation: gamePowerIconPop .58s .08s cubic-bezier(.2,.8,.2,1.25) both;
+}
+.game-power-moment small {
+  color: var(--game-accent);
+  font-weight: 950;
+  letter-spacing: .17em;
+  font-size: 10px;
+}
+.game-power-moment strong {
+  max-width: 420px;
+  font-size: clamp(1.65rem, 6vw, 3.2rem);
+  line-height: .95;
+  letter-spacing: -.045em;
+}
+.game-power-moment p {
+  max-width: 390px;
+  margin: 3px 0 0;
+  color: #c7cfda;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+@keyframes gamePowerPanelIn {
+  from { opacity: 0; transform: scale(.94) translateY(-5px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes gamePowerStreakIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-12px) scale(.88); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@keyframes gamePowerMomentIn {
+  0% { opacity: 0; transform: translate(-50%, -44%) scale(.72); }
+  70% { opacity: 1; transform: translate(-50%, -51%) scale(1.035); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes gamePowerIconPop {
+  from { opacity: 0; transform: scale(.45) rotate(-12deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes gamePowerRays { to { transform: rotate(360deg); } }
+
+@media (max-width: 640px) {
+  .game-power-controls { top: 77px; right: 8px; }
+  .game-power-trigger { min-height: 38px; padding: 7px 10px; }
+  .game-power-trigger strong { display: none; }
+  .game-power-streak {
+    top: 78px;
+    width: min(190px, calc(100vw - 126px));
+    min-height: 40px;
+    padding: 7px 10px 8px;
+  }
+  .game-power-streak strong { font-size: 9px; letter-spacing: .08em; }
+  .game-power-moment { padding: 24px 18px 28px; border-radius: 28px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-power-panel,
+  .game-power-streak,
+  .game-power-moment,
+  .game-power-moment-icon,
+  .game-power-moment-rays {
+    animation: none !important;
+  }
+  .game-power-streak i { transition: none; }
+}
