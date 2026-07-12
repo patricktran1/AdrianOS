@@ -1,9 +1,9 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
-import { useAdrianProgress } from "@/lib/adrian-progress";
+import { useGameSession } from "@/lib/game-session";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 const GAME_SLUG = "human-body-explorer";
 const QUESTIONS = [
@@ -16,23 +16,12 @@ const QUESTIONS = [
 ] as const;
 
 export default function Page() {
-  const { recordPlay, award } = useAdrianProgress();
+  const { completeGame, restartGame } = useGameSession(GAME_SLUG);
   const [index, setIndex] = useState(0);
   const [choice, setChoice] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
-  const completionRecorded = useRef(false);
   const current = QUESTIONS[index];
-
-  useEffect(() => {
-    recordPlay(GAME_SLUG);
-  }, [recordPlay]);
-
-  useEffect(() => {
-    if (!done || completionRecorded.current) return;
-    completionRecorded.current = true;
-    award(GAME_SLUG, { xp: 18 + score * 4, coins: 5, score, completed: true });
-  }, [done, score, award]);
 
   function pick(answerIndex: number) {
     if (choice !== null) return;
@@ -42,6 +31,7 @@ export default function Page() {
 
   function next() {
     if (index === QUESTIONS.length - 1) {
+      completeGame({ xp: 18 + score * 4, coins: 5, score });
       setDone(true);
       return;
     }
@@ -50,12 +40,11 @@ export default function Page() {
   }
 
   function restart() {
-    completionRecorded.current = false;
+    restartGame();
     setIndex(0);
     setChoice(null);
     setScore(0);
     setDone(false);
-    recordPlay(GAME_SLUG);
   }
 
   return (
