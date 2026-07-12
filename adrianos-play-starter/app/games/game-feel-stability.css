@@ -1,0 +1,12 @@
+/*
+ * Game controls should feel tactile without changing their hit-box position.
+ * Moving an answer under the pointer can create a hover loop and makes the
+ * target harder for children, switch controls, and browser automation to hit.
+ */
+@media (hover: hover) {
+  .games-route-shell .memory-card:hover,
+  .games-route-shell .answer-button:hover,
+  .games-route-shell [data-correct]:hover {
+    transform: none;
+  }
+}

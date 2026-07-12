@@ -45,6 +45,11 @@ async function assertGameRenders(page: Page, slug: string) {
   await expect(page.locator("body")).toBeVisible();
   await expect.poll(async () => (await page.locator("body").innerText()).trim().length).toBeGreaterThan(20);
 
+  const feelShell = page.locator('[data-game-feel-shell="active"]');
+  await expect(feelShell, `${slug} should receive the shared game feel engine`).toBeVisible();
+  await expect(feelShell).toHaveAttribute("data-game-slug", slug);
+  await expect(feelShell.locator(".game-feel-ambient")).toHaveCount(1);
+
   const bodyText = await page.locator("body").innerText();
   expect(bodyText).not.toMatch(/Application error|Internal Server Error|This page could not be found/i);
 
