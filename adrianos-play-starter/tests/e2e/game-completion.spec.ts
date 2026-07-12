@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
+import { seedQaFamily } from "./helpers/seed-family";
 
-const PROGRESS_KEY = "adrianos-progress-v2:adrian";
+const PROGRESS_KEY = "adrianos-progress-v2:qa-learner";
 
 type GameProgress = {
   plays: number;
@@ -155,10 +156,7 @@ const recipes: CompletionRecipe[] = [
 test.describe("shared game completion contract", () => {
   for (const recipe of recipes) {
     test(`${recipe.slug} records one completion and a clean replay`, async ({ page }) => {
-      await page.addInitScript(() => {
-        window.localStorage.clear();
-        window.sessionStorage.clear();
-      });
+      await seedQaFamily(page, { clear: true });
 
       const pageErrors: string[] = [];
       page.on("pageerror", (error) => pageErrors.push(error.message));
