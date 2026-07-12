@@ -15,11 +15,19 @@ export type DeviceSignOutResult = {
   message: string;
 };
 
-function removeAppKeys(storage: Storage): void {
+function isAdrianOsStorageKey(key: string): boolean {
+  return key.startsWith(APP_STORAGE_PREFIX);
+}
+
+function isSupabaseAuthStorageKey(key: string): boolean {
+  return key.startsWith("sb-") && (key.includes("-auth-token") || key.includes("code-verifier"));
+}
+
+function removeMatchingKeys(storage: Storage, matches: (key: string) => boolean): void {
   const keys: string[] = [];
   for (let index = 0; index < storage.length; index += 1) {
     const key = storage.key(index);
-    if (key?.startsWith(APP_STORAGE_PREFIX)) keys.push(key);
+    if (key && matches(key)) keys.push(key);
   }
   for (const key of keys) storage.removeItem(key);
 }
@@ -35,8 +43,9 @@ async function signOutCurrentBrowserSession(): Promise<void> {
 
 export function eraseAdrianOsDeviceData(): void {
   if (typeof window === "undefined") return;
-  removeAppKeys(window.localStorage);
-  removeAppKeys(window.sessionStorage);
+  removeMatchingKeys(window.localStorage, (key) => isAdrianOsStorageKey(key) || isSupabaseAuthStorageKey(key));
+  removeMatchingKeys(window.sessionStorage, (key) => isAdrianOsStorageKey(key) || isSupabaseAuthStorageKey(key));
+  void window.navigator.credentials?.preventSilentAccess?.();
   window.dispatchEvent(new Event("adrianos-family-updated"));
   window.dispatchEvent(new Event("adrianos-progress-updated"));
   window.dispatchEvent(new Event("adrianos-learning-updated"));
@@ -78,7 +87,7 @@ export async function forceSignOutAndEraseDevice(): Promise<DeviceSignOutResult>
   try {
     await signOutCurrentBrowserSession();
   } catch {
-    // Local family data must still be removable from a shared device when offline.
+    // Local family data and auth state must still be removable from a shared device when offline.
   }
   eraseAdrianOsDeviceData();
   return {
