@@ -303,6 +303,7 @@ export default function DailyAdventureRemixPage() {
   }
 
   const revealCorrect = feedback === "explanation";
+  const youngLearner = (grade ?? 0) <= 0;
   return (
     <GameFrame title={theme.title}>
       <style>{css}</style>
@@ -316,7 +317,7 @@ export default function DailyAdventureRemixPage() {
           <div style={topRow}><span style={{ ...subjectChip, background: theme.accent }}>{mission.subject}</span><span style={standard}>{mission.standard}</span></div>
           <div className="remix-float" style={visual}>{mission.visual}</div>
           <h1 style={question}>{mission.prompt}</h1>
-          {(grade <= 0 || mission.prompt.length > 70) && <button type="button" onClick={speakMission} style={listenButton}>🔊 Read it aloud</button>}
+          {(youngLearner || mission.prompt.length > 70) && <button type="button" onClick={speakMission} style={listenButton}>🔊 Read it aloud</button>}
           <div style={choiceGrid}>
             {mission.choices.map((choice) => {
               const right = choice === mission.answer;
@@ -328,7 +329,7 @@ export default function DailyAdventureRemixPage() {
                   data-correct={right ? "true" : "false"}
                   onClick={() => choose(choice)}
                   disabled={feedback === "explanation" || wrong}
-                  style={{ ...choiceButton, minHeight: grade <= 0 ? 92 : 76, ...(revealCorrect && right ? correctStyle : wrong ? wrongStyle : {}) }}
+                  style={{ ...choiceButton, minHeight: youngLearner ? 92 : 76, ...(revealCorrect && right ? correctStyle : wrong ? wrongStyle : {}) }}
                 >
                   {choice}
                 </button>
