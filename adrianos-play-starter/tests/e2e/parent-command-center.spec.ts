@@ -19,7 +19,8 @@ test.describe("parent command center", () => {
     await expect(page.getByRole("link", { name: /Open today’s route|View School Mode/ })).toBeVisible();
 
     await page.getByRole("button", { name: "Weekly report", exact: true }).click();
-    await expect(page.getByRole("dialog", { name: /weekly/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Learning week in review" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Close weekly report" })).toBeVisible();
   });
 
   test("fits the phone viewport without horizontal overflow", async ({ page }) => {
