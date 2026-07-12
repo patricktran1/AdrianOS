@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import { readProfileGrade } from "@/lib/adrian-profile-grade";
 import { useAdrianProgress } from "@/lib/adrian-progress";
+import { readDailyRemixState } from "@/lib/daily-adventure-remix-state";
 
 const FEATURED_BY_GRADE: Record<number, {
   eyebrow: string;
@@ -115,7 +116,9 @@ export default function GradeGameSpotlightBridge() {
   if (!featured) return null;
 
   const game = progress.games[featured.slug];
-  const completed = (game?.completions ?? 0) > 0;
+  const completed = grade === -1
+    ? readDailyRemixState(activeProfile.id).completedToday
+    : (game?.completions ?? 0) > 0;
 
   return (
     <section style={card} aria-label="Featured grade adventure">
