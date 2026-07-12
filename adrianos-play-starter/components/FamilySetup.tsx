@@ -16,10 +16,11 @@ import {
   replaceFamilyChildren,
   type FamilyChildDraft,
 } from "@/lib/family-profile-admin";
+import { GRADE_OPTIONS, inferredGradeForAge } from "@/lib/adrian-profile-grade";
 import { isSupabaseConfigured } from "@/lib/supabase-browser";
 import "@/app/family-beta.css";
 
-const EMPTY_CHILD: FamilyChildDraft = { name: "", age: 7, emoji: "⭐" };
+const EMPTY_CHILD: FamilyChildDraft = { name: "", age: 7, grade: 2, emoji: "⭐" };
 
 type Phase = "checking" | "signed-out" | "editing" | "restoring" | "saving" | "error";
 
@@ -114,6 +115,10 @@ export default function FamilySetup() {
     )));
   }
 
+  function updateAge(index: number, age: number) {
+    updateDraft(index, { age, grade: inferredGradeForAge(age) });
+  }
+
   function addChild() {
     setDrafts((current) => [...current, { ...EMPTY_CHILD, emoji: current.length % 2 ? "🦖" : "🚀" }]);
   }
@@ -167,7 +172,7 @@ export default function FamilySetup() {
           <div>
             <span className="family-beta-eyebrow">PARENT-MANAGED FAMILY ACCOUNT</span>
             <h1>{manageMode ? "Manage your learners." : "Who is learning?"}</h1>
-            <p>Create one profile per child. Children choose their profile before playing, while the parent account keeps progress together.</p>
+            <p>Create one profile per child with an age and learning grade. AdrianOS uses the grade for curriculum goals and the age for developmental fit.</p>
           </div>
           <Link href={manageMode ? "/parent" : "/join"} className="family-beta-secondary">
             {manageMode ? "Back to Parent Mode" : "Back"}
@@ -236,10 +241,19 @@ export default function FamilySetup() {
                     <select
                       aria-label={`Child ${index + 1} age`}
                       value={draft.age}
-                      onChange={(event) => updateDraft(index, { age: Number(event.target.value) })}
+                      onChange={(event) => updateAge(index, Number(event.target.value))}
                     >
                       {Array.from({ length: 16 }, (_, ageIndex) => ageIndex + 3).map((age) => (
                         <option value={age} key={age}>Age {age}</option>
+                      ))}
+                    </select>
+                    <select
+                      aria-label={`Child ${index + 1} learning grade`}
+                      value={draft.grade}
+                      onChange={(event) => updateDraft(index, { grade: Number(event.target.value) })}
+                    >
+                      {GRADE_OPTIONS.map((option) => (
+                        <option value={option.value} key={option.value}>{option.label}</option>
                       ))}
                     </select>
                     <button
@@ -279,7 +293,7 @@ export default function FamilySetup() {
                   {phase === "saving" ? "Saving family…" : manageMode ? "Save child profiles" : "Create family and open School Mode"}
                 </button>
               </div>
-              <p className="family-setup-muted">Children do not receive accounts and are not asked for an email address. The parent controls profile setup and cloud access.</p>
+              <p className="family-setup-muted">Children do not receive accounts or provide an email address. The parent controls profiles, grade selection, and cloud access.</p>
             </>
           )}
         </section>
