@@ -9,6 +9,13 @@ const allowedSubjects = new Set([
   "Logic","Memory","Math","Reading","Science","Geography","History","Civics","Economics","Wellbeing","Health","Digital Citizenship","Music","Art","Engineering","Movement","Life Skills","Environment","Learning Skills","Coding","Creativity",
 ]);
 
+function elementaryAgeLabel(value) {
+  const numbers = String(value ?? "Ages 6+").match(/\d+/g)?.map(Number) ?? [6];
+  const minimum = Math.max(4, Math.min(11, numbers[0] ?? 6));
+  const maximum = Math.max(minimum, Math.min(11, numbers[1] ?? 11));
+  return minimum === maximum ? `Age ${minimum}` : `Ages ${minimum}–${maximum}`;
+}
+
 async function main() {
   const entries = await fs.readdir(gamesDir, { withFileTypes: true });
   const games = [];
@@ -21,7 +28,7 @@ async function main() {
       if (!game.slug || !game.title || !game.description || !game.emoji) throw new Error("Missing required metadata fields.");
       if (game.slug !== entry.name) throw new Error(`Slug "${game.slug}" must match folder name "${entry.name}".`);
       if (!allowedSubjects.has(game.subject)) throw new Error(`Unsupported subject "${game.subject}".`);
-      games.push({ slug: game.slug, title: game.title, description: game.description, emoji: game.emoji, subject: game.subject, age: game.age ?? "Ages 6+", status: game.status ?? "playable", order: Number.isFinite(game.order) ? game.order : 999 });
+      games.push({ slug: game.slug, title: game.title, description: game.description, emoji: game.emoji, subject: game.subject, age: elementaryAgeLabel(game.age), status: game.status ?? "playable", order: Number.isFinite(game.order) ? game.order : 999 });
     } catch (error) {
       if (error?.code === "ENOENT") { console.warn(`Skipping ${entry.name}: no game.json found.`); continue; }
       throw new Error(`Invalid metadata in ${entry.name}: ${error.message}`);
@@ -31,6 +38,6 @@ async function main() {
   const output = `// AUTO-GENERATED. DO NOT EDIT BY HAND.\nimport type { Game } from "./games";\n\nexport const games: Game[] = ${JSON.stringify(games.map(({order,...game})=>game),null,2)};\n`;
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
   await fs.writeFile(outputPath, output, "utf8");
-  console.log(`Generated ${games.length} games.`);
+  console.log(`Generated ${games.length} elementary games.`);
 }
 main().catch((error)=>{ console.error(error); process.exit(1); });
