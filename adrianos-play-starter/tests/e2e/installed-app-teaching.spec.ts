@@ -1,15 +1,9 @@
 import { expect, test } from "@playwright/test";
-
-async function clearStorage(page: import("@playwright/test").Page) {
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  });
-}
+import { seedQaFamily } from "./helpers/seed-family";
 
 test.describe("installed app reachability", () => {
   test("keeps Home and feedback actions reachable on an iPhone viewport", async ({ page }) => {
-    await clearStorage(page);
+    await seedQaFamily(page, { clear: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/games/math-blast", { waitUntil: "domcontentloaded" });
 
@@ -43,7 +37,7 @@ test.describe("installed app reachability", () => {
 
 test.describe("teach-during-play loop", () => {
   test("Math Blast gives a strategy hint, retry, and worked explanation", async ({ page }) => {
-    await clearStorage(page);
+    await seedQaFamily(page, { clear: true });
     await page.goto("/games/math-blast?topic=addition&difficulty=1", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: /10-Question Mission/ }).click();
 
@@ -62,12 +56,12 @@ test.describe("teach-during-play loop", () => {
     await expect(page.getByText(/Solved with support/i).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Next Question" })).toBeVisible();
 
-    const learning = await page.evaluate(() => JSON.parse(window.localStorage.getItem("adrianos-learning-v1:adrian") ?? "{}"));
+    const learning = await page.evaluate(() => JSON.parse(window.localStorage.getItem("adrianos-learning-v1:qa-learner") ?? "{}"));
     expect(Number(learning?.skills?.["math-addition"]?.attempts ?? 0)).toBeGreaterThan(0);
   });
 
   test("Science Quest starts from profile evidence and offers a retry clue", async ({ page }) => {
-    await clearStorage(page);
+    await seedQaFamily(page, { clear: true });
     await page.goto("/games/science-quest", { waitUntil: "domcontentloaded" });
 
     await expect(page.getByText("ADAPTIVE SCIENCE MISSIONS", { exact: true })).toBeVisible();
