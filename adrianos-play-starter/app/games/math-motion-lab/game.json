@@ -1,0 +1,10 @@
+{
+  "slug": "math-motion-lab",
+  "title": "Math Motion Lab",
+  "description": "Move a hero along a grade-specific number line to solve counting, operations, fractions, decimals, and coordinate challenges.",
+  "emoji": "🛹📏",
+  "subject": "Math",
+  "age": "Ages 4–11",
+  "status": "playable",
+  "order": 2
+}

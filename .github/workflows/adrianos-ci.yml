@@ -45,7 +45,7 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run learner-home and game-feel browser checks
+      - name: Run learner-home and changed-feature browser checks
         shell: bash
         run: |
           specs=(tests/e2e/adventure-arcade.spec.ts)
@@ -54,5 +54,8 @@ jobs:
           fi
           if [[ -f tests/e2e/game-feel.spec.ts ]]; then
             specs+=(tests/e2e/game-feel.spec.ts)
+          fi
+          if [[ -f tests/e2e/math-motion-lab.spec.ts ]]; then
+            specs+=(tests/e2e/math-motion-lab.spec.ts)
           fi
           npx playwright test "${specs[@]}"
