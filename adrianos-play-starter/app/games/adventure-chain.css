@@ -1,0 +1,320 @@
+.adventure-chain-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 185;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  overflow: auto;
+  background:
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--game-accent) 20%, transparent), transparent 42%),
+    rgba(6, 9, 16, .78);
+  backdrop-filter: blur(18px);
+  animation: adventureChainBackdropIn .24s ease-out both;
+}
+
+.adventure-chain {
+  position: relative;
+  width: min(980px, 100%);
+  display: grid;
+  gap: 20px;
+  padding: clamp(22px, 4vw, 38px);
+  border: 1px solid color-mix(in srgb, var(--game-accent) 48%, rgba(255,255,255,.16));
+  border-radius: 34px;
+  background:
+    linear-gradient(145deg, rgba(33, 39, 54, .99), rgba(14, 18, 28, .99)),
+    rgba(16, 19, 27, .99);
+  color: #fff;
+  box-shadow: 0 36px 120px rgba(0,0,0,.62), 0 0 0 7px color-mix(in srgb, var(--game-accent) 7%, transparent);
+  overflow: hidden;
+  animation: adventureChainIn .38s cubic-bezier(.16,.86,.24,1.08) both;
+}
+
+.adventure-chain::before {
+  content: "";
+  position: absolute;
+  inset: -55% 48% 52% -20%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--game-accent) 18%, transparent);
+  filter: blur(32px);
+  pointer-events: none;
+}
+
+.adventure-chain > * {
+  position: relative;
+  z-index: 1;
+}
+
+.adventure-chain-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.adventure-chain-close:hover,
+.adventure-chain-close:focus-visible {
+  border-color: var(--game-accent);
+  background: color-mix(in srgb, var(--game-accent) 12%, rgba(255,255,255,.06));
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--game-accent) 22%, transparent);
+}
+
+.adventure-chain-heading {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 17px;
+  padding-right: 48px;
+}
+
+.adventure-chain-orbit {
+  width: clamp(68px, 9vw, 92px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--game-accent) 52%, rgba(255,255,255,.15));
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255,255,255,.2), transparent 28%),
+    color-mix(in srgb, var(--game-accent) 15%, rgba(255,255,255,.04));
+  font-size: clamp(2rem, 5vw, 3.35rem);
+  box-shadow: inset 0 1px rgba(255,255,255,.12), 0 18px 42px rgba(0,0,0,.28);
+}
+
+.adventure-chain-heading small,
+.adventure-chain-card small {
+  color: var(--game-accent);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .16em;
+}
+
+.adventure-chain-heading h2 {
+  margin: 4px 0 5px;
+  max-width: 720px;
+  font-size: clamp(1.85rem, 4.7vw, 3.55rem);
+  line-height: .96;
+  letter-spacing: -.045em;
+}
+
+.adventure-chain-heading p {
+  max-width: 670px;
+  margin: 0;
+  color: #c4ccda;
+  font-weight: 680;
+  line-height: 1.45;
+}
+
+.adventure-chain-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.adventure-chain-card {
+  min-width: 0;
+  min-height: 250px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-content: start;
+  gap: 9px 10px;
+  padding: 18px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 24px;
+  background:
+    linear-gradient(155deg, rgba(255,255,255,.075), rgba(255,255,255,.025)),
+    rgba(8, 11, 18, .45);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: inset 0 1px rgba(255,255,255,.07), 0 16px 36px rgba(0,0,0,.2);
+  cursor: pointer;
+}
+
+.adventure-chain-card:hover,
+.adventure-chain-card:focus-visible {
+  border-color: color-mix(in srgb, var(--game-accent) 64%, rgba(255,255,255,.16));
+  background:
+    linear-gradient(155deg, color-mix(in srgb, var(--game-accent) 13%, rgba(255,255,255,.075)), rgba(255,255,255,.03)),
+    rgba(8, 11, 18, .52);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--game-accent) 17%, transparent), 0 20px 48px rgba(0,0,0,.3);
+}
+
+.adventure-chain-kind-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  grid-row: span 2;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--game-accent) 13%, rgba(255,255,255,.055));
+  font-size: 18px;
+}
+
+.adventure-chain-card small {
+  align-self: center;
+}
+
+.adventure-chain-game-icon {
+  grid-column: 1 / -1;
+  margin-top: 7px;
+  font-size: clamp(3rem, 7vw, 4.5rem);
+  line-height: 1;
+  filter: drop-shadow(0 12px 16px rgba(0,0,0,.32));
+}
+
+.adventure-chain-card strong {
+  grid-column: 1 / -1;
+  font-size: clamp(1.15rem, 2.2vw, 1.55rem);
+  line-height: 1.04;
+  letter-spacing: -.025em;
+}
+
+.adventure-chain-card p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #b9c2d0;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.adventure-chain-go {
+  grid-column: 1 / -1;
+  align-self: end;
+  margin-top: auto;
+  padding-top: 5px;
+  color: var(--game-accent);
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: .12em;
+}
+
+.adventure-chain-footer {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.adventure-chain-footer a {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 14px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 999px;
+  background: rgba(255,255,255,.045);
+  color: #d7ddea;
+  font-size: 12px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.adventure-chain-footer a:hover,
+.adventure-chain-footer a:focus-visible {
+  border-color: var(--game-accent);
+  color: #fff;
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--game-accent) 16%, transparent);
+}
+
+@keyframes adventureChainBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes adventureChainIn {
+  from { opacity: 0; transform: scale(.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 760px) {
+  .adventure-chain-backdrop {
+    place-items: start center;
+    padding: 12px;
+  }
+
+  .adventure-chain {
+    gap: 16px;
+    padding: 20px 14px 18px;
+    border-radius: 27px;
+  }
+
+  .adventure-chain-heading {
+    grid-template-columns: 58px 1fr;
+    gap: 12px;
+    padding-right: 34px;
+  }
+
+  .adventure-chain-orbit {
+    width: 58px;
+    border-radius: 19px;
+    font-size: 2rem;
+  }
+
+  .adventure-chain-heading h2 {
+    font-size: clamp(1.55rem, 8vw, 2.25rem);
+  }
+
+  .adventure-chain-heading p {
+    font-size: 13px;
+  }
+
+  .adventure-chain-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .adventure-chain-card {
+    min-height: 148px;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .adventure-chain-kind-icon {
+    grid-row: 1 / span 2;
+  }
+
+  .adventure-chain-card small {
+    grid-column: 2;
+  }
+
+  .adventure-chain-game-icon {
+    grid-column: 3;
+    grid-row: 1 / span 3;
+    margin: 0;
+    font-size: 3.25rem;
+  }
+
+  .adventure-chain-card strong,
+  .adventure-chain-card p,
+  .adventure-chain-go {
+    grid-column: 1 / -1;
+  }
+
+  .adventure-chain-card strong {
+    margin-top: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adventure-chain-backdrop,
+  .adventure-chain {
+    animation: none !important;
+  }
+}

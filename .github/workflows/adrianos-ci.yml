@@ -22,7 +22,7 @@ concurrency:
 jobs:
   build-and-browser-checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: adrianos-play-starter
@@ -61,4 +61,10 @@ jobs:
           if [[ -f tests/e2e/game-power-loop.spec.ts ]]; then
             specs+=(tests/e2e/game-power-loop.spec.ts)
           fi
+          if [[ -f tests/e2e/adaptive-adventure-chain.spec.ts ]]; then
+            specs+=(tests/e2e/adaptive-adventure-chain.spec.ts)
+          fi
           npx playwright test "${specs[@]}"
+
+      - name: Run full AdrianOS browser matrix
+        run: npx playwright test
