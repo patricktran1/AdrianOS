@@ -24,7 +24,7 @@ export default function FamilyAccountControl() {
     if (status.userEmail) setLastEmail(status.userEmail);
   }, [status.userEmail]);
 
-  if (!signedIn && !open) return null;
+  if (!signedIn && !open) return <span data-testid="family-account-control-ready" hidden />;
   const accountEmail = status.userEmail ?? lastEmail;
 
   async function personalDeviceSignOut() {
