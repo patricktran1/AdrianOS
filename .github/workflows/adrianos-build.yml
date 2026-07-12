@@ -28,10 +28,26 @@ jobs:
         run: |
           set -o pipefail
           npm run build 2>&1 | tee build.log
+      - name: Install Chromium for game QA
+        run: npx playwright install --with-deps chromium
+      - name: Run browser game QA
+        run: |
+          set -o pipefail
+          npm run test:games 2>&1 | tee playwright.log
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: adrianos-build-log
           path: adrianos-play-starter/build.log
+          if-no-files-found: warn
+      - name: Upload browser QA report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adrianos-browser-qa
+          path: |
+            adrianos-play-starter/playwright.log
+            adrianos-play-starter/playwright-report
+            adrianos-play-starter/test-results
           if-no-files-found: warn
