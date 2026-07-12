@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { seedQaFamily } from "./helpers/seed-family";
 
 type GameMetadata = {
   slug?: string;
@@ -36,6 +37,7 @@ async function assertGameRenders(page: Page, slug: string) {
     }
   });
 
+  await seedQaFamily(page, { clear: true });
   const response = await page.goto(`/games/${slug}`, { waitUntil: "domcontentloaded" });
   expect(response, `${slug} should return a document response`).not.toBeNull();
   expect(response?.status(), `${slug} should not return an HTTP error`).toBeLessThan(400);
