@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import CurriculumPathCard from "@/components/CurriculumPathCard";
 import ProjectStudioCard from "@/components/ProjectStudioCard";
 import WritingStudioCard from "@/components/WritingStudioCard";
 import { useAdrianProgress } from "@/lib/adrian-progress";
@@ -81,9 +82,10 @@ export default function SchoolPage() {
       <header style={topbar}>
         <div>
           <span style={brand}>ADRIANOS SCHOOL</span>
-          <small style={subbrand}>Private learning mode</small>
+          <small style={subbrand}>Personal learning mode</small>
         </div>
         <div style={topActions}>
+          <Link href="/curriculum" style={curriculumLink}>🧭 Learning map</Link>
           <Link href="/portfolio" style={portfolioLink}>📚 My portfolio</Link>
           <Link href="/parent" style={parentLink}>Parent access 🔒</Link>
         </div>
@@ -135,6 +137,8 @@ export default function SchoolPage() {
         </div>
       </section>
 
+      <CurriculumPathCard />
+
       {!allComplete && currentMission && (
         <section style={missionCard}>
           <div style={missionNumber}>{session.currentIndex + 1}</div>
@@ -185,22 +189,23 @@ const brand: React.CSSProperties = { display: "block", color: "#d9ff5b", fontWei
 const subbrand: React.CSSProperties = { display: "block", marginTop: 3, color: "#7f8898" };
 const parentLink: React.CSSProperties = { padding: "11px 15px", borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", background: "#181d28", color: "#fff", textDecoration: "none", fontWeight: 900 };
 const portfolioLink: React.CSSProperties = { padding: "11px 15px", borderRadius: 999, border: "1px solid rgba(198,184,255,.3)", background: "rgba(198,184,255,.1)", color: "#c6b8ff", textDecoration: "none", fontWeight: 900 };
+const curriculumLink: React.CSSProperties = { padding: "11px 15px", borderRadius: 999, border: "1px solid rgba(127,220,255,.3)", background: "rgba(127,220,255,.1)", color: "#7fdcff", textDecoration: "none", fontWeight: 900 };
 const profileRow: React.CSSProperties = { maxWidth: 1040, margin: "4px auto 16px", display: "flex", gap: 11, flexWrap: "wrap" };
 const profileButton: React.CSSProperties = { minWidth: 180, display: "flex", alignItems: "center", gap: 12, padding: "13px 17px", borderRadius: 22, border: "1px solid rgba(255,255,255,.12)", background: "#181d28", color: "#fff", textAlign: "left", cursor: "pointer" };
 const profileButtonActive: React.CSSProperties = { borderColor: "#d9ff5b", background: "rgba(217,255,91,.1)" };
 const heroCard: React.CSSProperties = { maxWidth: 1040, margin: "0 auto 16px", padding: "clamp(26px,6vw,60px)", borderRadius: 34, border: "1px solid rgba(127,220,255,.3)", background: "linear-gradient(145deg,rgba(127,220,255,.11),rgba(198,184,255,.08) 50%,#181d28)", boxShadow: "0 30px 75px rgba(0,0,0,.27)" };
-const heroGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 28, alignItems: "center" };
+const heroGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,280px),1fr))", gap: 28, alignItems: "center" };
 const eyebrow: React.CSSProperties = { color: "#7fdcff", fontSize: 12, fontWeight: 950, letterSpacing: ".16em" };
 const heroTitle: React.CSSProperties = { margin: "12px 0 15px", fontSize: "clamp(3.3rem,9vw,7rem)", lineHeight: .88, letterSpacing: "-.078em" };
 const muted: React.CSSProperties = { color: "#aab1bf", lineHeight: 1.55, fontWeight: 700 };
 const progressOrb: React.CSSProperties = { width: 142, height: 142, borderRadius: 999, display: "grid", placeContent: "center", textAlign: "center", background: "#d9ff5b", color: "#10131b", boxShadow: "0 20px 55px rgba(217,255,91,.19)" };
-const statusGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 10, marginTop: 26 };
+const statusGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 10, marginTop: 26 };
 const statusCard: React.CSSProperties = { display: "grid", gap: 5, padding: 14, borderRadius: 18, background: "rgba(16,19,27,.68)", border: "1px solid rgba(255,255,255,.08)" };
-const missionCard: React.CSSProperties = { maxWidth: 900, margin: "0 auto", display: "grid", gridTemplateColumns: "64px minmax(0,1fr) auto", gap: 18, alignItems: "center", padding: "clamp(20px,4vw,30px)", borderRadius: 30, border: "1px solid rgba(217,255,91,.28)", background: "#181d28", boxShadow: "0 24px 60px rgba(0,0,0,.24)" };
+const missionCard: React.CSSProperties = { maxWidth: 900, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))", gap: 18, alignItems: "center", padding: "clamp(20px,4vw,30px)", borderRadius: 30, border: "1px solid rgba(217,255,91,.28)", background: "#181d28", boxShadow: "0 24px 60px rgba(0,0,0,.24)" };
 const missionNumber: React.CSSProperties = { width: 60, height: 60, borderRadius: 999, display: "grid", placeItems: "center", background: "#7fdcff", color: "#10131b", fontSize: 23, fontWeight: 950 };
 const missionKind: React.CSSProperties = { color: "#7fdcff", fontSize: 10, fontWeight: 950, letterSpacing: ".13em" };
 const missionTitle: React.CSSProperties = { margin: "6px 0", fontSize: "clamp(2rem,5vw,3.4rem)", letterSpacing: "-.05em" };
-const startButton: React.CSSProperties = { padding: "16px 21px", borderRadius: 999, background: "#d9ff5b", color: "#10131b", textDecoration: "none", fontSize: 17, fontWeight: 950, whiteSpace: "nowrap" };
+const startButton: React.CSSProperties = { padding: "16px 21px", borderRadius: 999, background: "#d9ff5b", color: "#10131b", textDecoration: "none", textAlign: "center", fontSize: 17, fontWeight: 950 };
 const doneCard: React.CSSProperties = { maxWidth: 800, margin: "0 auto", padding: "clamp(30px,6vw,64px)", borderRadius: 34, border: "1px solid rgba(217,255,91,.32)", background: "rgba(217,255,91,.07)", textAlign: "center" };
 const doneTitle: React.CSSProperties = { margin: "12px 0 20px", fontSize: "clamp(2.8rem,7vw,5.2rem)", lineHeight: .92, letterSpacing: "-.065em" };
 const doneActions: React.CSSProperties = { display: "grid", justifyItems: "center", gap: 10 };

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCloudSyncStatus } from "@/lib/adrian-cloud-sync";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import { betaCohortLabel, readBetaCohort } from "@/lib/beta-cohort";
@@ -25,6 +25,7 @@ export default function BetaFeedbackLauncher() {
   const pathname = usePathname();
   const cloud = useCloudSyncStatus();
   const { activeProfile, hydrated } = useFamilyProfiles();
+  const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [category, setCategory] = useState<BetaFeedbackCategory>("idea");
@@ -32,6 +33,8 @@ export default function BetaFeedbackLauncher() {
   const [contactAllowed, setContactAllowed] = useState(true);
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => setReady(true), []);
 
   const cohort = useMemo(
     () => hydrated ? betaCohortLabel(readBetaCohort()) : "General beta",
@@ -133,7 +136,13 @@ export default function BetaFeedbackLauncher() {
         </section>
       )}
 
-      <button type="button" onClick={() => setOpen((value) => !value)} style={launcherButton} aria-expanded={open}>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        style={{ ...launcherButton, ...(!ready ? launcherButtonLoading : {}) }}
+        aria-expanded={open}
+        disabled={!ready}
+      >
         <span aria-hidden="true">💬</span>
         Parent feedback
       </button>
@@ -143,6 +152,7 @@ export default function BetaFeedbackLauncher() {
 
 const launcherShell: React.CSSProperties = { position: "fixed", left: 14, bottom: 14, zIndex: 110, display: "grid", justifyItems: "start", gap: 10 };
 const launcherButton: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, minHeight: 44, padding: "10px 14px", borderRadius: 999, border: "1px solid rgba(255,255,255,.16)", background: "#181d28", color: "#fff", boxShadow: "0 15px 40px rgba(0,0,0,.35)", fontWeight: 900, cursor: "pointer" };
+const launcherButtonLoading: React.CSSProperties = { opacity: .72, cursor: "wait" };
 const panel: React.CSSProperties = { width: "min(430px,calc(100vw - 28px))", maxHeight: "min(720px,calc(100vh - 80px))", overflowY: "auto", padding: 20, borderRadius: 24, border: "1px solid rgba(255,255,255,.14)", background: "#181d28", color: "#fff", boxShadow: "0 24px 70px rgba(0,0,0,.52)" };
 const panelHeader: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "start", gap: 16 };
 const eyebrow: React.CSSProperties = { color: "#7fdcff", fontSize: 11, fontWeight: 950, letterSpacing: ".16em" };
