@@ -385,7 +385,7 @@ export default function FamilySetup() {
                   disabled={phase === "saving"}
                   onClick={() => void saveFamily()}
                 >
-                  {phase === "saving" ? "Building learning routes…" : manageMode ? "Save learner profiles" : "Create family and personalize School Mode"}
+                  {phase === "saving" ? "Building learning routes…" : manageMode ? "Save learner profiles" : "Create family and open School Mode"}
                 </button>
               </div>
               <p className="family-setup-muted">Children do not receive accounts or provide email addresses. The parent controls profiles, learning priorities, grade selection, and cloud access.</p>

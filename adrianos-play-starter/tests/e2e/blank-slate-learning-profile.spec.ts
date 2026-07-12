@@ -59,7 +59,7 @@ test.describe("privacy-first family onboarding", () => {
     await page.getByRole("button", { name: "Science", exact: true }).click();
     await page.getByLabel("Child 1 daily session length").selectOption("18");
     await page.getByRole("checkbox").check();
-    await page.getByRole("button", { name: "Create family and personalize School Mode" }).click();
+    await page.getByRole("button", { name: "Create family and open School Mode" }).click();
 
     await expect(page).toHaveURL(/\/school$/);
     await expect(page.getByRole("heading", { name: "Built around Maya." })).toBeVisible();

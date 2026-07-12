@@ -282,9 +282,10 @@ function resolveAdventureItems(
 
 function scheduledItems(items: AdventureItem[], mode: LearningDayMode): AdventureItem[] {
   if (mode === "full") return items.slice(0, 3);
+  const placement = items.find((item) => item.gameSlug === "placement-adventure");
+  if (placement) return [placement];
   if (mode === "light") {
-    const focused = items.find((item) => item.gameSlug === "placement-adventure")
-      ?? items.find((item) => item.kind === "review")
+    const focused = items.find((item) => item.kind === "review")
       ?? items.find((item) => item.kind === "skill")
       ?? items[0];
     return focused ? [focused] : [];
@@ -293,10 +294,15 @@ function scheduledItems(items: AdventureItem[], mode: LearningDayMode): Adventur
   return explore ? [explore] : [];
 }
 
-function sessionMinutes(profileId: string, mode: LearningDayMode, scheduledMinutes: number): number {
+function sessionMinutes(
+  profileId: string,
+  mode: LearningDayMode,
+  scheduledMinutes: number,
+  placementFirst: boolean
+): number {
   const settings = readLearningProfile(profileId);
   if (!settings.configured) return scheduledMinutes;
-  if (mode === "full") return settings.sessionMinutes;
+  if (placementFirst || mode === "full") return settings.sessionMinutes;
   return Math.min(8, settings.sessionMinutes);
 }
 
@@ -320,7 +326,12 @@ export function ensureDailySession(
     startedAt: null,
     completedAt: null,
     currentIndex: 0,
-    recommendedMinutes: sessionMinutes(profile.id, plan.mode, plan.minutes),
+    recommendedMinutes: sessionMinutes(
+      profile.id,
+      plan.mode,
+      plan.minutes,
+      selectedItems[0]?.gameSlug === "placement-adventure"
+    ),
     missions: selectedItems.map((item) => ({
       ...item,
       baselineCompletions: progress.games[item.gameSlug]?.completions ?? 0,
