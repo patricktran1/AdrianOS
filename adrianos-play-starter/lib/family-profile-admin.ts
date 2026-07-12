@@ -13,6 +13,12 @@ import {
   readProfileGrade,
   writeProfileGrade,
 } from "@/lib/adrian-profile-grade";
+import {
+  readLearningProfile,
+  writeLearningProfile,
+  type LearnerInterest,
+  type LearningPriority,
+} from "@/lib/adrian-learning-profile";
 
 export type FamilyChildDraft = {
   id?: string;
@@ -20,6 +26,9 @@ export type FamilyChildDraft = {
   age: number;
   grade: number;
   emoji: string;
+  interests: LearnerInterest[];
+  priorities: LearningPriority[];
+  sessionMinutes: 8 | 12 | 18;
 };
 
 const CUSTOMIZED_KEY = "adrianos-family-customized-v1";
@@ -82,23 +91,37 @@ function removeDeletedProfileStorage(deletedIds: string[]): void {
 
 export function isStarterFamilyState(family: FamilyState = readFamilyState()): boolean {
   if (typeof window !== "undefined" && window.localStorage.getItem(CUSTOMIZED_KEY) === "yes") return false;
+  if (family.profiles.length === 0) return true;
   if (family.profiles.length !== 2) return false;
   return family.profiles.every((profile) => STARTER_IDS.has(profile.id));
 }
 
 export function currentFamilyDrafts(): FamilyChildDraft[] {
-  return readFamilyState().profiles.map((profile) => ({
-    id: profile.id,
-    name: profile.name,
-    age: profile.age,
-    grade: readProfileGrade(profile),
-    emoji: profile.emoji,
-  }));
+  return readFamilyState().profiles.map((profile) => {
+    const learningProfile = readLearningProfile(profile.id);
+    return {
+      id: profile.id,
+      name: profile.name,
+      age: profile.age,
+      grade: readProfileGrade(profile),
+      emoji: profile.emoji,
+      interests: learningProfile.interests,
+      priorities: learningProfile.priorities,
+      sessionMinutes: learningProfile.sessionMinutes,
+    };
+  });
 }
 
 export function replaceFamilyChildren(drafts: FamilyChildDraft[]): ChildProfile[] {
   const validDrafts = drafts
-    .map((draft) => ({ ...draft, name: cleanName(draft.name), age: cleanAge(draft.age) }))
+    .map((draft) => ({
+      ...draft,
+      name: cleanName(draft.name),
+      age: cleanAge(draft.age),
+      interests: Array.isArray(draft.interests) ? draft.interests : [],
+      priorities: Array.isArray(draft.priorities) ? draft.priorities : [],
+      sessionMinutes: draft.sessionMinutes === 8 || draft.sessionMinutes === 18 ? draft.sessionMinutes : 12,
+    }))
     .filter((draft) => Boolean(draft.name));
   if (validDrafts.length === 0) throw new Error("Add at least one child profile.");
 
@@ -140,7 +163,13 @@ export function replaceFamilyChildren(drafts: FamilyChildDraft[]): ChildProfile[
   removeDeletedProfileStorage(deletedIds);
   if (!importFamilyBackup(backup)) throw new Error("The family profiles could not be saved.");
   profiles.forEach((profile, index) => {
-    writeProfileGrade(profile.id, cleanGrade(validDrafts[index].grade, profile.age));
+    const draft = validDrafts[index];
+    writeProfileGrade(profile.id, cleanGrade(draft.grade, profile.age));
+    writeLearningProfile(profile.id, {
+      interests: draft.interests,
+      priorities: draft.priorities,
+      sessionMinutes: draft.sessionMinutes,
+    });
   });
   window.localStorage.setItem(CUSTOMIZED_KEY, "yes");
   return profiles;
