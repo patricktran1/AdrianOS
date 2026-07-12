@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { seedQaFamily } from "./helpers/seed-family";
 
 async function unlockParentSession(page: import("@playwright/test").Page) {
+  await seedQaFamily(page, { clear: true });
   await page.addInitScript(() => {
     window.sessionStorage.setItem("adrianos-parent-unlocked", "yes");
     window.sessionStorage.setItem("adrianos-weekly-report-unlocked", "yes");
