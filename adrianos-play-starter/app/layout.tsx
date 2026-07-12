@@ -12,6 +12,7 @@ import MobileAppDock from "@/components/MobileAppDock";
 import ParentSessionSecurityBridge from "@/components/ParentSessionSecurityBridge";
 import PWARegistrar from "@/components/PWARegistrar";
 import QuestWorldsBridge from "@/components/QuestWorldsBridge";
+import StoryExpeditionBridge from "@/components/StoryExpeditionBridge";
 import WeeklyReportBridge from "@/components/WeeklyReportBridge";
 import "./globals.css";
 import "./school-mode-controls.css";
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <FamilyOnboardingGate>{children}</FamilyOnboardingGate>
         <GradeGameSpotlightBridge />
         <DailyAdventureRemixBridge />
+        <StoryExpeditionBridge />
         <QuestWorldsBridge />
         <FamilyAccountControl />
         <MobileAppDock />
