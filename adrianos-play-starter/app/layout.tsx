@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import BetaFeedbackLauncher from "@/components/BetaFeedbackLauncher";
 import CloudSyncBridge from "@/components/CloudSyncBridge";
 import InstallAppPrompt from "@/components/InstallAppPrompt";
+import MobileAppDock from "@/components/MobileAppDock";
 import PWARegistrar from "@/components/PWARegistrar";
 import WeeklyReportBridge from "@/components/WeeklyReportBridge";
 import "./globals.css";
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <CloudSyncBridge />
         <WeeklyReportBridge />
         {children}
+        <MobileAppDock />
         <InstallAppPrompt />
         <BetaFeedbackLauncher />
       </body>
