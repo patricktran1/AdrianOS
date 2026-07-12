@@ -48,4 +48,4 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run Mission Control browser tests
-        run: npx playwright test tests/e2e/daily-mission-control.spec.ts --project=chromium
+        run: npx playwright test tests/e2e/daily-mission-control.spec.ts
