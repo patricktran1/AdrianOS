@@ -13,6 +13,7 @@ const PARENT_KEYS = [
 ];
 
 async function publishSignedInAccount(page: Page) {
+  await expect(page.getByTestId("family-account-control-ready")).toBeAttached();
   await page.evaluate((email) => {
     window.dispatchEvent(new CustomEvent("adrianos-cloud-status", {
       detail: {
