@@ -10,22 +10,38 @@ export default function ParentCommandCenterPortal({ games }: { games: Game[] }) 
 
   useEffect(() => {
     if (window.sessionStorage.getItem("adrianos-parent-unlocked") !== "yes") return;
-    const main = document.querySelector("main");
-    const header = main?.querySelector("header");
-    if (!main || !header) return;
+    let mountedNode: HTMLDivElement | null = null;
 
-    const existing = main.querySelector<HTMLDivElement>("[data-parent-command-center-host]");
-    if (existing) {
-      setHost(existing);
-      return;
-    }
+    const mount = () => {
+      const main = document.querySelector("main");
+      const header = main?.querySelector("header");
+      if (!main || !header) return false;
 
-    const node = document.createElement("div");
-    node.dataset.parentCommandCenterHost = "true";
-    header.insertAdjacentElement("afterend", node);
-    setHost(node);
+      const existing = main.querySelector<HTMLDivElement>("[data-parent-command-center-host]");
+      if (existing) {
+        setHost(existing);
+        return true;
+      }
 
-    return () => node.remove();
+      const node = document.createElement("div");
+      node.dataset.parentCommandCenterHost = "true";
+      header.insertAdjacentElement("afterend", node);
+      mountedNode = node;
+      setHost(node);
+      return true;
+    };
+
+    if (mount()) return () => mountedNode?.remove();
+
+    const observer = new MutationObserver(() => {
+      if (mount()) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+      mountedNode?.remove();
+    };
   }, []);
 
   return host ? createPortal(<ParentCommandCenter games={games} />, host) : null;
