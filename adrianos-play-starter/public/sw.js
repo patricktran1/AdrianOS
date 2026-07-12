@@ -6,9 +6,9 @@ const APP_SHELL = [
   "/offline",
   "/manifest.webmanifest",
   "/icon.svg",
-  "/icons/adrianos-192.png",
-  "/icons/adrianos-512.png",
-  "/icons/apple-touch-icon.png",
+  "/icons/adrianos-192",
+  "/icons/adrianos-512",
+  "/icons/apple-touch",
 ];
 
 self.addEventListener("install", (event) => {
@@ -39,9 +39,7 @@ async function networkFirst(request) {
   const cache = await caches.open(CACHE_VERSION);
   try {
     const response = await fetch(request);
-    if (response.ok && response.type === "basic") {
-      await cache.put(request, response.clone());
-    }
+    if (response.ok && response.type === "basic") await cache.put(request, response.clone());
     return response;
   } catch {
     return (await cache.match(request)) || (await cache.match("/offline")) || Response.error();
@@ -53,21 +51,17 @@ async function cacheFirst(request) {
   const cached = await cache.match(request);
   if (cached) return cached;
   const response = await fetch(request);
-  if (response.ok && response.type === "basic") {
-    await cache.put(request, response.clone());
-  }
+  if (response.ok && response.type === "basic") await cache.put(request, response.clone());
   return response;
 }
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (!shouldHandle(event.request, url)) return;
-
   if (event.request.mode === "navigate") {
     event.respondWith(networkFirst(event.request));
     return;
   }
-
   if (["style", "script", "image", "font"].includes(event.request.destination)) {
     event.respondWith(cacheFirst(event.request));
   }
