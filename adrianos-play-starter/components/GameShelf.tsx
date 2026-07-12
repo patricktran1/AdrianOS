@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import AdventureArcade from "@/components/AdventureArcade";
+import PrizeVault from "@/components/PrizeVault";
 import PlacementBanner from "@/components/PlacementBanner";
 import SchoolModeBanner from "@/components/SchoolModeBanner";
 import TodaysAdventure from "@/components/TodaysAdventure";
@@ -13,6 +14,7 @@ export default function GameShelf({ games }: { games: Game[] }) {
   return (
     <>
       <AdventureArcade games={games} />
+      <PrizeVault />
 
       <SchoolModeBanner />
       <PlacementBanner />
