@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import BetaFeedbackLauncher from "@/components/BetaFeedbackLauncher";
 import CloudSyncBridge from "@/components/CloudSyncBridge";
 import WeeklyReportBridge from "@/components/WeeklyReportBridge";
 import "./globals.css";
@@ -25,6 +26,7 @@ export default function RootLayout({
         <CloudSyncBridge />
         <WeeklyReportBridge />
         {children}
+        <BetaFeedbackLauncher />
       </body>
     </html>
   );

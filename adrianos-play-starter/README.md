@@ -1,6 +1,6 @@
 # AdrianOS Learning
 
-A parent-managed learning playground built with Next.js. It includes educational games, School Mode, multiple child profiles, parent reporting, and optional Supabase cloud sync.
+A parent-managed learning playground built with Next.js. It includes educational games, School Mode, multiple child profiles, parent reporting, optional Supabase cloud sync, and structured family-beta feedback.
 
 ## Run locally
 
@@ -14,6 +14,8 @@ Open http://localhost:3000.
 Useful routes:
 
 - `/join` — shareable family beta landing page
+- `/join?cohort=adrian-2nd-grade` — Adrian’s 2nd grade share link
+- `/join?cohort=piedmont-families` — Piedmont families share link
 - `/family/setup?local=1` — local-only family profile setup
 - `/school` — child School Mode
 - `/parent` — parent dashboard
@@ -27,7 +29,11 @@ Useful routes:
 
 ## Supabase family accounts
 
-The app expects the existing `adrianos_family_snapshots` table with row-level security limiting each row to `auth.uid() = user_id`.
+Run `supabase/family-beta.sql` in the Supabase SQL editor. It creates or updates:
+
+- `adrianos_family_snapshots` for per-parent family progress
+- `adrianos_beta_feedback` for signed-in parent feedback
+- row-level security policies limiting every row to `auth.uid() = user_id`
 
 Add these Vercel environment variables:
 
@@ -52,6 +58,20 @@ The parent authenticates. Child profiles never require their own email or Google
 - Progress is stored locally first and synchronizes across signed-in computers and phones.
 - A returning family on a new device restores the existing cloud snapshot automatically after Google sign-in.
 - A new family receives a blank profile form instead of the Adrian/Elliot starter profiles.
+- Share-link cohort tags are stored locally and attached to parent feedback.
+- The global Parent feedback launcher records rating, category, message, child profile, cohort, page, and device context for signed-in households.
+
+## Production Google OAuth smoke
+
+`.github/workflows/production-auth-smoke.yml` runs after every successful `main` build. It opens the production `/join` page, presses Continue with Google, and verifies:
+
+- the production Google button is enabled
+- the browser reaches `accounts.google.com`
+- a nonempty Google `client_id` is present
+- the OAuth request contains the Supabase `/auth/v1/callback`
+- Google does not show `redirect_uri_mismatch` or Error 400
+
+The smoke stops before entering credentials and uploads a screenshot if verification fails.
 
 ## Add a new game
 
@@ -68,7 +88,6 @@ app/games/spelling-sprint/page.tsx
 
 ## Product roadmap
 
-- Family beta feedback and onboarding refinement
 - Broader game-session SDK migration
 - Adaptive difficulty and mastery recommendations
 - Installable PWA experience

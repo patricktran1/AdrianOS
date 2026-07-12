@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { beginGoogleFamilySignIn } from "@/lib/family-beta-account";
+import { betaCohortLabel, rememberBetaCohort, type BetaCohort } from "@/lib/beta-cohort";
 import { isSupabaseConfigured } from "@/lib/supabase-browser";
 import "@/app/family-beta.css";
 
@@ -17,6 +18,12 @@ export default function FamilyBetaLanding() {
   const configured = isSupabaseConfigured();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cohort, setCohort] = useState<BetaCohort>("general");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setCohort(rememberBetaCohort(params.get("cohort")));
+  }, []);
 
   async function signIn() {
     setBusy(true);
@@ -25,11 +32,13 @@ export default function FamilyBetaLanding() {
     if (!result.ok) setBusy(false);
   }
 
+  const localHref = `/family/setup?local=1&cohort=${encodeURIComponent(cohort)}`;
+
   return (
     <main className="family-beta-page">
       <header className="family-beta-nav">
         <Link href="/" className="family-beta-brand">ADRIANOS</Link>
-        <span className="family-beta-chip">PIEDMONT FAMILY BETA</span>
+        <span className="family-beta-chip">{betaCohortLabel(cohort).toUpperCase()}</span>
       </header>
 
       <section className="family-beta-hero">
@@ -44,7 +53,7 @@ export default function FamilyBetaLanding() {
               <span className="family-beta-google-mark">G</span>
               {busy ? "Opening Google…" : "Continue with Google"}
             </button>
-            <Link href="/family/setup?local=1" className="family-beta-secondary">Try it on this device</Link>
+            <Link href={localHref} className="family-beta-secondary">Try it on this device</Link>
           </div>
           {!configured && (
             <p className="family-beta-message">Google family accounts are not configured on this deployment yet. The local-device preview is available.</p>
