@@ -140,7 +140,7 @@ export default function BetaFeedbackLauncher() {
               <div style={signInBox}>
                 <strong>Parent sign-in required</strong>
                 <span>Connect the parent account so feedback can be sent without creating a child login.</span>
-                <Link href="/join" className="beta-feedback-signin-button">Sign in to send feedback</Link>
+                <Link href="/join" className="beta-feedback-signin-button">Sign in or connect family</Link>
               </div>
             )}
             {status && <p role="status" style={statusText}>{status}</p>}
