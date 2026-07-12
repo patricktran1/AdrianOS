@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-mission-control:
+  build-and-browser-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     defaults:
@@ -45,5 +45,11 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run Mission Control browser tests
-        run: npx playwright test tests/e2e/daily-mission-control.spec.ts
+      - name: Run learner-home browser checks
+        shell: bash
+        run: |
+          specs=(tests/e2e/adventure-arcade.spec.ts)
+          if [[ -f tests/e2e/daily-mission-control.spec.ts ]]; then
+            specs+=(tests/e2e/daily-mission-control.spec.ts)
+          fi
+          npx playwright test "${specs[@]}"
