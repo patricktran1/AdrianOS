@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import BetaFeedbackLauncher from "@/components/BetaFeedbackLauncher";
 import CloudSyncBridge from "@/components/CloudSyncBridge";
+import DailyAdventureRemixBridge from "@/components/DailyAdventureRemixBridge";
 import ElementaryScopeBridge from "@/components/ElementaryScopeBridge";
 import FamilyAccountControl from "@/components/FamilyAccountControl";
 import FamilyOnboardingGate from "@/components/FamilyOnboardingGate";
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <MasteryLoopBridge />
         <FamilyOnboardingGate>{children}</FamilyOnboardingGate>
         <GradeGameSpotlightBridge />
+        <DailyAdventureRemixBridge />
         <QuestWorldsBridge />
         <FamilyAccountControl />
         <MobileAppDock />
