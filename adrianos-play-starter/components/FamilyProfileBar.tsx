@@ -11,6 +11,10 @@ export default function FamilyProfileBar() {
 
   if (!hydrated) return null;
 
+  const manageHref = cloud.userEmail
+    ? "/family/setup?manage=1"
+    : "/family/setup?manage=1&local=1";
+
   return (
     <section className="family-profile-bar" aria-label="Choose child profile">
       <div className="family-profile-list">
@@ -30,7 +34,7 @@ export default function FamilyProfileBar() {
         <small style={{ color: "#8f99a8" }}>
           {cloud.userEmail ? `Synced to ${cloud.userEmail}` : "Progress saved on this device"}
         </small>
-        <Link href="/family/setup?manage=1">Manage children</Link>
+        <Link href={manageHref}>Manage children</Link>
         {!cloud.userEmail && <Link href="/join">Connect family</Link>}
       </div>
     </section>
