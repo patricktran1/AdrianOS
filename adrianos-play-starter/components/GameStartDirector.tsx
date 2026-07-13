@@ -13,6 +13,13 @@ const INSTANT_SOURCES = new Set([
 
 const BLOCKED_LABEL = /(play again|replay|next|continue|results|finish|home|back|exit|quit|end session|hint|clue|reveal|answer|option|setting|sound|haptic|auto-next|save|remove|collect|reward)/i;
 const START_LABEL = /(start|begin|launch|enter|play|mission|challenge|adventure|story|quest|round|arena|blast|expedition|rescue)/i;
+const MOOD_LABELS: Record<string, RegExp> = {
+  quick: /(60[- ]second|quick|speed|sprint|blast|short round)/i,
+  adventure: /(adventure|story|mission|quest|expedition|rescue)/i,
+  challenge: /(challenge|boss|hard|arena)/i,
+  create: /(create|make|studio|free play|music|build)/i,
+  surprise: /(daily|mission|adventure|play)/i,
+};
 
 type StartState = "idle" | "looking" | "starting" | "playing" | "cancelled";
 type LaunchContext = { enabled: boolean; source: string; mood: string; key: string };
@@ -41,6 +48,11 @@ function safeControl(element: HTMLElement): boolean {
   return Boolean(label) && !BLOCKED_LABEL.test(label);
 }
 
+function startControls(stage: HTMLElement): HTMLElement[] {
+  return Array.from(stage.querySelectorAll<HTMLElement>("button:not(:disabled), a[href], [role='button']"))
+    .filter(safeControl);
+}
+
 function explicitStart(stage: HTMLElement, mood: string): HTMLElement | null {
   const controls = Array.from(stage.querySelectorAll<HTMLElement>("button[data-instant-start], a[data-instant-start], [role='button'][data-instant-start]"))
     .filter(safeControl);
@@ -54,6 +66,12 @@ function explicitStart(stage: HTMLElement, mood: string): HTMLElement | null {
     ?? null;
 }
 
+function moodPreferredStart(stage: HTMLElement, mood: string): HTMLElement | null {
+  const pattern = MOOD_LABELS[mood];
+  if (!pattern) return null;
+  return startControls(stage).find((control) => pattern.test(labelFor(control))) ?? null;
+}
+
 function scoreControl(control: HTMLElement, mood: string): number {
   if (!safeControl(control)) return Number.NEGATIVE_INFINITY;
   const label = labelFor(control).toLowerCase();
@@ -65,17 +83,17 @@ function scoreControl(control: HTMLElement, mood: string): number {
   if (/daily/.test(label)) score += 20;
   if (label.length > 110) score -= 20;
 
-  if (mood === "quick" && /(quick|60-second|speed|blast|short|round)/.test(label)) score += 130;
-  if (mood === "adventure" && /(adventure|story|mission|quest|expedition|rescue)/.test(label)) score += 130;
-  if (mood === "challenge" && /(challenge|boss|hard|arena|mission)/.test(label)) score += 130;
-  if (mood === "create" && /(create|make|studio|free|music|build)/.test(label)) score += 130;
-  if (mood === "surprise" && /(daily|mission|adventure|play)/.test(label)) score += 55;
+  if (mood === "quick" && MOOD_LABELS.quick.test(label)) score += 130;
+  if (mood === "adventure" && MOOD_LABELS.adventure.test(label)) score += 130;
+  if (mood === "challenge" && MOOD_LABELS.challenge.test(label)) score += 130;
+  if (mood === "create" && MOOD_LABELS.create.test(label)) score += 130;
+  if (mood === "surprise" && MOOD_LABELS.surprise.test(label)) score += 55;
 
   return score;
 }
 
 function inferredStart(stage: HTMLElement, mood: string): HTMLElement | null {
-  return Array.from(stage.querySelectorAll<HTMLElement>("button:not(:disabled), a[href], [role='button']"))
+  return startControls(stage)
     .map((control) => ({ control, score: scoreControl(control, mood) }))
     .filter((candidate) => Number.isFinite(candidate.score))
     .sort((left, right) => right.score - left.score)[0]?.control ?? null;
@@ -140,7 +158,9 @@ export default function GameStartDirector() {
       if (cancelled || firedRef.current) return;
       const stage = root.querySelector<HTMLElement>(".game-stage");
       if (!stage) return;
-      const control = explicitStart(stage, launch.mood) ?? inferredStart(stage, launch.mood);
+      const control = explicitStart(stage, launch.mood)
+        ?? moodPreferredStart(stage, launch.mood)
+        ?? inferredStart(stage, launch.mood);
       if (!control) {
         if (Date.now() - startedAt > 1800) finishWithoutClick();
         return;
