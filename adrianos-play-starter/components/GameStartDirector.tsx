@@ -11,7 +11,7 @@ const INSTANT_SOURCES = new Set([
   "weekly-world-quest",
 ]);
 
-const BLOCKED_LABEL = /(play again|replay|next|continue|results|finish|home|back|exit|quit|end session|hint|clue|reveal|answer|option|setting|sound|haptic|auto-next|save|remove|collect|reward)/i;
+const BLOCKED_LABEL = /\b(play again|replay|next|continue|results?|finish|home|back|exit|quit|end session|hints?|clues?|reveal|answers?|options?|settings?|sound|haptics?|auto-next|save|remove|collect|rewards?)\b/i;
 const START_LABEL = /(start|begin|launch|enter|play|mission|challenge|adventure|story|quest|round|arena|blast|expedition|rescue)/i;
 const MOOD_LABELS: Record<string, RegExp> = {
   quick: /(60[- ]second|quick|speed|sprint|blast|short round)/i,
