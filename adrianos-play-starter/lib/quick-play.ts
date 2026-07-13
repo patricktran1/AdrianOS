@@ -198,7 +198,7 @@ export function buildQuickPlayDeck(input: BuildQuickPlayDeckInput): QuickPlayDec
   for (const definition of definitions) {
     const candidates = definition.slugs
       .map((slug) => bySlug.get(slug))
-      .filter((game): game is Game => Boolean(game) && !selected.has(game.slug));
+      .filter((game): game is Game => game !== undefined && !selected.has(game.slug));
     const fallback = pool.filter((game) => !selected.has(game.slug));
     const game = ranked(candidates.length > 0 ? candidates : fallback, input, `${seedBase}:${definition.mood}`)[0];
     if (!game) continue;
@@ -227,10 +227,11 @@ export function buildQuickPlayDeck(input: BuildQuickPlayDeckInput): QuickPlayDec
 
   const newestRecent = input.arcade.recent[0];
   const surpriseCandidates = pool.filter((game) => !selected.has(game.slug) && game.slug !== newestRecent);
+  const nonRecentPool = pool.filter((game) => game.slug !== newestRecent);
   const surprisePool = surpriseCandidates.length > 0
     ? surpriseCandidates
-    : pool.filter((game) => game.slug !== newestRecent).length > 0
-      ? pool.filter((game) => game.slug !== newestRecent)
+    : nonRecentPool.length > 0
+      ? nonRecentPool
       : pool;
   const surpriseGame = ranked(surprisePool, input, `${seedBase}:surprise:${input.arcade.recent.join("|")}`)[0];
   if (!surpriseGame) return null;
