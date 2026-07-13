@@ -60,6 +60,7 @@ export default function QuickPlayLaunchpad({ games }: { games: Game[] }) {
       aria-label="Quick play launchpad"
       data-quick-play-launchpad="active"
       data-quick-play-ready="true"
+      data-quick-recent={arcade.recent[0] ?? ""}
     >
       <div className={styles.intro}>
         <div>
