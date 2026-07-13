@@ -74,8 +74,9 @@ test.describe("Adventure Arcade homepage", () => {
     const restoredContext = await browser.newContext({ storageState });
     const restoredPage = await restoredContext.newPage();
     await restoredPage.goto("/", { waitUntil: "domcontentloaded" });
-    await expect(restoredPage.getByText("MY FAVORITES", { exact: true })).toBeVisible();
-    await expect(restoredPage.getByRole("link", { name: /Dino Time Rescue/ })).toBeVisible();
+    const collection = restoredPage.getByRole("region", { name: "My arcade collection" });
+    await expect(collection.getByText("MY FAVORITES", { exact: true })).toBeVisible();
+    await expect(collection.getByRole("link", { name: /Dino Time Rescue/ })).toBeVisible();
     await restoredContext.close();
   });
 
