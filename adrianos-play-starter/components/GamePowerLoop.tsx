@@ -17,11 +17,12 @@ import {
   prizeProgressForGrade,
   totalGameCompletions,
 } from "@/lib/adrian-prize-collections";
-
-type PlaySettings = {
-  sfx: boolean;
-  haptics: boolean;
-};
+import {
+  DEFAULT_GAME_PLAY_SETTINGS,
+  readGamePlaySettings,
+  writeGamePlaySettings,
+  type GamePlaySettings,
+} from "@/lib/game-play-settings";
 
 type FeedbackKind = "tap" | "correct" | "retry" | "complete" | "level";
 
@@ -37,9 +38,6 @@ type SafariAudioWindow = Window &
   typeof globalThis & {
     webkitAudioContext?: typeof AudioContext;
   };
-
-const SETTINGS_KEY = "adrianos-play-settings-v1";
-const DEFAULT_SETTINGS: PlaySettings = { sfx: true, haptics: true };
 
 const SUBJECT_FREQUENCIES: Record<string, number> = {
   Logic: 392,
@@ -72,15 +70,6 @@ function slugFromPath(pathname: string): string {
   return decodeURIComponent(pathname.slice(start + marker.length).split("/")[0] ?? "");
 }
 
-function safeSettings(value: unknown): PlaySettings {
-  if (!value || typeof value !== "object") return DEFAULT_SETTINGS;
-  const raw = value as Partial<PlaySettings>;
-  return {
-    sfx: typeof raw.sfx === "boolean" ? raw.sfx : DEFAULT_SETTINGS.sfx,
-    haptics: typeof raw.haptics === "boolean" ? raw.haptics : DEFAULT_SETTINGS.haptics,
-  };
-}
-
 export default function GamePowerLoop() {
   const pathname = usePathname();
   const slug = slugFromPath(pathname);
@@ -88,7 +77,7 @@ export default function GamePowerLoop() {
   const baseFrequency = SUBJECT_FREQUENCIES[game?.subject ?? ""] ?? 392;
   const { activeProfile } = useFamilyProfiles();
   const grade = readProfileGrade(activeProfile);
-  const [settings, setSettings] = useState<PlaySettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<GamePlaySettings>(DEFAULT_GAME_PLAY_SETTINGS);
   const [settingsReady, setSettingsReady] = useState(false);
   const [supportsHaptics, setSupportsHaptics] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -101,19 +90,14 @@ export default function GamePowerLoop() {
   const momentTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(SETTINGS_KEY);
-      if (stored) setSettings(safeSettings(JSON.parse(stored)));
-    } catch {
-      setSettings(DEFAULT_SETTINGS);
-    }
+    setSettings(readGamePlaySettings());
     setSupportsHaptics(typeof navigator.vibrate === "function");
     setSettingsReady(true);
   }, []);
 
   useEffect(() => {
     if (!settingsReady) return;
-    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    writeGamePlaySettings(settings);
   }, [settings, settingsReady]);
 
   useEffect(() => () => {
@@ -283,7 +267,7 @@ export default function GamePowerLoop() {
     };
   }, [grade, playFeedback, showMoment, vibrate]);
 
-  function toggleSetting(key: keyof PlaySettings) {
+  function toggleSetting(key: keyof GamePlaySettings) {
     setSettings((current) => ({ ...current, [key]: !current[key] }));
   }
 
@@ -295,6 +279,7 @@ export default function GamePowerLoop() {
         data-power-ready={settingsReady ? "true" : "false"}
         data-sfx-enabled={settings.sfx ? "true" : "false"}
         data-haptics-enabled={settings.haptics ? "true" : "false"}
+        data-auto-advance-enabled={settings.autoAdvance ? "true" : "false"}
         data-power-streak={streak}
         data-last-feedback={lastFeedback}
       >
@@ -302,16 +287,24 @@ export default function GamePowerLoop() {
           type="button"
           className="game-power-trigger"
           onClick={() => setPanelOpen((open) => !open)}
-          aria-label="Play settings"
+          aria-label="Game options"
           aria-expanded={panelOpen}
         >
-          <span aria-hidden="true">{settings.sfx ? "🔊" : "🔇"}</span>
-          <strong>PLAY</strong>
+          <span aria-hidden="true">⚙️</span>
+          <strong>OPTIONS</strong>
         </button>
 
         {panelOpen && (
-          <div className="game-power-panel" aria-label="Play settings panel">
-            <span className="game-power-panel-label">GAME POWER</span>
+          <div className="game-power-panel" aria-label="Game options panel">
+            <span className="game-power-panel-label">OPTIONAL GAME SETTINGS</span>
+            <button
+              type="button"
+              onClick={() => toggleSetting("autoAdvance")}
+              aria-pressed={settings.autoAdvance}
+            >
+              <span aria-hidden="true">⚡</span>
+              <span><strong>Auto-next</strong><small>{settings.autoAdvance ? "On · fewer taps" : "Off · use Next buttons"}</small></span>
+            </button>
             <button
               type="button"
               onClick={() => toggleSetting("sfx")}
