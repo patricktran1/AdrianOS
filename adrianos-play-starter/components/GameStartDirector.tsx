@@ -20,6 +20,15 @@ const MOOD_LABELS: Record<string, RegExp> = {
   create: /(create|make|studio|free play|music|build)/i,
   surprise: /(daily|mission|adventure|play)/i,
 };
+const GAME_MOOD_LABELS: Record<string, Partial<Record<string, RegExp>>> = {
+  "math-blast": {
+    quick: /60[- ]second blast/i,
+    adventure: /10[- ]question mission/i,
+    challenge: /daily challenge/i,
+    surprise: /10[- ]question mission/i,
+  },
+};
+const PREFERRED_TARGET_GRACE_MS = 500;
 
 type StartState = "idle" | "looking" | "starting" | "playing" | "cancelled";
 type LaunchContext = { enabled: boolean; source: string; mood: string; key: string };
@@ -66,10 +75,20 @@ function explicitStart(stage: HTMLElement, mood: string): HTMLElement | null {
     ?? null;
 }
 
-function moodPreferredStart(stage: HTMLElement, mood: string): HTMLElement | null {
-  const pattern = MOOD_LABELS[mood];
-  if (!pattern) return null;
-  return startControls(stage).find((control) => pattern.test(labelFor(control))) ?? null;
+function preferredPattern(slug: string, mood: string): RegExp | null {
+  return GAME_MOOD_LABELS[slug]?.[mood] ?? MOOD_LABELS[mood] ?? null;
+}
+
+function moodPreferredStart(stage: HTMLElement, mood: string, slug: string): HTMLElement | null {
+  const gamePattern = GAME_MOOD_LABELS[slug]?.[mood];
+  const controls = startControls(stage);
+  if (gamePattern) {
+    const exactGameChoice = controls.find((control) => gamePattern.test(labelFor(control)));
+    if (exactGameChoice) return exactGameChoice;
+  }
+  const genericPattern = MOOD_LABELS[mood];
+  if (!genericPattern) return null;
+  return controls.find((control) => genericPattern.test(labelFor(control))) ?? null;
 }
 
 function scoreControl(control: HTMLElement, mood: string): number {
@@ -158,9 +177,14 @@ export default function GameStartDirector() {
       if (cancelled || firedRef.current) return;
       const stage = root.querySelector<HTMLElement>(".game-stage");
       if (!stage) return;
-      const control = explicitStart(stage, launch.mood)
-        ?? moodPreferredStart(stage, launch.mood)
-        ?? inferredStart(stage, launch.mood);
+
+      const explicit = explicitStart(stage, launch.mood);
+      const preferred = moodPreferredStart(stage, launch.mood, slug);
+      const hasGameSpecificTarget = Boolean(GAME_MOOD_LABELS[slug]?.[launch.mood]);
+      if (!explicit && !preferred && hasGameSpecificTarget && Date.now() - startedAt < PREFERRED_TARGET_GRACE_MS) {
+        return;
+      }
+      const control = explicit ?? preferred ?? inferredStart(stage, launch.mood);
       if (!control) {
         if (Date.now() - startedAt > 1800) finishWithoutClick();
         return;
@@ -172,6 +196,7 @@ export default function GameStartDirector() {
       setState("starting");
       root.dataset.instantStartFired = "true";
       root.dataset.instantStartTarget = label;
+      root.dataset.instantStartPattern = preferredPattern(slug, launch.mood)?.source ?? "inferred";
       observer?.disconnect();
 
       window.setTimeout(() => {
