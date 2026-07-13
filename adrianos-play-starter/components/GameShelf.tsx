@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import ChildModeSwitch from "@/components/ChildModeSwitch";
+import AdventureWorld from "@/components/AdventureWorld";
 import DailyMissionControl from "@/components/DailyMissionControl";
 import AdventureArcade from "@/components/AdventureArcade";
 import QuickPlayLaunchpad from "@/components/QuickPlayLaunchpad";
@@ -18,6 +19,7 @@ export default function GameShelf({ games }: { games: Game[] }) {
   return (
     <>
       <ChildModeSwitch />
+      <AdventureWorld games={games} />
       <QuickPlayLaunchpad games={games} />
       <DailyMissionControl />
       <AdventureArcade games={games} />
