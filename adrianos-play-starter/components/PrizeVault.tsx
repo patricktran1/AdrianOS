@@ -55,7 +55,7 @@ export default function PrizeVault() {
   }, [hydrated, seenKey, unlocked]);
 
   const message = useMemo(() => {
-    if (unlocked === 0) return "Finish any game to open your first prize and game companion.";
+    if (unlocked === 0) return "Finish any game to open your first prize.";
     if (unlocked < collection.prizes.length) return `${collection.prizes.length - unlocked} prizes still hidden.`;
     return prestige > 0
       ? `Collection complete · ${prestige} champion stars earned.`
@@ -144,7 +144,9 @@ export default function PrizeVault() {
               type="button"
               onClick={() => equip(index)}
               style={{ ...prizeCard, ...openCard, ...(active ? activeCard : {}) }}
-              aria-label={active ? `${prize.name} is your active game companion` : `Equip ${prize.name} as game companion`}
+              aria-label={active
+                ? `${prize.name} unlocked and active game companion`
+                : `${prize.name} unlocked. Equip as game companion`}
               aria-pressed={active}
               data-power-locker-prize={lockerPrize.key}
               data-power-locker-selected={active ? "true" : "false"}
