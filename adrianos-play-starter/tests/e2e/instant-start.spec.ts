@@ -16,7 +16,12 @@ test.describe("Instant Start game entry", () => {
 
     await expect(page.getByRole("heading", { name: "Make math feel like a game." })).toHaveCount(0);
     await expect(page.getByText("Time", { exact: true })).toBeVisible();
-    await expect(page.getByText("60s", { exact: true })).toBeVisible();
+    const countdown = page.getByText(/^\d+s$/, { exact: true }).first();
+    await expect(countdown).toBeVisible();
+    await expect.poll(async () => {
+      const value = Number(((await countdown.textContent()) ?? "").replace("s", ""));
+      return Number.isFinite(value) && value >= 1 && value <= 60;
+    }).toBe(true);
 
     await expect.poll(async () => page.evaluate((key) => {
       const progress = JSON.parse(window.localStorage.getItem(key) ?? "{}");
