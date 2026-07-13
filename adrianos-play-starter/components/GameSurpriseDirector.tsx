@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { usePathname } from "next/navigation";
 import { games } from "@/lib/generated-games";
 
@@ -27,6 +34,13 @@ type SurpriseDefinition = {
 type ActiveSurprise = SurpriseDefinition & {
   id: number;
   comeback: boolean;
+};
+
+type ParticleStyle = CSSProperties & {
+  "--particle-left": string;
+  "--particle-top": string;
+  "--particle-delay": string;
+  "--particle-drift": string;
 };
 
 const SURPRISES: SurpriseDefinition[] = [
@@ -134,7 +148,7 @@ function stableHash(value: string): number {
     hash ^= value.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
   }
-  return Math.abs(hash >>> 0);
+  return hash >>> 0;
 }
 
 function thresholdFor(eventCount: number): number {
@@ -146,6 +160,15 @@ function chooseSurprise(slug: string, subject: string, eventNumber: number, come
   const offset = SUBJECT_OFFSETS[subject] ?? 0;
   const index = (stableHash(`${slug}:${eventNumber}`) + offset) % SURPRISES.length;
   return SURPRISES[index];
+}
+
+function particleStyle(index: number): ParticleStyle {
+  return {
+    "--particle-left": `${5 + index * 5.2}%`,
+    "--particle-top": `${12 + (index % 6) * 12}%`,
+    "--particle-delay": `${(index % 7) * 45}ms`,
+    "--particle-drift": `${((index % 3) - 1) * 38}px`,
+  };
 }
 
 export default function GameSurpriseDirector() {
@@ -303,7 +326,7 @@ export default function GameSurpriseDirector() {
           <div className="game-surprise-wash" aria-hidden="true" />
           <div className="game-surprise-particles" aria-hidden="true">
             {Array.from({ length: 18 }, (_, index) => (
-              <span key={index} style={{ "--particle-index": index } as React.CSSProperties}>
+              <span key={index} style={particleStyle(index)}>
                 {active.tokens[index % active.tokens.length]}
               </span>
             ))}
