@@ -56,6 +56,7 @@ export default function QuickPlayLaunchpad({ games }: { games: Game[] }) {
 
   return (
     <section
+      id="quick-play"
       className={styles.shell}
       aria-label="Quick play launchpad"
       data-quick-play-launchpad="active"
