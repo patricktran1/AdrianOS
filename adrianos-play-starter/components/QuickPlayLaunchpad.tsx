@@ -52,6 +52,13 @@ export default function QuickPlayLaunchpad({ games }: { games: Game[] }) {
     setArcade(rememberArcadeGame(activeProfile.id, slug));
   }
 
+  function browseArcade() {
+    document.querySelector<HTMLElement>('[aria-label="Adventure Arcade"]')?.scrollIntoView({
+      block: "start",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  }
+
   if (!deck || deck.choices.length === 0) return null;
 
   return (
@@ -116,9 +123,9 @@ export default function QuickPlayLaunchpad({ games }: { games: Game[] }) {
         ))}
       </div>
 
-      <a className={styles.browseLink} href="#adventure-arcade-library">
+      <button type="button" className={styles.browseLink} onClick={browseArcade}>
         Browse every game and filter by subject ↓
-      </a>
+      </button>
     </section>
   );
 }
