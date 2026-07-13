@@ -52,6 +52,9 @@ jobs:
           if [[ -f tests/e2e/daily-mission-control.spec.ts ]]; then
             specs+=(tests/e2e/daily-mission-control.spec.ts)
           fi
+          if [[ -f tests/e2e/daily-adventure-remix.spec.ts ]]; then
+            specs+=(tests/e2e/daily-adventure-remix.spec.ts)
+          fi
           if [[ -f tests/e2e/game-feel.spec.ts ]]; then
             specs+=(tests/e2e/game-feel.spec.ts)
           fi
