@@ -10,13 +10,14 @@ import {
   type EquippedPrize,
 } from "@/lib/adrian-power-locker";
 
- type CompanionReaction = "idle" | "cheer" | "encourage" | "victory";
+type CompanionReaction = "idle" | "cheer" | "encourage" | "victory" | "surprise";
 
 const REACTION_COPY: Record<CompanionReaction, string> = {
   idle: "Ready!",
   cheer: "POWER MOVE!",
   encourage: "TRY ANOTHER!",
   victory: "QUEST CLEAR!",
+  surprise: "SURPRISE POWER!",
 };
 
 export default function PowerLockerCompanion() {
@@ -60,6 +61,7 @@ export default function PowerLockerCompanion() {
       if (completions > previousCompletionsRef.current) react("victory", 2200);
       previousCompletionsRef.current = completions;
     };
+    const onSurprise = () => react("surprise", 1900);
     const reset = () => {
       previousCompletionsRef.current = Object.values(readProgressForProfile(activeProfile.id).games)
         .reduce((sum, game) => sum + game.completions, 0);
@@ -70,11 +72,13 @@ export default function PowerLockerCompanion() {
     window.addEventListener(POWER_LOCKER_EVENT, refresh);
     window.addEventListener("adrianos-learning-updated", refresh);
     window.addEventListener("adrianos-progress-updated", onProgress);
+    window.addEventListener("adrianos-surprise-event", onSurprise);
     window.addEventListener("adrianos-family-updated", reset);
     return () => {
       window.removeEventListener(POWER_LOCKER_EVENT, refresh);
       window.removeEventListener("adrianos-learning-updated", refresh);
       window.removeEventListener("adrianos-progress-updated", onProgress);
+      window.removeEventListener("adrianos-surprise-event", onSurprise);
       window.removeEventListener("adrianos-family-updated", reset);
     };
   }, [activeProfile.id, react, refreshCompanion]);

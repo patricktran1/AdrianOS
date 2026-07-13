@@ -1,0 +1,43 @@
+.power-locker-reaction-surprise {
+  border-color: var(--game-accent);
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--game-accent) 16%, transparent),
+    0 0 42px color-mix(in srgb, var(--game-accent-2) 24%, transparent),
+    0 22px 55px rgba(0,0,0,.38);
+}
+
+.power-locker-reaction-surprise .power-locker-companion-bubble {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  background: linear-gradient(100deg, var(--game-accent), var(--game-accent-2));
+}
+
+.power-locker-reaction-surprise .power-locker-companion-emoji {
+  animation: companionSurprisePower 1.05s cubic-bezier(.18,.86,.22,1) both;
+}
+
+.power-locker-reaction-surprise .power-locker-companion-aura {
+  animation: companionSurpriseAura 1.35s ease-out both;
+}
+
+@keyframes companionSurprisePower {
+  0% { transform: translateY(0) scale(1) rotate(0); }
+  30% { transform: translateY(-18px) scale(1.28) rotate(-12deg); }
+  58% { transform: translateY(-7px) scale(1.16) rotate(12deg); }
+  78% { transform: translateY(-3px) scale(.96) rotate(-4deg); }
+  100% { transform: translateY(0) scale(1) rotate(0); }
+}
+
+@keyframes companionSurpriseAura {
+  0% { filter: brightness(1); transform: scale(.85); }
+  42% { filter: brightness(1.5); transform: scale(1.18); }
+  100% { filter: brightness(1); transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .power-locker-reaction-surprise,
+  .power-locker-reaction-surprise * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

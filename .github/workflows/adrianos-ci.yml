@@ -61,6 +61,9 @@ jobs:
           if [[ -f tests/e2e/power-locker.spec.ts ]]; then
             specs+=(tests/e2e/power-locker.spec.ts)
           fi
+          if [[ -f tests/e2e/game-surprise.spec.ts ]]; then
+            specs+=(tests/e2e/game-surprise.spec.ts)
+          fi
           if [[ -f tests/e2e/family-beta.spec.ts ]]; then
             specs+=(tests/e2e/family-beta.spec.ts)
           fi
@@ -89,3 +92,14 @@ jobs:
 
       - name: Run full AdrianOS browser matrix
         run: npx playwright test
+
+      - name: Upload browser QA report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adrianos-ci-browser-report
+          path: |
+            adrianos-play-starter/playwright-report
+            adrianos-play-starter/test-results
+          if-no-files-found: ignore
+          retention-days: 14
