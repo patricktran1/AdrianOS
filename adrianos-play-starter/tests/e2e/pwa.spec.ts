@@ -2,22 +2,25 @@ import { expect, test } from "@playwright/test";
 import { seedQaFamily } from "./helpers/seed-family";
 
 test.describe("installable AdrianOS app", () => {
-  test("publishes a complete School Mode manifest", async ({ request }) => {
+  test("publishes a complete play-and-learn manifest", async ({ request }) => {
     const response = await request.get("/manifest.webmanifest");
     expect(response.ok()).toBeTruthy();
     expect(response.headers()["content-type"]).toContain("application/manifest+json");
 
     const manifest = await response.json();
-    expect(manifest.name).toBe("AdrianOS Learning");
+    expect(manifest.name).toBe("AdrianOS");
     expect(manifest.short_name).toBe("AdrianOS");
-    expect(manifest.start_url).toBe("/school?source=installed-app");
+    expect(manifest.start_url).toBe("/?source=installed-app");
     expect(manifest.scope).toBe("/");
     expect(manifest.display).toBe("standalone");
     expect(manifest.icons).toEqual(expect.arrayContaining([
       expect.objectContaining({ src: "/icons/adrianos-192", sizes: "192x192", type: "image/png" }),
       expect.objectContaining({ src: "/icons/adrianos-512", sizes: "512x512", type: "image/png" }),
     ]));
-    expect(manifest.shortcuts.map((shortcut: { url: string }) => shortcut.url)).toContain("/school?source=app-shortcut");
+    expect(manifest.shortcuts.map((shortcut: { url: string }) => shortcut.url)).toEqual(expect.arrayContaining([
+      "/?source=app-shortcut",
+      "/school?source=app-shortcut",
+    ]));
   });
 
   test("serves real PNG app icons", async ({ request }) => {
@@ -63,11 +66,12 @@ test.describe("installable AdrianOS app", () => {
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
   });
 
-  test("the installed start URL opens School Mode for a configured learner", async ({ page, request }) => {
-    await seedQaFamily(page, { clear: true });
+  test("the installed start URL opens the child Arcade for a configured learner", async ({ page, request }) => {
+    await seedQaFamily(page, { clear: true, grade: 2 });
     const manifest = await (await request.get("/manifest.webmanifest")).json();
     await page.goto(manifest.start_url, { waitUntil: "domcontentloaded" });
-    await expect(page).toHaveURL(/\/school\?source=installed-app/);
-    await expect(page.locator("main")).toBeVisible();
+    await expect(page).toHaveURL(/\/?source=installed-app$/);
+    await expect(page.getByRole("region", { name: "Quick play launchpad" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Choose child mode" }).getByRole("link", { name: /Arcade/ })).toHaveAttribute("aria-current", "page");
   });
 });
