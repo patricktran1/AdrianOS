@@ -4,6 +4,16 @@ import { seedQaFamily } from "./helpers/seed-family";
 const PROFILE_ID = "qa-learner";
 const LEARNING_KEY = `adrianos-learning-v1:${PROFILE_ID}`;
 
+async function recentGames(page: import("@playwright/test").Page): Promise<string> {
+  return page.evaluate((learningKey) => {
+    const learning = JSON.parse(window.localStorage.getItem(learningKey) ?? "{}");
+    const item = learning.reviewQueue?.find((row: { gameSlug?: string; id?: string }) =>
+      row.gameSlug === "adrianos-adventure-arcade" && row.id === "arcade-library-state"
+    );
+    return item?.data?.recent ?? "";
+  }, LEARNING_KEY);
+}
+
 test.describe("Quick Play launchpad", () => {
   test("puts one-tap fun choices before the full arcade and launches a game directly", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
@@ -39,14 +49,7 @@ test.describe("Quick Play launchpad", () => {
     if (!firstSlug) throw new Error("Quick play card is missing its game slug.");
     await first.click();
     await expect(page).toHaveURL(new RegExp(`/games/${firstSlug}\\?from=quick-play`));
-
-    await expect.poll(async () => page.evaluate((learningKey) => {
-      const learning = JSON.parse(window.localStorage.getItem(learningKey) ?? "{}");
-      const item = learning.reviewQueue?.find((row: { gameSlug?: string; id?: string }) =>
-        row.gameSlug === "adrianos-adventure-arcade" && row.id === "arcade-library-state"
-      );
-      return item?.data?.recent ?? "";
-    }, LEARNING_KEY)).toContain(firstSlug);
+    await expect.poll(() => recentGames(page)).toContain(firstSlug);
   });
 
   test("rotates the surprise after play and stays phone-safe", async ({ page }) => {
@@ -61,14 +64,14 @@ test.describe("Quick Play launchpad", () => {
 
     await surprise.click();
     await expect(page).toHaveURL(new RegExp(`/games/${firstSurprise}\\?from=quick-play`));
+    await expect.poll(() => recentGames(page)).toContain(firstSurprise);
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
-    const nextSurprise = await page
-      .getByRole("region", { name: "Quick play launchpad" })
-      .locator("[data-quick-surprise]")
-      .getAttribute("data-quick-surprise");
-    if (!nextSurprise) throw new Error("Rotated surprise game is missing its slug.");
-    expect(nextSurprise).not.toBe(firstSurprise);
+    const refreshed = page.getByRole("region", { name: "Quick play launchpad" });
+    await expect(refreshed).toHaveAttribute("data-quick-recent", firstSurprise);
+    await expect.poll(async () =>
+      refreshed.locator("[data-quick-surprise]").getAttribute("data-quick-surprise")
+    ).not.toBe(firstSurprise);
 
     await expect.poll(async () => page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
