@@ -161,6 +161,7 @@ export default function AdventureWorld({ games }: { games: Game[] }) {
   }
 
   function scout() {
+    if (!model) return;
     const nextIndex = (scoutIndex + 1) % model.portals.length;
     const nextPortal = model.portals[nextIndex] ?? model.heroPortal;
     setScoutIndex(nextIndex);
