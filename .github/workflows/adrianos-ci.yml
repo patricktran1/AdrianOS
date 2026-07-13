@@ -52,6 +52,12 @@ jobs:
           if [[ -f tests/e2e/quick-play-launchpad.spec.ts ]]; then
             specs+=(tests/e2e/quick-play-launchpad.spec.ts)
           fi
+          if [[ -f tests/e2e/instant-start.spec.ts ]]; then
+            specs+=(tests/e2e/instant-start.spec.ts)
+          fi
+          if [[ -f tests/e2e/family-beta.spec.ts ]]; then
+            specs+=(tests/e2e/family-beta.spec.ts)
+          fi
           if [[ -f tests/e2e/daily-mission-control.spec.ts ]]; then
             specs+=(tests/e2e/daily-mission-control.spec.ts)
           fi
