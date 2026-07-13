@@ -6,27 +6,50 @@ const PROGRESS_KEY = `adrianos-progress-v2:${PROFILE_ID}`;
 const SETTINGS_KEY = "adrianos-play-settings-v1";
 
 test.describe("AdrianOS game power loop", () => {
-  test("persists play settings in a fresh game page", async ({ page }) => {
+  test("persists optional instant-play settings in a fresh game page", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.goto("/games/dino-time-rescue", { waitUntil: "domcontentloaded" });
 
     const controls = page.locator('[data-game-power-loop="active"]');
     await expect(controls).toHaveAttribute("data-power-ready", "true");
     await expect(controls).toHaveAttribute("data-sfx-enabled", "true");
+    await expect(controls).toHaveAttribute("data-auto-advance-enabled", "true");
+    await expect(page.getByRole("button", { name: "Play settings", exact: true })).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Play settings", exact: true }).click();
+    await page.getByRole("button", { name: "Game options", exact: true }).click();
     await page.getByRole("button", { name: /Sound effects/ }).click();
     await expect(controls).toHaveAttribute("data-sfx-enabled", "false");
     await expect.poll(async () => page.evaluate((key) => {
       const value = JSON.parse(window.localStorage.getItem(key) ?? "{}");
-      return value.sfx;
-    }, SETTINGS_KEY)).toBe(false);
+      return { sfx: value.sfx, autoAdvance: value.autoAdvance };
+    }, SETTINGS_KEY)).toEqual({ sfx: false, autoAdvance: true });
 
     const freshPage = await page.context().newPage();
     await freshPage.goto("/games/dino-time-rescue", { waitUntil: "domcontentloaded" });
-    await expect(freshPage.locator('[data-game-power-loop="active"]')).toHaveAttribute("data-power-ready", "true");
-    await expect(freshPage.locator('[data-game-power-loop="active"]')).toHaveAttribute("data-sfx-enabled", "false");
+    const freshControls = freshPage.locator('[data-game-power-loop="active"]');
+    await expect(freshControls).toHaveAttribute("data-power-ready", "true");
+    await expect(freshControls).toHaveAttribute("data-sfx-enabled", "false");
+    await expect(freshControls).toHaveAttribute("data-auto-advance-enabled", "true");
     await freshPage.close();
+  });
+
+  test("advances a classic quiz after one answer and respects the optional off switch", async ({ page }) => {
+    await seedQaFamily(page, { clear: true, grade: 2 });
+    await page.goto("/games/dinosaur-detective", { waitUntil: "domcontentloaded" });
+
+    const director = page.locator('[data-game-flow-director="active"]');
+    await expect(director).toHaveAttribute("data-auto-next-enabled", "true");
+    await page.getByRole("button", { name: /Tyrannosaurus rex$/ }).click();
+    await expect(director).toHaveAttribute("data-auto-next-pending", "true");
+    await expect(page.getByText("Case 2 of 6", { exact: true })).toBeVisible({ timeout: 5000 });
+
+    await page.getByRole("button", { name: "Game options", exact: true }).click();
+    await page.getByRole("button", { name: /Auto-next/ }).click();
+    await expect(director).toHaveAttribute("data-auto-next-enabled", "false");
+    await page.getByRole("button", { name: /Triceratops$/ }).click();
+    await page.waitForTimeout(2200);
+    await expect(page.getByText("Case 2 of 6", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Next case", exact: true })).toBeVisible();
   });
 
   test("builds a visible power streak from consecutive correct answers", async ({ page }) => {
@@ -91,14 +114,15 @@ test.describe("AdrianOS game power loop", () => {
     await expect(controls).toHaveAttribute("data-last-feedback", "level");
   });
 
-  test("keeps the power controls phone-safe", async ({ page }) => {
+  test("keeps optional controls and auto-next phone-safe", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/games/daily-adventure-remix", { waitUntil: "domcontentloaded" });
 
     await expect(page.locator('[data-game-power-loop="active"]')).toBeVisible();
-    await page.getByRole("button", { name: "Play settings", exact: true }).click();
-    await expect(page.getByLabel("Play settings panel")).toBeVisible();
+    await page.getByRole("button", { name: "Game options", exact: true }).click();
+    await expect(page.getByLabel("Game options panel")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Auto-next/ })).toBeVisible();
     await expect.poll(async () => page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       scroll: document.documentElement.scrollWidth,
