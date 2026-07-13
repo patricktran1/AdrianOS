@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { games } from "@/lib/generated-games";
 
 const INSTANT_SOURCES = new Set([
@@ -15,6 +15,9 @@ const BLOCKED_LABEL = /(play again|replay|next|continue|results|finish|home|back
 const START_LABEL = /(start|begin|launch|enter|play|mission|challenge|adventure|story|quest|round|arena|blast|expedition|rescue)/i;
 
 type StartState = "idle" | "looking" | "starting" | "playing" | "cancelled";
+type LaunchContext = { enabled: boolean; source: string; mood: string; key: string };
+
+const IDLE_LAUNCH: LaunchContext = { enabled: false, source: "", mood: "surprise", key: "idle" };
 
 function visible(element: HTMLElement): boolean {
   const style = window.getComputedStyle(element);
@@ -80,24 +83,37 @@ function inferredStart(stage: HTMLElement, mood: string): HTMLElement | null {
 
 export default function GameStartDirector() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const query = searchParams.toString();
-  const source = searchParams.get("from") ?? "";
-  const mood = searchParams.get("mood") ?? "surprise";
-  const enabled = searchParams.get("instant") === "1" || INSTANT_SOURCES.has(source);
   const slug = pathname.split("/games/")[1]?.split("/")[0] ?? "";
   const gameTitle = useMemo(
     () => games.find((game) => game.slug === slug)?.title ?? "your game",
     [slug],
   );
-  const [state, setState] = useState<StartState>(enabled ? "looking" : "idle");
+  const [launch, setLaunch] = useState<LaunchContext>(IDLE_LAUNCH);
+  const [state, setState] = useState<StartState>("idle");
   const [targetLabel, setTargetLabel] = useState("");
   const firedRef = useRef(false);
 
   useEffect(() => {
+    const refresh = () => {
+      const params = new URLSearchParams(window.location.search);
+      const source = params.get("from") ?? "";
+      const mood = params.get("mood") ?? "surprise";
+      setLaunch({
+        enabled: params.get("instant") === "1" || INSTANT_SOURCES.has(source),
+        source,
+        mood,
+        key: `${pathname}?${params.toString()}`,
+      });
+    };
+    refresh();
+    window.addEventListener("popstate", refresh);
+    return () => window.removeEventListener("popstate", refresh);
+  }, [pathname]);
+
+  useEffect(() => {
     firedRef.current = false;
     setTargetLabel("");
-    if (!enabled) {
+    if (!launch.enabled) {
       setState("idle");
       return;
     }
@@ -105,6 +121,8 @@ export default function GameStartDirector() {
     setState("looking");
     const root = document.querySelector<HTMLElement>(".games-route-shell");
     if (!root) return;
+    delete root.dataset.instantStartFired;
+    delete root.dataset.instantStartTarget;
     const startedAt = Date.now();
     let cancelled = false;
     let scanTimer: number | null = null;
@@ -122,7 +140,7 @@ export default function GameStartDirector() {
       if (cancelled || firedRef.current) return;
       const stage = root.querySelector<HTMLElement>(".game-stage");
       if (!stage) return;
-      const control = explicitStart(stage, mood) ?? inferredStart(stage, mood);
+      const control = explicitStart(stage, launch.mood) ?? inferredStart(stage, launch.mood);
       if (!control) {
         if (Date.now() - startedAt > 1800) finishWithoutClick();
         return;
@@ -144,7 +162,7 @@ export default function GameStartDirector() {
         control.dataset.instantStartFired = "true";
         control.click();
         window.dispatchEvent(new CustomEvent("adrianos-game-instant-start", {
-          detail: { slug, label, source, mood },
+          detail: { slug, label, source: launch.source, mood: launch.mood },
         }));
         window.setTimeout(() => {
           delete control.dataset.instantStartFired;
@@ -192,20 +210,20 @@ export default function GameStartDirector() {
       window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [enabled, mood, pathname, query, slug, source]);
+  }, [launch.enabled, launch.key, launch.mood, launch.source, slug]);
 
   return (
     <div
       className={`game-start-director is-${state}`}
       data-game-start-director="active"
-      data-instant-start-enabled={enabled ? "true" : "false"}
+      data-instant-start-enabled={launch.enabled ? "true" : "false"}
       data-instant-start-state={state}
-      data-instant-start-source={source}
+      data-instant-start-source={launch.source}
       data-instant-start-target={targetLabel}
       aria-live="polite"
       aria-atomic="true"
     >
-      {enabled && (state === "looking" || state === "starting") && (
+      {launch.enabled && (state === "looking" || state === "starting") && (
         <div className="game-start-warp" aria-hidden="true">
           <span>⚡</span>
           <div>
