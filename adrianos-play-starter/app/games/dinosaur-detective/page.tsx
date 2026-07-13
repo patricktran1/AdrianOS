@@ -95,7 +95,17 @@ export default function DinosaurDetectivePage() {
           <div style={grid}>{choices.map((dinosaur) => {
             const correct = choice && dinosaur.name === current.name;
             const wrong = choice === dinosaur.name && dinosaur.name !== current.name;
-            return <button type="button" key={dinosaur.name} onClick={() => choose(dinosaur.name)} style={{ ...answer, background: correct ? "#d9ff5b" : wrong ? "#ffb5bf" : "#222936", color: correct || wrong ? "#10131b" : "#fff" }}><span style={{ fontSize: 42 }}>{dinosaur.emoji}</span><strong>{dinosaur.name}</strong></button>;
+            return (
+              <button
+                type="button"
+                key={dinosaur.name}
+                onClick={() => choose(dinosaur.name)}
+                data-correct={dinosaur.name === current.name ? "true" : "false"}
+                style={{ ...answer, background: correct ? "#d9ff5b" : wrong ? "#ffb5bf" : "#222936", color: correct || wrong ? "#10131b" : "#fff" }}
+              >
+                <span style={{ fontSize: 42 }}>{dinosaur.emoji}</span><strong>{dinosaur.name}</strong>
+              </button>
+            );
           })}</div>
           {choice && <div style={feedback}><strong>{choice === current.name ? "Correct." : `The dinosaur was ${current.name}.`}</strong><button type="button" style={primary} onClick={next}>{index === DINOSAURS.length - 1 ? "See results" : "Next case"}</button></div>}
         </section>
