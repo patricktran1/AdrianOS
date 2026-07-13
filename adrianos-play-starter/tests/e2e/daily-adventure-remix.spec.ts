@@ -5,41 +5,42 @@ const PROFILE_ID = "qa-learner";
 const PROGRESS_KEY = `adrianos-progress-v2:${PROFILE_ID}`;
 const LEARNING_KEY = `adrianos-learning-v1:${PROFILE_ID}`;
 
-async function answerCurrentGate(page: Page, missFirst = false) {
+async function answerCurrentGate(page: Page, gate: number, missFirst = false) {
+  const play = page.locator('[data-remix-stage="play"]');
+  await expect(play).toHaveAttribute("data-remix-gate", String(gate));
   if (missFirst) {
-    await page.locator('button[data-correct="false"]').first().click();
+    await page.locator('button[data-correct="false"]:not(:disabled)').first().click();
     await expect(page.getByText("CLUE UNLOCKED", { exact: true })).toBeVisible();
   }
-  await page.locator('button[data-correct="true"]').click();
+  await page.locator('button[data-correct="true"]:not(:disabled)').click();
   await expect(page.getByText("GATE REPORT", { exact: true })).toBeVisible();
+  if (gate < 5) {
+    await expect(play).toHaveAttribute("data-remix-gate", String(gate + 1), { timeout: 5000 });
+  } else {
+    await expect(page.locator('[data-remix-stage="finish"]')).toBeVisible({ timeout: 5000 });
+  }
 }
 
 async function finishFiveGateRun(page: Page, missFirst = false) {
   for (let gate = 1; gate <= 5; gate += 1) {
-    await answerCurrentGate(page, missFirst && gate === 1);
-    const label = gate === 5
-      ? "Finish today’s remix →"
-      : gate === 3
-        ? "Open checkpoint →"
-        : "Next gate →";
-    await page.getByRole("button", { name: label, exact: true }).click();
-    if (gate === 3) {
-      await expect(page.getByRole("heading", { name: "Three gates cleared!" })).toBeVisible();
-      await page.getByRole("button", { name: "Continue the remix →", exact: true }).click();
-    }
+    await answerCurrentGate(page, gate, missFirst && gate === 1);
   }
 }
 
 test.describe("Daily Adventure Remix", () => {
-  test("runs a Grade 2 Dino Dash with teaching, synced streak state, and one daily reward", async ({ page }) => {
+  test("starts Grade 2 Dino Dash immediately with an automatic power and one daily reward", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.goto("/games/daily-adventure-remix", { waitUntil: "domcontentloaded" });
 
-    await expect(page.getByRole("heading", { name: "Dino Dash Rescue" })).toBeVisible();
-    await page.getByRole("button", { name: /Treasure Magnet/ }).click();
-    await page.getByRole("button", { name: "Start today’s remix →", exact: true }).click();
-    await finishFiveGateRun(page, true);
+    const play = page.locator('[data-remix-stage="play"]');
+    await expect(play).toBeVisible();
+    await expect(page.getByText("Dino Dash Rescue", { exact: true })).toBeVisible();
+    await expect(play).toHaveAttribute("data-remix-gate", "1");
+    await expect(play).toHaveAttribute("data-remix-power", /^(compass|shield|magnet)$/);
+    await expect(page.getByRole("button", { name: /Start today’s remix/ })).toHaveCount(0);
+    await expect(page.getByText(/Choose one run power/)).toHaveCount(0);
 
+    await finishFiveGateRun(page, true);
     await expect(page.getByRole("heading", { name: "QA Learner cleared Dino Dash!" })).toBeVisible();
 
     const first = await page.evaluate(({ progressKey, learningKey }) => {
@@ -63,9 +64,8 @@ test.describe("Daily Adventure Remix", () => {
     expect(first.lastDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(first.attempts).toBeGreaterThanOrEqual(6);
 
-    await page.getByRole("button", { name: "Replay today’s route", exact: true }).click();
-    await page.getByRole("button", { name: /Extra Shield/ }).click();
-    await page.getByRole("button", { name: "Start today’s remix →", exact: true }).click();
+    await page.getByRole("button", { name: "Replay instantly", exact: true }).click();
+    await expect(page.locator('[data-remix-stage="play"]')).toHaveAttribute("data-remix-gate", "1");
     await finishFiveGateRun(page);
 
     const second = await page.evaluate(({ progressKey, learningKey }) => {
@@ -103,7 +103,7 @@ test.describe("Daily Adventure Remix", () => {
     }))).toEqual({ viewport: 390, scroll: 390 });
   });
 
-  test("fills the TK flagship gap with read-aloud Critter Parade and large tap gates", async ({ page }) => {
+  test("opens TK Critter Parade directly on large read-aloud tap gates", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: -1 });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/school", { waitUntil: "domcontentloaded" });
@@ -113,10 +113,11 @@ test.describe("Daily Adventure Remix", () => {
     await expect(spotlight.getByRole("link", { name: "Join the parade →" })).toHaveAttribute("href", "/games/daily-adventure-remix");
 
     await page.goto("/games/daily-adventure-remix", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "Critter Parade Trail" })).toBeVisible();
-    await page.getByRole("button", { name: /Clue Compass/ }).click();
-    await page.getByRole("button", { name: "Start today’s remix →", exact: true }).click();
+    const play = page.locator('[data-remix-stage="play"]');
+    await expect(play).toBeVisible();
+    await expect(play).toHaveAttribute("data-remix-gate", "1");
     await expect(page.getByRole("button", { name: "🔊 Read it aloud" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Start today’s remix/ })).toHaveCount(0);
 
     const choiceBox = await page.locator('button[data-correct="true"]').boundingBox();
     expect(choiceBox).not.toBeNull();
