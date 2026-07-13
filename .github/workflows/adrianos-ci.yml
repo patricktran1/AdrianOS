@@ -58,6 +58,12 @@ jobs:
           if [[ -f tests/e2e/dino-dash.spec.ts ]]; then
             specs+=(tests/e2e/dino-dash.spec.ts)
           fi
+          if [[ -f tests/e2e/dino-habitat-builder.spec.ts ]]; then
+            specs+=(tests/e2e/dino-habitat-builder.spec.ts)
+          fi
+          if [[ -f tests/e2e/school-arcade-access.spec.ts ]]; then
+            specs+=(tests/e2e/school-arcade-access.spec.ts)
+          fi
           if [[ -f tests/e2e/power-locker.spec.ts ]]; then
             specs+=(tests/e2e/power-locker.spec.ts)
           fi
