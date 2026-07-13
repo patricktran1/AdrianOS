@@ -1,21 +1,22 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { seedQaFamily } from "./helpers/seed-family";
 
 const PROFILE_ID = "qa-learner";
 const PROGRESS_KEY = `adrianos-progress-v2:${PROFILE_ID}`;
 const LEARNING_KEY = `adrianos-learning-v1:${PROFILE_ID}`;
 
-async function seedThreeClears(page: import("@playwright/test").Page) {
+async function seedFourClears(page: Page) {
   await page.evaluate((progressKey) => {
     const now = new Date().toISOString();
     window.localStorage.setItem(progressKey, JSON.stringify({
-      xp: 180,
-      coins: 9,
-      level: 1,
+      xp: 240,
+      coins: 12,
+      level: 2,
       games: {
         "story-expedition": { plays: 1, completions: 1, bestScore: 400, lastPlayed: now, lastCompleted: now },
         "math-motion-lab": { plays: 1, completions: 1, bestScore: 500, lastPlayed: now, lastCompleted: now },
         "dino-dash": { plays: 1, completions: 1, bestScore: 800, lastPlayed: now, lastCompleted: now },
+        "daily-adventure-remix": { plays: 1, completions: 1, bestScore: 650, lastPlayed: now, lastCompleted: now },
       },
       activity: [],
     }));
@@ -27,15 +28,16 @@ test.describe("Prize Vault Power Locker", () => {
   test("equips an unlocked prize and brings it into every game", async ({ page, context }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    await seedThreeClears(page);
+    await seedFourClears(page);
 
     const vault = page.getByRole("region", { name: "Prize Vault" });
     await expect(vault).toHaveAttribute("data-power-locker", "active");
     await expect(vault.locator('[data-power-locker-active="Blue Gem"]')).toBeVisible();
     await expect(vault.getByRole("button", { name: "Equip Dragon Egg as game companion" })).toBeVisible();
     await expect(vault.getByRole("button", { name: "Equip Fire Spark as game companion" })).toBeVisible();
-    await expect(vault.getByRole("button", { name: "Equip Blue Gem as game companion" })).toBeVisible();
-    await expect(vault.getByRole("button", { name: /Castle Key/ })).toHaveCount(0);
+    await expect(vault.getByRole("button", { name: "Equip Castle Key as game companion" })).toBeVisible();
+    await expect(vault.getByRole("button", { name: "Blue Gem is your active game companion" })).toBeVisible();
+    await expect(vault.getByRole("button", { name: /Tiny Crown/ })).toHaveCount(0);
 
     const before = await page.evaluate((progressKey) => window.localStorage.getItem(progressKey), PROGRESS_KEY);
     await vault.getByRole("button", { name: "Equip Dragon Egg as game companion" }).click();
@@ -72,7 +74,7 @@ test.describe("Prize Vault Power Locker", () => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    await seedThreeClears(page);
+    await seedFourClears(page);
 
     const vault = page.getByRole("region", { name: "Prize Vault" });
     await expect(vault.locator('[data-power-locker-active="Blue Gem"]')).toBeVisible();
