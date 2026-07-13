@@ -17,15 +17,15 @@ import {
 } from "@/lib/daily-adventure-remix-state";
 import { useGameSession } from "@/lib/game-session";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const GAME_SLUG = "daily-adventure-remix";
-type Stage = "loading" | "intro" | "play" | "checkpoint" | "finish";
+type Stage = "loading" | "play" | "finish";
 type Feedback = "question" | "hint" | "explanation";
 type PowerId = "compass" | "shield" | "magnet";
 
 const POWERS: Array<{ id: PowerId; emoji: string; title: string; description: string }> = [
-  { id: "compass", emoji: "🧭", title: "Clue Compass", description: "Reveal one clue before choosing, with no heart lost." },
+  { id: "compass", emoji: "🧭", title: "Clue Compass", description: "The first gate opens with a free clue." },
   { id: "shield", emoji: "🛡️", title: "Extra Shield", description: "Begin the run with one extra heart." },
   { id: "magnet", emoji: "✨", title: "Treasure Magnet", description: "First-try answers earn one extra treasure." },
 ];
@@ -49,6 +49,19 @@ function heartRow(count: number) {
   return count > 0 ? Array.from({ length: count }, () => "❤️").join(" ") : "💫";
 }
 
+function hashText(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function powerForRun(profileId: string, day: string, runNumber: number): PowerId {
+  return POWERS[(hashText(`${profileId}:${day}`) + runNumber) % POWERS.length].id;
+}
+
 export default function DailyAdventureRemixPage() {
   const { activeProfile, hydrated } = useFamilyProfiles();
   const { completeGame, restartGame } = useGameSession(GAME_SLUG);
@@ -56,7 +69,7 @@ export default function DailyAdventureRemixPage() {
   const [day, setDay] = useState("");
   const [stage, setStage] = useState<Stage>("loading");
   const [power, setPower] = useState<PowerId | null>(null);
-  const [powerUsed, setPowerUsed] = useState(false);
+  const [runNumber, setRunNumber] = useState(0);
   const [index, setIndex] = useState(0);
   const [feedback, setFeedback] = useState<Feedback>("question");
   const [selected, setSelected] = useState<string | null>(null);
@@ -69,21 +82,31 @@ export default function DailyAdventureRemixPage() {
   const [soundOn, setSoundOn] = useState(true);
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
-  const [completedToday, setCompletedToday] = useState(false);
   const [firstToday, setFirstToday] = useState(false);
+  const [checkpointFlash, setCheckpointFlash] = useState(false);
+  const checkpointTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!hydrated) return;
     const nextDay = dailyRemixDateKey();
     const nextGrade = readProfileGrade(activeProfile);
     const daily = readDailyRemixState(activeProfile.id, nextDay);
+    const nextPower = powerForRun(activeProfile.id, nextDay, 0);
     setDay(nextDay);
     setGrade(nextGrade);
     setStreak(daily.streak);
     setBestStreak(daily.bestStreak);
-    setCompletedToday(daily.completedToday);
-    setStage("intro");
+    setRunNumber(0);
+    setPower(nextPower);
+    setHearts(nextPower === "shield" ? 4 : 3);
+    setFeedback(nextPower === "compass" ? "hint" : "question");
+    setUsedHint(nextPower === "compass");
+    setStage("play");
   }, [activeProfile.id, activeProfile.age, hydrated]);
+
+  useEffect(() => () => {
+    if (checkpointTimerRef.current !== null) window.clearTimeout(checkpointTimerRef.current);
+  }, []);
 
   const theme = grade === null ? null : REMIX_THEMES[grade];
   const missions = useMemo(
@@ -91,6 +114,7 @@ export default function DailyAdventureRemixPage() {
     [activeProfile.id, day, grade]
   );
   const mission = missions[index] as RemixMission | undefined;
+  const powerInfo = POWERS.find((item) => item.id === power);
   const baseHearts = power === "shield" ? 4 : 3;
 
   function saveAttempt(correct: boolean) {
@@ -111,19 +135,6 @@ export default function DailyAdventureRemixPage() {
         adaptiveSupport: wrongAttempts > 0 || usedHint,
       },
     }, activeProfile.id);
-  }
-
-  function beginRun() {
-    if (!power) return;
-    setHearts(power === "shield" ? 4 : 3);
-    setStage("play");
-  }
-
-  function useCompass() {
-    if (power !== "compass" || powerUsed || feedback !== "question") return;
-    setPowerUsed(true);
-    setUsedHint(true);
-    setFeedback("hint");
   }
 
   function choose(choice: string) {
@@ -169,24 +180,23 @@ export default function DailyAdventureRemixPage() {
     setUsedHint(false);
   }
 
+  function showCheckpointFlash() {
+    setCheckpointFlash(true);
+    if (checkpointTimerRef.current !== null) window.clearTimeout(checkpointTimerRef.current);
+    checkpointTimerRef.current = window.setTimeout(() => setCheckpointFlash(false), 1400);
+  }
+
   function advance() {
     if (index === missions.length - 1) {
       finishRun();
       return;
     }
     if (index === 2) {
-      setStage("checkpoint");
-      return;
+      setHearts((value) => Math.min(baseHearts, value + 1));
+      showCheckpointFlash();
     }
     setIndex((value) => value + 1);
     resetQuestion();
-  }
-
-  function continueCheckpoint() {
-    setHearts((value) => Math.min(baseHearts, value + 1));
-    setIndex((value) => value + 1);
-    resetQuestion();
-    setStage("play");
   }
 
   function finishRun() {
@@ -195,7 +205,6 @@ export default function DailyAdventureRemixPage() {
     const coins = claim.firstToday ? 8 + Math.floor(treasure / 2) : 1;
     completeGame({ xp, coins, score: treasure * 100 + bestCombo * 35 + hearts * 20 });
     setFirstToday(claim.firstToday);
-    setCompletedToday(true);
     setStreak(claim.streak);
     setBestStreak(claim.bestStreak);
     setStage("finish");
@@ -203,16 +212,22 @@ export default function DailyAdventureRemixPage() {
 
   function replay() {
     restartGame();
-    setStage("intro");
-    setPower(null);
-    setPowerUsed(false);
+    const nextRun = runNumber + 1;
+    const nextPower = powerForRun(activeProfile.id, day, nextRun);
+    setRunNumber(nextRun);
+    setPower(nextPower);
+    setStage("play");
     setIndex(0);
-    resetQuestion();
-    setHearts(3);
+    setSelected(null);
+    setWrongAttempts(0);
+    setFeedback(nextPower === "compass" ? "hint" : "question");
+    setUsedHint(nextPower === "compass");
+    setHearts(nextPower === "shield" ? 4 : 3);
     setTreasure(0);
     setCombo(0);
     setBestCombo(0);
     setFirstToday(false);
+    setCheckpointFlash(false);
   }
 
   function speakMission() {
@@ -223,78 +238,22 @@ export default function DailyAdventureRemixPage() {
     window.speechSynthesis.speak(utterance);
   }
 
-  if (stage === "loading" || !theme || !mission) {
+  if (stage === "loading" || !theme || !mission || !powerInfo) {
     return <GameFrame title="Daily Adventure Remix"><main style={loadingPage}>Building today’s adventure…</main></GameFrame>;
-  }
-
-  if (stage === "intro") {
-    return (
-      <GameFrame title={theme.title}>
-        <style>{css}</style>
-        <main style={{ ...page, background: theme.background }}>
-          <section style={hero}>
-            <div className="remix-float" style={heroEmoji}>{theme.emoji}</div>
-            <span style={{ ...eyebrow, color: theme.accent }}>{theme.eyebrow}</span>
-            <h1 style={heroTitle}>{theme.title}</h1>
-            <p style={lead}>{theme.description}</p>
-            <div style={dailyBadge}>{completedToday ? "✓ Today’s treasure collected" : `NEW DAILY RUN · ${day}`}</div>
-            <div style={streakRow}><strong>🔥 {streak} day streak</strong><span>Best {bestStreak}</span></div>
-            <h2 style={chooseTitle}>Choose one run power</h2>
-            <div style={powerGrid}>
-              {POWERS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setPower(item.id)}
-                  aria-pressed={power === item.id}
-                  style={{ ...powerButton, ...(power === item.id ? { borderColor: theme.accent, background: `${theme.accent}18` } : {}) }}
-                >
-                  <span style={{ fontSize: 36 }}>{item.emoji}</span>
-                  <strong>{item.title}</strong>
-                  <small>{item.description}</small>
-                </button>
-              ))}
-            </div>
-            <button type="button" onClick={beginRun} disabled={!power} style={{ ...primary, background: theme.accent, opacity: power ? 1 : .45 }}>
-              Start today’s remix →
-            </button>
-            <button type="button" onClick={() => setSoundOn((value) => !value)} style={secondary}>{soundOn ? "🔊 Sound on" : "🔇 Sound off"}</button>
-          </section>
-        </main>
-      </GameFrame>
-    );
-  }
-
-  if (stage === "checkpoint") {
-    return (
-      <GameFrame title={theme.title}>
-        <style>{css}</style>
-        <main style={{ ...page, background: theme.background }}>
-          <section style={hero}>
-            <div className="remix-pop" style={heroEmoji}>🏁{theme.emoji}</div>
-            <span style={{ ...eyebrow, color: theme.accent }}>MID-RUN CHECKPOINT</span>
-            <h1 style={sectionTitle}>Three gates cleared!</h1>
-            <p style={lead}>{theme.hero} found a heart refill. Two surprise gates remain.</p>
-            <div style={stats}><strong>{heartRow(hearts)}</strong><strong>🔥 {bestCombo}×</strong><strong>💎 {treasure}</strong></div>
-            <button type="button" onClick={continueCheckpoint} style={{ ...primary, background: theme.accent }}>Continue the remix →</button>
-          </section>
-        </main>
-      </GameFrame>
-    );
   }
 
   if (stage === "finish") {
     return (
       <GameFrame title={theme.title}>
         <style>{css}</style>
-        <main style={{ ...page, background: theme.background }}>
+        <main style={{ ...page, background: theme.background }} data-remix-stage="finish">
           <section style={hero}>
             <div className="remix-pop" style={heroEmoji}>{theme.emoji}🏆</div>
             <span style={{ ...eyebrow, color: theme.accent }}>DAILY REMIX COMPLETE</span>
             <h1 style={sectionTitle}>{activeProfile.name} cleared {theme.shortTitle}!</h1>
             <p style={lead}>{firstToday ? `Today’s ${theme.treasure} are saved. Come back tomorrow for a different five-gate run.` : "Practice replay complete. The large daily reward can only be collected once each day."}</p>
             <div style={stats}><strong>💎 {treasure} {theme.treasure}</strong><strong>🔥 {bestCombo}× combo</strong><strong>📆 {streak} day streak</strong></div>
-            <button type="button" onClick={replay} style={{ ...primary, background: theme.accent }}>Replay today’s route</button>
+            <button type="button" onClick={replay} style={{ ...primary, background: theme.accent }}>Replay instantly</button>
             <Link href="/school" style={link}>Return to School Mode</Link>
           </section>
         </main>
@@ -307,10 +266,28 @@ export default function DailyAdventureRemixPage() {
   return (
     <GameFrame title={theme.title}>
       <style>{css}</style>
-      <main style={{ ...page, background: theme.background }}>
+      <main
+        style={{ ...page, background: theme.background }}
+        data-remix-stage="play"
+        data-remix-gate={index + 1}
+        data-remix-power={power}
+      >
+        {checkpointFlash && (
+          <div className="remix-checkpoint" style={{ ...checkpointToast, borderColor: theme.accent }} aria-hidden="true">
+            <span>🏁</span><strong>Checkpoint boost!</strong><small>Heart refilled · Gate 4 unlocked</small>
+          </div>
+        )}
         <header style={hud}>
-          <div><strong>{theme.emoji} {theme.hero}</strong><small>Gate {index + 1} of {missions.length}</small></div>
-          <div style={hudStats}><span>{heartRow(hearts)}</span><span>🔥 {combo}×</span><span>💎 {treasure}</span><button type="button" onClick={() => setSoundOn((value) => !value)} style={soundButton}>{soundOn ? "🔊" : "🔇"}</button></div>
+          <div><strong>{theme.emoji} {theme.title}</strong><small>Gate {index + 1} of {missions.length}</small></div>
+          <div style={hudStats}>
+            <span>{heartRow(hearts)}</span>
+            <span>🔥 {combo}×</span>
+            <span>💎 {treasure}</span>
+            <span style={{ ...powerBadge, borderColor: `${theme.accent}66` }} data-remix-power-badge={power} title={powerInfo.description}>
+              {powerInfo.emoji} {powerInfo.title}
+            </span>
+            <button type="button" onClick={() => setSoundOn((value) => !value)} style={soundButton} aria-label={soundOn ? "Turn remix sound off" : "Turn remix sound on"}>{soundOn ? "🔊" : "🔇"}</button>
+          </div>
         </header>
         <section style={track}><div className="remix-run" style={{ ...trackFill, width: `${((index + (feedback === "explanation" ? 1 : 0)) / missions.length) * 100}%`, background: theme.accent }}><span>{theme.emoji}</span></div></section>
         <section style={{ ...card, borderColor: `${theme.accent}88` }}>
@@ -341,13 +318,17 @@ export default function DailyAdventureRemixPage() {
               <strong style={{ color: theme.accent }}>{feedback === "question" ? "CHOOSE A GATE" : feedback === "hint" ? "CLUE UNLOCKED" : "GATE REPORT"}</strong>
               <p>{feedback === "question" ? "Pick the best answer. A first miss opens a clue instead of ending the run." : feedback === "hint" ? mission.hint : selected === mission.answer ? mission.explanation : `The answer is ${mission.answer}. ${mission.explanation}`}</p>
             </div>
-            {feedback === "question" && power === "compass" && !powerUsed ? (
-              <button type="button" onClick={useCompass} style={hintButton}>🧭 Use Clue Compass</button>
-            ) : feedback === "hint" ? (
-              <span style={retry}>Try another gate. The run continues.</span>
+            {feedback === "hint" ? (
+              <span style={retry}>{power === "compass" && index === 0 && wrongAttempts === 0 ? "Your daily Clue Compass opened this clue automatically." : "Try another gate. The run continues."}</span>
             ) : feedback === "explanation" ? (
-              <button type="button" onClick={advance} style={{ ...primary, background: theme.accent }}>
-                {index === missions.length - 1 ? "Finish today’s remix →" : index === 2 ? "Open checkpoint →" : "Next gate →"}
+              <button
+                type="button"
+                onClick={advance}
+                data-auto-advance="true"
+                data-auto-advance-delay="850"
+                style={{ ...primary, background: theme.accent }}
+              >
+                {index === missions.length - 1 ? "Finish today’s remix →" : "Next gate →"}
               </button>
             ) : null}
           </section>
@@ -357,27 +338,22 @@ export default function DailyAdventureRemixPage() {
   );
 }
 
-const css = `@keyframes remixFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-8px) rotate(1deg)}}@keyframes remixPop{0%{transform:scale(.72);opacity:0}75%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}@keyframes remixRun{0%,100%{transform:translateX(-2px)}50%{transform:translateX(5px)}}.remix-float{animation:remixFloat 2s ease-in-out infinite}.remix-pop{animation:remixPop .48s ease-out both}.remix-run span{display:block;animation:remixRun .55s ease-in-out infinite}@media(prefers-reduced-motion:reduce){.remix-float,.remix-pop,.remix-run span{animation:none}}`;
+const css = `@keyframes remixFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-8px) rotate(1deg)}}@keyframes remixPop{0%{transform:scale(.72);opacity:0}75%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}@keyframes remixRun{0%,100%{transform:translateX(-2px)}50%{transform:translateX(5px)}}@keyframes remixCheckpoint{0%{opacity:0;transform:translate(-50%,16px) scale(.88)}20%,78%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-10px) scale(.96)}}.remix-float{animation:remixFloat 2s ease-in-out infinite}.remix-pop{animation:remixPop .48s ease-out both}.remix-run span{display:block;animation:remixRun .55s ease-in-out infinite}.remix-checkpoint{animation:remixCheckpoint 1.4s ease-out both}@media(prefers-reduced-motion:reduce){.remix-float,.remix-pop,.remix-run span,.remix-checkpoint{animation:none}}`;
 const loadingPage: React.CSSProperties = { minHeight: "100vh", display: "grid", placeItems: "center", background: "#10131b", color: "#fff", fontSize: 24, fontWeight: 900 };
 const page: React.CSSProperties = { minHeight: "100vh", padding: "20px 14px 82px", color: "#fff" };
 const hero: React.CSSProperties = { width: "min(900px,100%)", margin: "0 auto", padding: "clamp(28px,7vw,64px)", borderRadius: 34, textAlign: "center", background: "rgba(18,24,36,.91)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 28px 80px rgba(0,0,0,.32)" };
 const heroEmoji: React.CSSProperties = { fontSize: "clamp(5rem,17vw,9rem)" };
 const eyebrow: React.CSSProperties = { fontSize: 11, fontWeight: 950, letterSpacing: ".15em" };
-const heroTitle: React.CSSProperties = { margin: "10px 0", fontSize: "clamp(3rem,9vw,6.4rem)", lineHeight: .88, letterSpacing: "-.07em" };
 const sectionTitle: React.CSSProperties = { margin: "10px 0", fontSize: "clamp(2.7rem,8vw,5.2rem)", lineHeight: .91, letterSpacing: "-.06em" };
 const lead: React.CSSProperties = { maxWidth: 720, margin: "13px auto 22px", color: "#c6ceda", lineHeight: 1.6, fontWeight: 700 };
-const dailyBadge: React.CSSProperties = { display: "inline-block", padding: "8px 12px", borderRadius: 999, background: "#10131b", color: "#d9ff5b", fontSize: 11, fontWeight: 950, letterSpacing: ".08em" };
-const streakRow: React.CSSProperties = { margin: "14px auto", display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap", color: "#fff" };
-const chooseTitle: React.CSSProperties = { margin: "28px 0 12px", fontSize: 22 };
-const powerGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10, margin: "0 auto 18px" };
-const powerButton: React.CSSProperties = { minHeight: 150, display: "grid", placeItems: "center", gap: 6, padding: 16, borderRadius: 20, border: "1px solid rgba(255,255,255,.13)", background: "#222936", color: "#fff", cursor: "pointer" };
 const primary: React.CSSProperties = { margin: 6, padding: "14px 20px", borderRadius: 999, border: 0, color: "#10131b", fontWeight: 950, cursor: "pointer" };
 const secondary: React.CSSProperties = { ...primary, background: "#222936", color: "#fff", border: "1px solid rgba(255,255,255,.14)" };
 const link: React.CSSProperties = { ...secondary, display: "inline-block", textDecoration: "none" };
 const stats: React.CSSProperties = { display: "flex", justifyContent: "center", gap: 13, flexWrap: "wrap", margin: "20px 0" };
 const hud: React.CSSProperties = { width: "min(920px,100%)", margin: "0 auto 11px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: 14, borderRadius: 22, background: "rgba(16,19,27,.92)", border: "1px solid rgba(255,255,255,.12)" };
-const hudStats: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" };
-const soundButton: React.CSSProperties = { border: 0, background: "transparent", fontSize: 19, cursor: "pointer" };
+const hudStats: React.CSSProperties = { display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" };
+const powerBadge: React.CSSProperties = { maxWidth: 190, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "7px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", background: "rgba(255,255,255,.06)", color: "#fff", fontSize: 11, fontWeight: 950 };
+const soundButton: React.CSSProperties = { border: 0, background: "transparent", color: "#fff", fontSize: 19, cursor: "pointer" };
 const track: React.CSSProperties = { width: "min(920px,100%)", height: 18, margin: "0 auto 12px", borderRadius: 999, background: "rgba(16,19,27,.78)", overflow: "hidden" };
 const trackFill: React.CSSProperties = { height: "100%", display: "flex", justifyContent: "flex-end", alignItems: "center", borderRadius: 999, transition: "width .35s ease", color: "#10131b" };
 const card: React.CSSProperties = { width: "min(920px,100%)", margin: "0 auto", padding: "clamp(22px,5vw,46px)", borderRadius: 30, background: "rgba(18,24,36,.94)", border: "1px solid rgba(255,255,255,.14)", textAlign: "center" };
@@ -392,5 +368,5 @@ const choiceButton: React.CSSProperties = { padding: "14px", borderRadius: 20, b
 const correctStyle: React.CSSProperties = { background: "#d9ff5b", color: "#10131b", borderColor: "#d9ff5b" };
 const wrongStyle: React.CSSProperties = { background: "#ffb5bf", color: "#10131b", borderColor: "#ffb5bf" };
 const teaching: React.CSSProperties = { marginTop: 18, padding: 17, borderRadius: 20, background: "#10131b", border: "1px solid rgba(255,255,255,.09)", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,230px),1fr))", gap: 14, alignItems: "center", textAlign: "left" };
-const hintButton: React.CSSProperties = { padding: "11px 14px", borderRadius: 999, border: "1px solid rgba(127,220,255,.3)", background: "rgba(127,220,255,.1)", color: "#7fdcff", fontWeight: 950, cursor: "pointer" };
 const retry: React.CSSProperties = { color: "#c6b8ff", fontWeight: 850 };
+const checkpointToast: React.CSSProperties = { position: "fixed", left: "50%", top: 92, zIndex: 150, width: "min(360px,calc(100vw - 28px))", display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 10px", alignItems: "center", padding: "13px 16px", borderRadius: 20, border: "1px solid", background: "rgba(16,19,27,.96)", color: "#fff", boxShadow: "0 18px 55px rgba(0,0,0,.42)", transform: "translateX(-50%)" };
