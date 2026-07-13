@@ -1,7 +1,7 @@
 .game-start-director {
   position: fixed;
   left: 50%;
-  bottom: max(18px, env(safe-area-inset-bottom));
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + var(--school-mode-ribbon-clearance, 0px));
   z-index: 132;
   width: min(390px, calc(100vw - 28px));
   transform: translateX(-50%);
@@ -91,7 +91,7 @@
 
 @media (max-width: 520px) {
   .game-start-director {
-    bottom: max(12px, env(safe-area-inset-bottom));
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + var(--school-mode-ribbon-clearance, 0px));
   }
 
   .game-start-warp {
