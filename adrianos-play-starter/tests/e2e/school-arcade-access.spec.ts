@@ -18,7 +18,7 @@ test.describe("child Arcade access", () => {
     const before = await totalCompletions(page);
     const modeSwitch = page.getByRole("navigation", { name: "Choose child mode" });
     await expect(modeSwitch.getByRole("link", { name: /Arcade/ })).toBeVisible();
-    await expect(modeSwitch.getByRole("link", { name: /Today’s School/ })).toHaveAttribute("aria-current", "page");
+    await expect(modeSwitch.getByRole("link", { name: /Today's School/ })).toHaveAttribute("aria-current", "page");
 
     const arcadeBreak = page.getByRole("region", { name: "Arcade break" });
     await arcadeBreak.scrollIntoViewIfNeeded();
