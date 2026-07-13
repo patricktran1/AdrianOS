@@ -55,6 +55,9 @@ jobs:
           if [[ -f tests/e2e/instant-start.spec.ts ]]; then
             specs+=(tests/e2e/instant-start.spec.ts)
           fi
+          if [[ -f tests/e2e/dino-dash.spec.ts ]]; then
+            specs+=(tests/e2e/dino-dash.spec.ts)
+          fi
           if [[ -f tests/e2e/family-beta.spec.ts ]]; then
             specs+=(tests/e2e/family-beta.spec.ts)
           fi
