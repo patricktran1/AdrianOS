@@ -61,6 +61,9 @@ jobs:
           if [[ -f tests/e2e/power-locker.spec.ts ]]; then
             specs+=(tests/e2e/power-locker.spec.ts)
           fi
+          if [[ -f tests/e2e/game-surprise.spec.ts ]]; then
+            specs+=(tests/e2e/game-surprise.spec.ts)
+          fi
           if [[ -f tests/e2e/family-beta.spec.ts ]]; then
             specs+=(tests/e2e/family-beta.spec.ts)
           fi
