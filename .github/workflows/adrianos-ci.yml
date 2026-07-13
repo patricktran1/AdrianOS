@@ -49,6 +49,9 @@ jobs:
         shell: bash
         run: |
           specs=(tests/e2e/adventure-arcade.spec.ts)
+          if [[ -f tests/e2e/adventure-world.spec.ts ]]; then
+            specs+=(tests/e2e/adventure-world.spec.ts)
+          fi
           if [[ -f tests/e2e/quick-play-launchpad.spec.ts ]]; then
             specs+=(tests/e2e/quick-play-launchpad.spec.ts)
           fi
