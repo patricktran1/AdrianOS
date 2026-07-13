@@ -14,6 +14,7 @@ import "./game-power-loop.css";
 import "./game-start.css";
 import "./game-surprise.css";
 import "./power-locker.css";
+import "./surprise-companion.css";
 
 export default function GamesLayout({ children }: { children: ReactNode }) {
   return (
