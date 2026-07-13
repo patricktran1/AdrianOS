@@ -1,10 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { seedQaFamily } from "./helpers/seed-family";
 
 const PROFILE_ID = "qa-learner";
 const LEARNING_KEY = `adrianos-learning-v1:${PROFILE_ID}`;
 
-async function recentGames(page: import("@playwright/test").Page): Promise<string> {
+async function recentGames(page: Page): Promise<string> {
   return page.evaluate((learningKey) => {
     const learning = JSON.parse(window.localStorage.getItem(learningKey) ?? "{}");
     const item = learning.reviewQueue?.find((row: { gameSlug?: string; id?: string }) =>
@@ -65,7 +65,9 @@ test.describe("Quick Play launchpad", () => {
     await surprise.click();
     await expect(page).toHaveURL(new RegExp(`/games/${firstSurprise}\\?from=quick-play`));
     await expect.poll(() => recentGames(page)).toContain(firstSurprise);
-    await page.goto("/", { waitUntil: "domcontentloaded" });
+
+    await page.getByRole("link", { name: "Back to game library", exact: true }).click();
+    await expect(page).toHaveURL(/\/$/);
 
     const refreshed = page.getByRole("region", { name: "Quick play launchpad" });
     await expect(refreshed).toHaveAttribute("data-quick-recent", firstSurprise);
