@@ -45,6 +45,7 @@ const FUN_EXCLUSIONS = new Set([
 ]);
 
 const STORY_GAMES = [
+  "dino-dash-volcano-escape",
   "daily-adventure-remix",
   "story-expedition",
   "dino-time-rescue",
@@ -61,6 +62,7 @@ const STORY_GAMES = [
 ];
 
 const QUICK_GAMES = [
+  "dino-dash-volcano-escape",
   "daily-adventure-remix",
   "music-maker",
   "pattern-master",
@@ -73,6 +75,7 @@ const QUICK_GAMES = [
 ];
 
 const CHALLENGE_GAMES = [
+  "dino-dash-volcano-escape",
   "adaptive-boss-arena",
   "dino-time-rescue",
   "robot-rescue-city",
