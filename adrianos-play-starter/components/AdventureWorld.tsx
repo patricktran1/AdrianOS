@@ -63,6 +63,7 @@ export default function AdventureWorld({ games }: { games: Game[] }) {
   const { progress, hydrated: progressReady } = useAdrianProgress();
   const [arcade, setArcade] = useState<ArcadeState>({ favorites: [], recent: [] });
   const [arcadeReady, setArcadeReady] = useState(false);
+  const [learningRevision, setLearningRevision] = useState(0);
   const [companionRevision, setCompanionRevision] = useState(0);
   const [sky, setSky] = useState<AdventureWorldSky | null>(null);
   const [foundSecrets, setFoundSecrets] = useState<number[]>([]);
@@ -74,6 +75,7 @@ export default function AdventureWorld({ games }: { games: Game[] }) {
     const refresh = () => {
       setArcade(readArcadeState(activeProfile.id));
       setArcadeReady(true);
+      setLearningRevision((value) => value + 1);
     };
     const refreshCompanion = () => setCompanionRevision((value) => value + 1);
     refresh();
@@ -90,10 +92,10 @@ export default function AdventureWorld({ games }: { games: Game[] }) {
   }, [activeProfile.id, profilesReady]);
 
   const grade = readProfileGrade(activeProfile);
-  const learningProfile = useMemo(
-    () => profilesReady ? readLearningProfile(activeProfile.id) : null,
-    [activeProfile.id, profilesReady],
-  );
+  const learningProfile = useMemo(() => {
+    void learningRevision;
+    return profilesReady ? readLearningProfile(activeProfile.id) : null;
+  }, [activeProfile.id, learningRevision, profilesReady]);
   const model = useMemo(() => {
     if (!profilesReady || !progressReady || !arcadeReady) return null;
     return buildAdventureWorld({
@@ -143,7 +145,7 @@ export default function AdventureWorld({ games }: { games: Game[] }) {
   const allSecretsFound = foundSecrets.length === model.secretIcons.length;
   const companionEmoji = companion?.emoji ?? model.guideEmoji;
   const companionName = companion?.name ?? `${activeProfile.name}'s world guide`;
-  const nextGrowthAt = model.clears + 1;
+  const nextGrowthAt = model.growthPieces.length + 1;
 
   function remember(slug: string) {
     setArcade(rememberArcadeGame(activeProfile.id, slug));
@@ -184,6 +186,7 @@ export default function AdventureWorld({ games }: { games: Game[] }) {
         <div className={styles.worldStatus}>
           <strong>{model.stage.title}</strong>
           <span>{model.clears} verified game clear{model.clears === 1 ? "" : "s"} built this world</span>
+          <em>{model.stage.copy}</em>
         </div>
       </header>
 
