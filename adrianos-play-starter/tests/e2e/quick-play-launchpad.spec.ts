@@ -36,7 +36,7 @@ test.describe("Quick Play launchpad", () => {
 
     const first = choices.first();
     const firstSlug = await first.getAttribute("data-quick-game");
-    expect(firstSlug).toBeTruthy();
+    if (!firstSlug) throw new Error("Quick play card is missing its game slug.");
     await first.click();
     await expect(page).toHaveURL(new RegExp(`/games/${firstSlug}\\?from=quick-play`));
 
@@ -57,7 +57,7 @@ test.describe("Quick Play launchpad", () => {
     const launchpad = page.getByRole("region", { name: "Quick play launchpad" });
     const surprise = launchpad.locator("[data-quick-surprise]");
     const firstSurprise = await surprise.getAttribute("data-quick-surprise");
-    expect(firstSurprise).toBeTruthy();
+    if (!firstSurprise) throw new Error("Surprise game is missing its slug.");
 
     await surprise.click();
     await expect(page).toHaveURL(new RegExp(`/games/${firstSurprise}\\?from=quick-play`));
@@ -67,7 +67,7 @@ test.describe("Quick Play launchpad", () => {
       .getByRole("region", { name: "Quick play launchpad" })
       .locator("[data-quick-surprise]")
       .getAttribute("data-quick-surprise");
-    expect(nextSurprise).toBeTruthy();
+    if (!nextSurprise) throw new Error("Rotated surprise game is missing its slug.");
     expect(nextSurprise).not.toBe(firstSurprise);
 
     await expect.poll(async () => page.evaluate(() => ({
