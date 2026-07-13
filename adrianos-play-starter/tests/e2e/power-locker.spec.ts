@@ -15,7 +15,7 @@ async function seedFourClears(page: Page) {
       games: {
         "story-expedition": { plays: 1, completions: 1, bestScore: 400, lastPlayed: now, lastCompleted: now },
         "math-motion-lab": { plays: 1, completions: 1, bestScore: 500, lastPlayed: now, lastCompleted: now },
-        "dino-dash": { plays: 1, completions: 1, bestScore: 800, lastPlayed: now, lastCompleted: now },
+        "dino-dash-volcano-escape": { plays: 1, completions: 1, bestScore: 800, lastPlayed: now, lastCompleted: now },
         "daily-adventure-remix": { plays: 1, completions: 1, bestScore: 650, lastPlayed: now, lastCompleted: now },
       },
       activity: [],
@@ -33,14 +33,14 @@ test.describe("Prize Vault Power Locker", () => {
     const vault = page.getByRole("region", { name: "Prize Vault" });
     await expect(vault).toHaveAttribute("data-power-locker", "active");
     await expect(vault.locator('[data-power-locker-active="Blue Gem"]')).toBeVisible();
-    await expect(vault.getByRole("button", { name: "Equip Dragon Egg as game companion" })).toBeVisible();
-    await expect(vault.getByRole("button", { name: "Equip Fire Spark as game companion" })).toBeVisible();
-    await expect(vault.getByRole("button", { name: "Equip Castle Key as game companion" })).toBeVisible();
-    await expect(vault.getByRole("button", { name: "Blue Gem is your active game companion" })).toBeVisible();
+    await expect(vault.locator('[data-power-locker-prize="2:0"]')).toBeVisible();
+    await expect(vault.locator('[data-power-locker-prize="2:1"]')).toBeVisible();
+    await expect(vault.locator('[data-power-locker-prize="2:2"]')).toBeVisible();
+    await expect(vault.locator('[data-power-locker-prize="2:3"][data-power-locker-selected="true"]')).toBeVisible();
     await expect(vault.getByRole("button", { name: /Tiny Crown/ })).toHaveCount(0);
 
     const before = await page.evaluate((progressKey) => window.localStorage.getItem(progressKey), PROGRESS_KEY);
-    await vault.getByRole("button", { name: "Equip Dragon Egg as game companion" }).click();
+    await vault.locator('[data-power-locker-prize="2:0"]').click();
     await expect(vault.locator('[data-power-locker-active="Dragon Egg"]')).toBeVisible();
 
     await expect.poll(async () => page.evaluate((learningKey) => {
@@ -85,7 +85,7 @@ test.describe("Prize Vault Power Locker", () => {
 
     const gamePage = await context.newPage();
     await gamePage.setViewportSize({ width: 390, height: 844 });
-    await gamePage.goto("/games/dino-dash", { waitUntil: "domcontentloaded" });
+    await gamePage.goto("/games/dino-dash-volcano-escape", { waitUntil: "domcontentloaded" });
     await expect(gamePage.locator('[data-power-locker-companion="Blue Gem"]')).toBeVisible();
     await expect.poll(async () => gamePage.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
