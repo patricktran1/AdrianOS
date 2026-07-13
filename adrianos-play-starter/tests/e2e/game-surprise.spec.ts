@@ -11,6 +11,28 @@ async function waitForRecordedPlay(page: import("@playwright/test").Page) {
   }, PROGRESS_KEY)).toBe(1);
 }
 
+async function seedUnlockedCompanion(page: import("@playwright/test").Page) {
+  await page.evaluate((progressKey) => {
+    const now = new Date().toISOString();
+    window.localStorage.setItem(progressKey, JSON.stringify({
+      xp: 60,
+      coins: 3,
+      level: 1,
+      games: {
+        "story-expedition": {
+          plays: 1,
+          completions: 1,
+          bestScore: 300,
+          lastPlayed: now,
+          lastCompleted: now,
+        },
+      },
+      activity: [],
+    }));
+    window.dispatchEvent(new Event("adrianos-progress-updated"));
+  }, PROGRESS_KEY);
+}
+
 test.describe("AdrianOS Surprise Event Engine", () => {
   test("turns two real correct answers into a no-click world event", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
@@ -63,6 +85,23 @@ test.describe("AdrianOS Surprise Event Engine", () => {
     await expect(director).toHaveAttribute("data-surprise-event", "comeback");
     await expect(director).toHaveAttribute("data-surprise-comeback", "true");
     await expect(page.getByText("ROCKET RECOVERY!", { exact: true })).toBeVisible();
+  });
+
+  test("powers up an unlocked companion during the surprise", async ({ page }) => {
+    await seedQaFamily(page, { clear: true, grade: 2 });
+    await page.goto("/games/dinosaur-detective", { waitUntil: "domcontentloaded" });
+    await seedUnlockedCompanion(page);
+
+    const companion = page.locator('[data-power-locker-companion="Dragon Egg"]');
+    await expect(companion).toHaveAttribute("data-power-locker-ready", "true");
+
+    await page.getByRole("button", { name: /Tyrannosaurus rex$/ }).click();
+    await expect(page.getByText("Case 2 of 6", { exact: true })).toBeVisible({ timeout: 5000 });
+    await page.getByRole("button", { name: /Triceratops$/ }).click();
+
+    await expect(page.locator('[data-game-surprise-director="active"]')).toHaveAttribute("data-surprise-visible", "true");
+    await expect(companion).toHaveAttribute("data-power-locker-reaction", "surprise");
+    await expect(companion).toContainText("SURPRISE POWER!");
   });
 
   test("stays phone-safe and removes motion when reduced motion is requested", async ({ page }) => {
