@@ -3,6 +3,7 @@
 import Link from "next/link";
 import DailyMissionControl from "@/components/DailyMissionControl";
 import AdventureArcade from "@/components/AdventureArcade";
+import QuickPlayLaunchpad from "@/components/QuickPlayLaunchpad";
 import WorldQuestCard from "@/components/WorldQuestCard";
 import PrizeVault from "@/components/PrizeVault";
 import PlacementBanner from "@/components/PlacementBanner";
@@ -15,6 +16,7 @@ import type { Game } from "@/lib/games";
 export default function GameShelf({ games }: { games: Game[] }) {
   return (
     <>
+      <QuickPlayLaunchpad games={games} />
       <DailyMissionControl />
       <AdventureArcade games={games} />
       <WorldQuestCard games={games} />
