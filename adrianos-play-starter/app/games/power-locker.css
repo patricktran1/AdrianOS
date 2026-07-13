@@ -1,7 +1,7 @@
 .power-locker-companion {
   position: fixed;
   left: max(12px, env(safe-area-inset-left));
-  bottom: max(12px, env(safe-area-inset-bottom));
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + var(--school-mode-ribbon-clearance, 0px));
   z-index: 64;
   width: min(245px, calc(100vw - 24px));
   min-height: 72px;
