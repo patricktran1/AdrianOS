@@ -1,0 +1,276 @@
+.game-surprise-director {
+  position: relative;
+  z-index: 140;
+  pointer-events: none;
+}
+
+.game-surprise-meter {
+  position: fixed;
+  top: 82px;
+  left: 50%;
+  z-index: 142;
+  width: min(206px, calc(100vw - 190px));
+  min-width: 142px;
+  display: grid;
+  grid-template-columns: auto minmax(52px, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  border: 1px solid color-mix(in srgb, var(--game-accent) 42%, rgba(255,255,255,.14));
+  border-radius: 999px;
+  background: rgba(16,19,27,.88);
+  color: #fff;
+  box-shadow: 0 12px 32px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.08);
+  backdrop-filter: blur(14px);
+  transform: translateX(-50%);
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+.game-surprise-director[data-surprise-ready="false"] .game-surprise-meter {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-5px);
+}
+
+.game-surprise-meter > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--game-accent);
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .12em;
+  white-space: nowrap;
+}
+
+.game-surprise-meter > span b {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.game-surprise-meter > div {
+  min-width: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+}
+
+.game-surprise-meter i {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.25);
+  transition: background .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.game-surprise-meter i.is-filled {
+  background: linear-gradient(90deg, var(--game-accent), var(--game-accent-2));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--game-accent) 42%, transparent);
+  transform: scaleY(1.18);
+}
+
+.game-surprise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 141;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.game-surprise-wash {
+  position: absolute;
+  inset: 0;
+  opacity: .22;
+  animation: surpriseWash 1.9s ease-out both;
+}
+
+.game-surprise-card {
+  position: absolute;
+  top: clamp(132px, 19vh, 188px);
+  left: 50%;
+  width: min(330px, calc(100vw - 34px));
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 15px 18px 16px;
+  border: 1px solid color-mix(in srgb, var(--game-accent) 55%, rgba(255,255,255,.18));
+  border-radius: 25px;
+  background: linear-gradient(155deg, rgba(34,41,54,.95), rgba(16,19,27,.96));
+  color: #fff;
+  text-align: center;
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--game-accent) 11%, transparent),
+    0 24px 70px rgba(0,0,0,.44),
+    inset 0 1px rgba(255,255,255,.1);
+  backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+  animation: surpriseCard 1.9s cubic-bezier(.18,.82,.2,1) both;
+}
+
+.game-surprise-card small {
+  color: var(--game-accent);
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .16em;
+}
+
+.game-surprise-card > span {
+  font-size: clamp(2.6rem, 10vw, 4.4rem);
+  line-height: 1;
+  filter: drop-shadow(0 12px 14px rgba(0,0,0,.32));
+  animation: surpriseIcon 1.15s cubic-bezier(.2,.85,.2,1) both;
+}
+
+.game-surprise-card strong {
+  font-size: clamp(1.45rem, 5vw, 2.25rem);
+  line-height: .98;
+  letter-spacing: -.045em;
+}
+
+.game-surprise-card p {
+  margin: 2px 0 0;
+  color: #c5ccd7;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.38;
+}
+
+.game-surprise-particles span {
+  --particle-index: 0;
+  position: absolute;
+  left: calc(5% + (var(--particle-index) * 5.2%));
+  top: calc(12% + ((var(--particle-index) % 6) * 12%));
+  font-size: clamp(1.15rem, 5vw, 2.4rem);
+  opacity: 0;
+  filter: drop-shadow(0 8px 8px rgba(0,0,0,.25));
+  animation: surpriseParticle 1.75s cubic-bezier(.16,.8,.22,1) both;
+  animation-delay: calc((var(--particle-index) % 7) * 45ms);
+}
+
+.game-surprise-meteor .game-surprise-wash {
+  background: radial-gradient(circle at 50% 18%, rgba(255,212,95,.9), transparent 28%), linear-gradient(145deg, rgba(127,220,255,.45), transparent 55%);
+}
+
+.game-surprise-treasure .game-surprise-wash {
+  background: radial-gradient(circle at 50% 38%, rgba(255,212,95,.85), transparent 34%), linear-gradient(160deg, rgba(255,133,200,.32), transparent 60%);
+}
+
+.game-surprise-turbo .game-surprise-wash {
+  background: repeating-linear-gradient(115deg, rgba(217,255,91,.5) 0 4px, transparent 4px 48px);
+}
+
+.game-surprise-portal .game-surprise-wash {
+  background: conic-gradient(from 0deg at 50% 45%, rgba(198,184,255,.65), transparent, rgba(127,220,255,.55), transparent, rgba(198,184,255,.65));
+  animation-name: surprisePortalWash;
+}
+
+.game-surprise-rainbow .game-surprise-wash {
+  background: linear-gradient(115deg, rgba(255,133,200,.5), rgba(255,212,95,.45), rgba(217,255,91,.42), rgba(127,220,255,.5), rgba(198,184,255,.48));
+}
+
+.game-surprise-dino .game-surprise-wash {
+  background: radial-gradient(circle at 20% 75%, rgba(217,255,91,.5), transparent 28%), radial-gradient(circle at 80% 18%, rgba(255,112,77,.52), transparent 30%);
+}
+
+.game-surprise-robot .game-surprise-wash {
+  background: repeating-linear-gradient(90deg, rgba(127,220,255,.32) 0 2px, transparent 2px 64px), repeating-linear-gradient(0deg, rgba(198,184,255,.25) 0 2px, transparent 2px 64px);
+}
+
+.game-surprise-ocean .game-surprise-wash {
+  background: radial-gradient(ellipse at 50% 100%, rgba(88,225,193,.58), transparent 52%), linear-gradient(180deg, rgba(127,220,255,.2), transparent 62%);
+}
+
+.game-surprise-comeback .game-surprise-wash {
+  background: radial-gradient(circle at 50% 45%, rgba(255,133,200,.55), transparent 30%), linear-gradient(145deg, rgba(127,220,255,.42), transparent 58%);
+}
+
+.games-route-shell.game-surprise-world-active .game-stage {
+  animation: surpriseWorldPulse .65s ease-out both;
+}
+
+@keyframes surpriseWash {
+  0% { opacity: 0; transform: scale(.96); }
+  20% { opacity: .28; }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+
+@keyframes surprisePortalWash {
+  0% { opacity: 0; transform: rotate(-12deg) scale(.8); }
+  25% { opacity: .3; }
+  100% { opacity: 0; transform: rotate(38deg) scale(1.25); }
+}
+
+@keyframes surpriseCard {
+  0% { opacity: 0; transform: translateX(-50%) translateY(24px) scale(.72) rotate(-2deg); }
+  18% { opacity: 1; transform: translateX(-50%) translateY(-5px) scale(1.04) rotate(1deg); }
+  28%, 72% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-13px) scale(.94); }
+}
+
+@keyframes surpriseIcon {
+  0% { transform: scale(.3) rotate(-18deg); }
+  48% { transform: scale(1.22) rotate(8deg); }
+  72% { transform: scale(.96) rotate(-3deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+@keyframes surpriseParticle {
+  0% { opacity: 0; transform: translateY(38px) scale(.25) rotate(-20deg); }
+  22% { opacity: .92; }
+  100% { opacity: 0; transform: translateY(-120px) translateX(calc((var(--particle-index) % 3 - 1) * 38px)) scale(1.18) rotate(40deg); }
+}
+
+@keyframes surpriseWorldPulse {
+  0% { filter: brightness(1) saturate(1); }
+  45% { filter: brightness(1.1) saturate(1.18); }
+  100% { filter: brightness(1) saturate(1); }
+}
+
+@media (max-width: 620px) {
+  .game-surprise-meter {
+    top: 76px;
+    width: 148px;
+    min-width: 0;
+    grid-template-columns: 1fr;
+    gap: 4px;
+    padding: 7px 10px;
+  }
+
+  .game-surprise-meter > span {
+    justify-content: center;
+    font-size: 7px;
+  }
+
+  .game-surprise-meter > span b { display: none; }
+
+  .game-surprise-card {
+    top: 120px;
+    width: min(270px, calc(100vw - 28px));
+    padding: 13px 15px 14px;
+  }
+
+  .game-surprise-card p { font-size: 11px; }
+}
+
+@media (max-width: 390px) {
+  .game-surprise-meter {
+    left: 46%;
+    width: 132px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-surprise-meter,
+  .game-surprise-meter *,
+  .game-surprise-overlay,
+  .game-surprise-overlay *,
+  .games-route-shell.game-surprise-world-active .game-stage {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .game-surprise-wash { opacity: .12; }
+  .game-surprise-card { opacity: 1; }
+  .game-surprise-particles { display: none; }
+}
