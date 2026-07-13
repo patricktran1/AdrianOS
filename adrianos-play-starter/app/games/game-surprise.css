@@ -137,15 +137,14 @@
 }
 
 .game-surprise-particles span {
-  --particle-index: 0;
   position: absolute;
-  left: calc(5% + (var(--particle-index) * 5.2%));
-  top: calc(12% + ((var(--particle-index) % 6) * 12%));
+  left: var(--particle-left);
+  top: var(--particle-top);
   font-size: clamp(1.15rem, 5vw, 2.4rem);
   opacity: 0;
   filter: drop-shadow(0 8px 8px rgba(0,0,0,.25));
   animation: surpriseParticle 1.75s cubic-bezier(.16,.8,.22,1) both;
-  animation-delay: calc((var(--particle-index) % 7) * 45ms);
+  animation-delay: var(--particle-delay);
 }
 
 .game-surprise-meteor .game-surprise-wash {
@@ -218,7 +217,7 @@
 @keyframes surpriseParticle {
   0% { opacity: 0; transform: translateY(38px) scale(.25) rotate(-20deg); }
   22% { opacity: .92; }
-  100% { opacity: 0; transform: translateY(-120px) translateX(calc((var(--particle-index) % 3 - 1) * 38px)) scale(1.18) rotate(40deg); }
+  100% { opacity: 0; transform: translateY(-120px) translateX(var(--particle-drift)) scale(1.18) rotate(40deg); }
 }
 
 @keyframes surpriseWorldPulse {
