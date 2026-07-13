@@ -2,19 +2,19 @@ import { expect, test } from "@playwright/test";
 import { seedQaFamily } from "./helpers/seed-family";
 
 test.describe("installed app reachability", () => {
-  test("keeps Home and feedback actions reachable on an iPhone viewport", async ({ page }) => {
+  test("keeps Arcade and feedback actions reachable on an iPhone viewport", async ({ page }) => {
     await seedQaFamily(page, { clear: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/games/math-blast", { waitUntil: "domcontentloaded" });
 
     const dock = page.getByRole("navigation", { name: "AdrianOS navigation" });
     await expect(dock).toBeVisible();
-    const home = dock.getByRole("link", { name: "Home" });
-    await expect(home).toBeVisible();
+    const arcade = dock.getByRole("link", { name: "Arcade" });
+    await expect(arcade).toBeVisible();
 
-    const homeBox = await home.boundingBox();
-    expect(homeBox).not.toBeNull();
-    expect((homeBox?.y ?? 0) + (homeBox?.height ?? 0)).toBeLessThanOrEqual(844);
+    const arcadeBox = await arcade.boundingBox();
+    expect(arcadeBox).not.toBeNull();
+    expect((arcadeBox?.y ?? 0) + (arcadeBox?.height ?? 0)).toBeLessThanOrEqual(844);
 
     await page.getByRole("button", { name: "Parent feedback" }).click();
     const dialog = page.getByRole("dialog", { name: "Parent beta feedback" });
@@ -30,8 +30,9 @@ test.describe("installed app reachability", () => {
     expect((actionBox?.y ?? 0) + (actionBox?.height ?? 0)).toBeLessThanOrEqual(844);
 
     await page.getByRole("button", { name: "Close feedback" }).click();
-    await home.click();
+    await arcade.click();
     await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("region", { name: "Quick play launchpad" })).toBeVisible();
   });
 });
 

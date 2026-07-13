@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import ChildModeSwitch from "@/components/ChildModeSwitch";
 import CurriculumPathCard from "@/components/CurriculumPathCard";
 import LearningProfileCard from "@/components/LearningProfileCard";
 import ProjectStudioCard from "@/components/ProjectStudioCard";
+import SchoolArcadeBreak from "@/components/SchoolArcadeBreak";
 import WritingStudioCard from "@/components/WritingStudioCard";
 import { useAdrianProgress } from "@/lib/adrian-progress";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
@@ -92,6 +94,8 @@ export default function SchoolPage() {
         </div>
       </header>
 
+      <ChildModeSwitch />
+
       <div style={profileRow} aria-label="Choose student">
         {family.profiles.map((profile) => {
           const selected = profile.id === activeProfile.id;
@@ -138,9 +142,6 @@ export default function SchoolPage() {
         </div>
       </section>
 
-      <LearningProfileCard />
-      <CurriculumPathCard />
-
       {!allComplete && currentMission && (
         <section style={missionCard}>
           <div style={missionNumber}>{session.currentIndex + 1}</div>
@@ -165,13 +166,17 @@ export default function SchoolPage() {
             ) : schedule.libraryAfterSession ? (
               <Link href="/" style={freePlayButton}>Open free play</Link>
             ) : (
-              <p style={lockedMessage}>Free play is closed after school today. Great work. Come back tomorrow.</p>
+              <p style={lockedMessage}>Today’s guided route is complete. The Arcade remains available from the mode switch above.</p>
             )}
             <Link href="/portfolio" style={portfolioDoneButton}>See my learning portfolio →</Link>
           </div>
         </section>
       )}
 
+      <SchoolArcadeBreak games={games} />
+
+      <LearningProfileCard />
+      <CurriculumPathCard />
       <WritingStudioCard />
       <ProjectStudioCard />
 

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 
 const ITEMS = [
-  { href: "/", label: "Home", icon: "⌂" },
+  { href: "/", label: "Arcade", icon: "🕹" },
   { href: "/school", label: "School", icon: "▶" },
   { href: "/curriculum", label: "Learning", icon: "◎" },
 ] as const;

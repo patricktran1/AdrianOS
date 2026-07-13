@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ChildModeSwitch from "@/components/ChildModeSwitch";
 import DailyMissionControl from "@/components/DailyMissionControl";
 import AdventureArcade from "@/components/AdventureArcade";
 import QuickPlayLaunchpad from "@/components/QuickPlayLaunchpad";
@@ -16,6 +17,7 @@ import type { Game } from "@/lib/games";
 export default function GameShelf({ games }: { games: Game[] }) {
   return (
     <>
+      <ChildModeSwitch />
       <QuickPlayLaunchpad games={games} />
       <DailyMissionControl />
       <AdventureArcade games={games} />

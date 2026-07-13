@@ -46,6 +46,7 @@ const FUN_EXCLUSIONS = new Set([
 
 const STORY_GAMES = [
   "dino-dash-volcano-escape",
+  "dino-habitat-builder",
   "daily-adventure-remix",
   "story-expedition",
   "dino-time-rescue",
@@ -88,6 +89,7 @@ const CHALLENGE_GAMES = [
 ];
 
 const CREATE_GAMES = [
+  "dino-habitat-builder",
   "music-maker",
   "word-forge-studio",
   "family-quest-party",
@@ -137,7 +139,7 @@ function definitionsForGrade(grade: ElementaryGrade): MoodDefinition[] {
     {
       mood: "create",
       eyebrow: "MAKE & PLAY",
-      reason: "Use music, words, memory, or imagination.",
+      reason: "Build a world or create something that changes as you play.",
       slugs: CREATE_GAMES,
     },
   ];
