@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import FamilySetup from "@/components/FamilySetup";
 import {
@@ -47,6 +48,9 @@ function applyElementarySetupScope() {
 }
 
 export default function ElementaryFamilySetup() {
+  const searchParams = useSearchParams();
+  const setupMode = `${searchParams.get("local") === "1" ? "local" : "cloud"}:${searchParams.get("manage") === "1" ? "manage" : "new"}`;
+
   useEffect(() => {
     applyElementarySetupScope();
     const observer = new MutationObserver(applyElementarySetupScope);
@@ -54,5 +58,5 @@ export default function ElementaryFamilySetup() {
     return () => observer.disconnect();
   }, []);
 
-  return <FamilySetup />;
+  return <FamilySetup key={setupMode} />;
 }
