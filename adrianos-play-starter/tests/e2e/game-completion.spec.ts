@@ -116,7 +116,7 @@ const recipes: CompletionRecipe[] = [
   {
     slug: "treasure-map-math",
     expectedScore: 6,
-    completionText: "Treasure Found",
+    completionText: /Treasure Found/i,
     playToCompletion: async (page) => {
       const answers = [7, 6, 6, 10, 7, 4];
       for (let index = 0; index < answers.length; index += 1) {
