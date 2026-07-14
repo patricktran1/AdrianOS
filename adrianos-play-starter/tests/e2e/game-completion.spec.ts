@@ -97,19 +97,24 @@ const recipes: CompletionRecipe[] = [
   },
   {
     slug: "question-quest",
-    expectedScore: 4,
-    completionText: "QUEST COMPLETE",
-    playToCompletion: (page) => completeButtonQuiz(
-      page,
-      [
-        "They are finding and arranging the information",
-        "Electric charge building up in clouds",
-        "Pressure and a little melting help crystals bond",
-        "To cool the body",
-      ],
-      "Next question",
-      "See results",
-    ),
+    expectedScore: 6,
+    completionText: /WONDER ENGINE ONLINE/i,
+    playToCompletion: async (page) => {
+      await page.getByRole("button", { name: "It gathers instructions and data", exact: true }).click();
+      await expect(page.locator('[data-wonder-lab="active"]')).toHaveAttribute("data-round", "2", { timeout: 5_000 });
+      await page.getByRole("button", { name: "Cloud charge → air → ground", exact: true }).click();
+      await expect(page.locator('[data-wonder-lab="active"]')).toHaveAttribute("data-round", "3", { timeout: 5_000 });
+      await page.getByRole("slider", { name: "Snowball experiment level", exact: true }).fill("3");
+      await page.getByRole("button", { name: "Run experiment", exact: true }).click();
+      await expect(page.locator('[data-wonder-lab="active"]')).toHaveAttribute("data-round", "4", { timeout: 5_000 });
+      await page.getByRole("button", { name: "Sweat → evaporation → cooling", exact: true }).click();
+      await expect(page.locator('[data-wonder-lab="active"]')).toHaveAttribute("data-round", "5", { timeout: 5_000 });
+      await page.getByRole("button", { name: "Oxygen", exact: true }).click();
+      await expect(page.locator('[data-wonder-lab="active"]')).toHaveAttribute("data-round", "6", { timeout: 5_000 });
+      await page.getByRole("slider", { name: "Energy use experiment level", exact: true }).fill("0");
+      await page.getByRole("button", { name: "Run experiment", exact: true }).click();
+      await expect(page.locator('[data-wonder-complete="true"]')).toBeVisible({ timeout: 5_000 });
+    },
   },
   {
     slug: "solar-system-explorer",
