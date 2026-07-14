@@ -91,6 +91,9 @@ jobs:
           if [[ -f tests/e2e/treasure-map-math.spec.ts ]]; then
             specs+=(tests/e2e/treasure-map-math.spec.ts)
           fi
+          if [[ -f tests/e2e/human-body-explorer.spec.ts ]]; then
+            specs+=(tests/e2e/human-body-explorer.spec.ts)
+          fi
           if [[ -f tests/e2e/game-power-loop.spec.ts ]]; then
             specs+=(tests/e2e/game-power-loop.spec.ts)
           fi

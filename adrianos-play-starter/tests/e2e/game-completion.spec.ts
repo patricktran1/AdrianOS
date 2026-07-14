@@ -67,13 +67,22 @@ const recipes: CompletionRecipe[] = [
   {
     slug: "human-body-explorer",
     expectedScore: 6,
-    completionText: "Body Mission Complete",
-    playToCompletion: (page) => completeButtonQuiz(
-      page,
-      ["Heart", "Lungs", "Brain", "Skull", "Stomach", "Nerves"],
-      "Next question",
-      "See results",
-    ),
+    completionText: /Body Mission Complete/i,
+    playToCompletion: async (page) => {
+      const answers = ["Heart", "Lungs", "Sense → brain → action", "Stomach", "Skull", "Brain → nerves → muscles"];
+      for (let index = 0; index < answers.length; index += 1) {
+        await page.getByRole("button", { name: answers[index], exact: true }).click();
+        if (index === answers.length - 1) {
+          await expect(page.locator('[data-body-complete="true"]')).toBeVisible({ timeout: 5_000 });
+        } else {
+          await expect(page.locator('[data-body-lab="active"]')).toHaveAttribute(
+            "data-round",
+            String(index + 2),
+            { timeout: 5_000 },
+          );
+        }
+      }
+    },
   },
   {
     slug: "money-math",
