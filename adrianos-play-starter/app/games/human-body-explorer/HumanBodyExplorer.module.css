@@ -98,8 +98,8 @@
 .missionCard h1 { margin: 0; font-size: clamp(2rem,5vw,3.8rem); line-height: .98; letter-spacing: -.052em; }
 .instruction { margin: 0; color: #b7c0cd; font-size: 16px; font-weight: 720; line-height: 1.45; }
 .choices { display: grid; gap: 10px; }
-.choices_scan { grid-template-columns: repeat(3,minmax(0,1fr)); }
-.choices_place, .choices_route { grid-template-columns: 1fr; }
+.choices_scan, .choices_place { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.choices_route { grid-template-columns: 1fr; }
 
 .choice { position: relative; min-width: 0; min-height: 106px; display: grid; grid-template-columns: auto minmax(0,1fr); grid-template-areas: "icon label" "icon note" "tag tag"; align-items: center; column-gap: 12px; row-gap: 3px; padding: 13px; border: 1px solid rgba(255,255,255,.13); border-radius: 21px; color: #fff; background: #222936; text-align: left; cursor: pointer; box-shadow: 0 12px 26px rgba(0,0,0,.18); }
 .choice:hover, .choice:focus-visible { border-color: color-mix(in srgb,var(--accent) 74%,white); outline: none; box-shadow: 0 0 0 4px color-mix(in srgb,var(--accent) 15%,transparent),0 12px 26px rgba(0,0,0,.2); }
@@ -109,9 +109,9 @@
 .choice strong { grid-area: label; min-width: 0; font-size: 16px; line-height: 1.08; overflow-wrap: anywhere; }
 .choice small { grid-area: note; min-width: 0; color: #aeb7c5; font-size: 11px; font-weight: 750; line-height: 1.2; overflow-wrap: anywhere; }
 .choice i { grid-area: tag; width: fit-content; margin-top: 5px; padding: 5px 7px; border-radius: 999px; color: var(--accent); background: rgba(0,0,0,.22); font-size: 8px; font-style: normal; font-weight: 950; letter-spacing: .1em; }
-.choices_scan .choice { min-height: 150px; display: flex; flex-direction: column; justify-content: center; text-align: center; }
-.choices_scan .choice > span { min-width: 0; font-size: 44px; }
-.choices_scan .choice i { margin-left: auto; margin-right: auto; }
+.choices_scan .choice, .choices_place .choice { min-height: 142px; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.choices_scan .choice > span, .choices_place .choice > span { min-width: 0; font-size: 44px; }
+.choices_scan .choice i, .choices_place .choice i { margin-left: auto; margin-right: auto; }
 .choices_route .choice { min-height: 92px; border-left: 5px solid color-mix(in srgb,var(--accent) 36%,#56606f); background: linear-gradient(90deg,color-mix(in srgb,var(--accent) 8%,transparent),transparent 44%),#222936; }
 .choice[data-coach-target="true"] { border-color: var(--accent); box-shadow: 0 0 0 5px color-mix(in srgb,var(--accent) 18%,transparent),0 12px 26px rgba(0,0,0,.2); }
 .missionCard[data-solved="true"] .choice[data-correct="true"] { border-color: var(--accent); color: #10131b; background: var(--accent); }
@@ -151,11 +151,11 @@
   .systemNode small { font-size: 6px; }
   .missionCard { gap: 12px; padding: 18px 13px; border-radius: 25px; }
   .missionCard h1 { font-size: clamp(1.85rem,10vw,2.7rem); }
-  .choices_scan { grid-template-columns: 1fr; }
-  .choices_scan .choice { min-height: 92px; display: grid; grid-template-columns: auto minmax(0,1fr); grid-template-areas: "icon label" "icon note" "tag tag"; text-align: left; }
-  .choices_scan .choice i { margin-left: 0; margin-right: 0; }
+  .choices_scan, .choices_place { grid-template-columns: 1fr; }
+  .choices_scan .choice, .choices_place .choice { min-height: 92px; display: grid; grid-template-columns: auto minmax(0,1fr); grid-template-areas: "icon label" "icon note" "tag tag"; text-align: left; }
+  .choices_scan .choice i, .choices_place .choice i { margin-left: 0; margin-right: 0; }
   .choice { min-height: 92px; padding: 12px; }
-  .choice > span, .choices_scan .choice > span { min-width: 44px; font-size: 34px; }
+  .choice > span, .choices_scan .choice > span, .choices_place .choice > span { min-width: 44px; font-size: 34px; }
   .dropZone { min-height: 72px; font-size: 10px; }
   .complete { padding: 22px 10px; border-radius: 25px; }
   .complete .patientBay { min-height: 470px; }
