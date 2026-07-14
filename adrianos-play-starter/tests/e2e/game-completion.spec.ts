@@ -116,13 +116,22 @@ const recipes: CompletionRecipe[] = [
   {
     slug: "treasure-map-math",
     expectedScore: 6,
-    completionText: "Treasure Found",
-    playToCompletion: (page) => completeButtonQuiz(
-      page,
-      [7, 6, 6, 10, 7, 4],
-      "Next clue",
-      "See treasure",
-    ),
+    completionText: /Treasure Found/i,
+    playToCompletion: async (page) => {
+      const answers = [7, 6, 6, 10, 7, 4];
+      for (let index = 0; index < answers.length; index += 1) {
+        await page.getByRole("button", { name: accessibleNameEndingWith(answers[index]) }).click();
+        if (index === answers.length - 1) {
+          await expect(page.locator('[data-treasure-complete="true"]')).toBeVisible({ timeout: 5_000 });
+        } else {
+          await expect(page.locator('[data-treasure-expedition="active"]')).toHaveAttribute(
+            "data-round",
+            String(index + 2),
+            { timeout: 5_000 },
+          );
+        }
+      }
+    },
   },
   {
     slug: "music-maker",
