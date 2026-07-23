@@ -7,7 +7,7 @@
     "dev": "npm run generate:games && next dev",
     "build": "npm run generate:games && npm run check:contracts && next build",
     "start": "next start",
-    "test:unit": "node --test test/unit",
+    "test:unit": "node --test test/unit/*.test.mjs",
     "test:coverage": "node scripts/run-unit-coverage.mjs",
     "test:games": "playwright test",
     "test:games:smoke": "playwright test tests/e2e/game-routes.spec.ts",
