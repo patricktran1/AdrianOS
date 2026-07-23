@@ -11,6 +11,7 @@ on:
     paths:
       - "adrianos-play-starter/**"
       - ".github/workflows/adrianos-ci.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -20,7 +21,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  unit-coverage:
+    name: Unit tests and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: adrianos-play-starter
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run unit tests with native coverage
+        run: npm run test:coverage
+
+      - name: Upload unit coverage summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adrianos-unit-coverage
+          path: adrianos-play-starter/coverage
+          if-no-files-found: error
+          retention-days: 30
+
   build-and-browser-checks:
+    name: Production build and Playwright matrix
+    needs: unit-coverage
     runs-on: ubuntu-latest
     timeout-minutes: 60
     defaults:
@@ -45,77 +80,14 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run learner-home and changed-feature browser checks
-        shell: bash
-        run: |
-          specs=(tests/e2e/adventure-arcade.spec.ts)
-          if [[ -f tests/e2e/adventure-world.spec.ts ]]; then
-            specs+=(tests/e2e/adventure-world.spec.ts)
-          fi
-          if [[ -f tests/e2e/quick-play-launchpad.spec.ts ]]; then
-            specs+=(tests/e2e/quick-play-launchpad.spec.ts)
-          fi
-          if [[ -f tests/e2e/instant-start.spec.ts ]]; then
-            specs+=(tests/e2e/instant-start.spec.ts)
-          fi
-          if [[ -f tests/e2e/dino-dash.spec.ts ]]; then
-            specs+=(tests/e2e/dino-dash.spec.ts)
-          fi
-          if [[ -f tests/e2e/dino-habitat-builder.spec.ts ]]; then
-            specs+=(tests/e2e/dino-habitat-builder.spec.ts)
-          fi
-          if [[ -f tests/e2e/school-arcade-access.spec.ts ]]; then
-            specs+=(tests/e2e/school-arcade-access.spec.ts)
-          fi
-          if [[ -f tests/e2e/power-locker.spec.ts ]]; then
-            specs+=(tests/e2e/power-locker.spec.ts)
-          fi
-          if [[ -f tests/e2e/game-surprise.spec.ts ]]; then
-            specs+=(tests/e2e/game-surprise.spec.ts)
-          fi
-          if [[ -f tests/e2e/family-beta.spec.ts ]]; then
-            specs+=(tests/e2e/family-beta.spec.ts)
-          fi
-          if [[ -f tests/e2e/daily-mission-control.spec.ts ]]; then
-            specs+=(tests/e2e/daily-mission-control.spec.ts)
-          fi
-          if [[ -f tests/e2e/daily-adventure-remix.spec.ts ]]; then
-            specs+=(tests/e2e/daily-adventure-remix.spec.ts)
-          fi
-          if [[ -f tests/e2e/game-feel.spec.ts ]]; then
-            specs+=(tests/e2e/game-feel.spec.ts)
-          fi
-          if [[ -f tests/e2e/math-motion-lab.spec.ts ]]; then
-            specs+=(tests/e2e/math-motion-lab.spec.ts)
-          fi
-          if [[ -f tests/e2e/treasure-map-math.spec.ts ]]; then
-            specs+=(tests/e2e/treasure-map-math.spec.ts)
-          fi
-          if [[ -f tests/e2e/human-body-explorer.spec.ts ]]; then
-            specs+=(tests/e2e/human-body-explorer.spec.ts)
-          fi
-          if [[ -f tests/e2e/question-quest.spec.ts ]]; then
-            specs+=(tests/e2e/question-quest.spec.ts)
-          fi
-          if [[ -f tests/e2e/game-power-loop.spec.ts ]]; then
-            specs+=(tests/e2e/game-power-loop.spec.ts)
-          fi
-          if [[ -f tests/e2e/adaptive-adventure-chain.spec.ts ]]; then
-            specs+=(tests/e2e/adaptive-adventure-chain.spec.ts)
-          fi
-          if [[ -f tests/e2e/weekly-world-quest.spec.ts ]]; then
-            specs+=(tests/e2e/weekly-world-quest.spec.ts)
-          fi
-          npx playwright test "${specs[@]}"
-
-      - name: Run full AdrianOS browser matrix
-        run: npx playwright test
+      - name: Run full AdrianOS browser regression matrix
+        run: npm run test:games
 
       - name: Upload browser QA report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: adrianos-ci-browser-report
+          name: adrianos-browser-report
           path: |
             adrianos-play-starter/playwright-report
             adrianos-play-starter/test-results
