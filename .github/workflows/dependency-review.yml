@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Check out repository history
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -26,7 +26,7 @@ jobs:
       - name: Attempt GitHub dependency review
         id: review
         continue-on-error: true
-        uses: actions/dependency-review-action@3943c2c5beaaaf1806eb3758273c203dabcbf89c # v5.0.0
+        uses: actions/dependency-review-action@3943c2c5beaaaf1806eb3758273c203dabcbf89c
         with:
           fail-on-severity: moderate
           fail-on-scopes: runtime, development
@@ -39,7 +39,7 @@ jobs:
           show-patched-versions: true
 
       - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: npm
@@ -49,13 +49,13 @@ jobs:
         working-directory: adrianos-play-starter
         run: npm ci --no-audit --no-fund
 
-      - name: Capture moderate-or-higher npm audit
+      - name: Capture lockfile audit
         working-directory: adrianos-play-starter
         shell: bash
         run: |
           mkdir -p ../dependency-review
           set +e
-          npm audit --audit-level=moderate --json > ../dependency-review/npm-audit.json
+          npm audit --package-lock-only --audit-level=moderate --json > ../dependency-review/npm-audit.json
           exit 0
 
       - name: Capture official review outputs
@@ -80,7 +80,7 @@ jobs:
 
       - name: Upload dependency review evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: adrianos-dependency-review
           path: dependency-review

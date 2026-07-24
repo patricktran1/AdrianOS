@@ -2,6 +2,8 @@
 
 [![AdrianOS CI](https://github.com/patricktran1/AdrianOS/actions/workflows/adrianos-ci.yml/badge.svg)](https://github.com/patricktran1/AdrianOS/actions/workflows/adrianos-ci.yml)
 [![CodeQL](https://github.com/patricktran1/AdrianOS/actions/workflows/codeql.yml/badge.svg)](https://github.com/patricktran1/AdrianOS/actions/workflows/codeql.yml)
+[![Dependency Review](https://github.com/patricktran1/AdrianOS/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/patricktran1/AdrianOS/actions/workflows/dependency-review.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/patricktran1/AdrianOS/badge)](https://scorecard.dev/viewer/?uri=github.com/patricktran1/AdrianOS)
 [![Node 22](https://img.shields.io/badge/Node-22%2B-43853d)](adrianos-play-starter/package.json)
 
 A mastery-based learning world designed to turn elementary concepts into interactive missions, experiments, and replayable adventures.
@@ -35,19 +37,35 @@ The active Next.js application lives in [`adrianos-play-starter`](adrianos-play-
 - **Difficulty should adapt.** Challenges should remain reachable without becoming trivial.
 - **Children need agency.** The learner should make meaningful choices rather than follow a disguised worksheet.
 
-## Quality gates
+## Automated quality and supply-chain policy
 
-Every pull request that changes the application runs visible, independent checks:
+Every application pull request runs one consolidated, production-shaped pipeline:
 
 | Gate | What it verifies |
 | --- | --- |
-| Unit tests and coverage | Catalog normalization, metadata validation, deterministic ordering, duplicate detection, and generated-source contracts |
+| Reproducible install | Node.js 22 and the committed nested lockfile install through `npm ci` in both jobs |
+| Dependency audit | High-severity npm findings fail CI and the JSON report is retained |
+| Enforced unit coverage | `scripts/lib/game-catalog.mjs` must retain 100% lines, 100% functions, and at least 95% branches |
 | Static product contracts | School controls, session SDK, curriculum mapping, teaching loops, personalization, mastery loops, and elementary scope |
 | Production build | A clean Next.js production compilation after generated assets and static contracts pass |
-| Playwright matrix | Full browser regression coverage with traces, screenshots, video, and HTML reports retained on failure |
-| CodeQL | JavaScript and TypeScript security analysis on pull requests, main, and a weekly schedule |
+| Playwright matrix | Full browser regression coverage with build logs, traces, screenshots, video, and HTML reports retained |
+| Dependency Review | Runtime and development changes are blocked on moderate-or-higher vulnerabilities and deterministic registry, integrity, and license policy |
+| CodeQL | Pinned extended JavaScript and TypeScript security analysis on pull requests, `main`, and a weekly schedule |
+| OpenSSF Scorecard | Default-branch and weekly analysis with OIDC publication, retained SARIF, and code-scanning upload |
+| Dependabot | Weekly maintenance for the nested npm application and GitHub Actions |
 
-Coverage summaries and browser reports are uploaded as GitHub Actions artifacts. The build fails closed when unit tests, metadata contracts, product invariants, compilation, or browser regression checks fail.
+The production catalog helper is tested for age normalization, metadata validation, safe defaults, deterministic ordering, duplicate slugs, and generated-source contracts.
+
+The dependency review layer records every changed package and requires:
+
+- npm registry provenance
+- SHA-512 package integrity
+- explicit approved license expressions
+- no moderate, high, or critical npm audit findings
+
+The initial frozen graph exposed vulnerable PostCSS and Sharp versions under Next. The repository now pins patched transitive versions and proves compatibility through the complete production build and browser matrix.
+
+These controls validate software, interaction, and supply-chain behavior. They do not establish curriculum validity, educational efficacy, child-development outcomes, privacy compliance, production service levels, or suitability as a replacement for teachers and caregivers.
 
 ## Local validation
 
@@ -55,7 +73,7 @@ Requires Node.js 22 or later.
 
 ```bash
 cd adrianos-play-starter
-npm install
+npm ci
 npm run test:unit
 npm run test:coverage
 npm run build
@@ -81,6 +99,22 @@ The repository uses pull-request-based development and automated validation for 
 - browser reports are preserved when CI fails
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and required checks.
+
+## Repository map
+
+```text
+adrianos-play-starter/package-lock.json          reproducible nested npm graph
+adrianos-play-starter/scripts/lib/game-catalog.mjs deterministic catalog contracts
+adrianos-play-starter/scripts/run-unit-coverage.mjs enforced native coverage runner
+adrianos-play-starter/test/unit/                 catalog regression fixtures
+adrianos-play-starter/tests/e2e/                 complete learning-game browser matrix
+scripts/review-dependency-changes.mjs            nested dependency policy and retained report
+.github/workflows/adrianos-ci.yml                 audit, coverage, build, and browser evidence
+.github/workflows/dependency-review.yml           blocking pull-request dependency review
+.github/workflows/codeql.yml                      pinned extended security analysis
+.github/workflows/scorecard.yml                   OpenSSF publication and SARIF upload
+.github/dependabot.yml                            nested npm and Actions maintenance
+```
 
 ## Repository focus
 
