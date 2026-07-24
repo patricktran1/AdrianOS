@@ -19,7 +19,15 @@ if (testFiles.length === 0) {
 
 const child = spawn(
   process.execPath,
-  ["--experimental-test-coverage", "--test", ...testFiles],
+  [
+    "--experimental-test-coverage",
+    "--test-coverage-include=scripts/lib/game-catalog.mjs",
+    "--test-coverage-lines=100",
+    "--test-coverage-functions=100",
+    "--test-coverage-branches=95",
+    "--test",
+    ...testFiles,
+  ],
   {
     cwd: root,
     env: process.env,
