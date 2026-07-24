@@ -146,7 +146,23 @@ for (const change of changes.filter((item) => item.kind !== "removed")) {
 }
 
 const audit = readJson(AUDIT_PATH, {});
-const auditCounts = audit?.metadata?.vulnerabilities ?? {};
+const auditUsable =
+  Boolean(audit?.metadata?.vulnerabilities) &&
+  !audit?.error &&
+  typeof audit?.message !== "string";
+
+if (!auditUsable) {
+  violations.push({
+    code: "npm_audit_unavailable",
+    statusCode: audit?.statusCode ?? null,
+    message:
+      audit?.message ??
+      audit?.error?.summary ??
+      "Audit response did not include vulnerability metadata.",
+  });
+}
+
+const auditCounts = auditUsable ? audit.metadata.vulnerabilities : {};
 for (const severity of ["moderate", "high", "critical"]) {
   const count = Number(auditCounts[severity] ?? 0);
   if (count > 0) violations.push({ code: "npm_audit_vulnerability", severity, count });
@@ -171,6 +187,7 @@ const report = {
     officialOutcome !== "success" &&
     !hasEntries(officialVulnerabilities) &&
     !hasEntries(officialInvalidLicenses),
+  auditUsable,
   policy: {
     minimumIntegrity: "sha512",
     allowedRegistry: "https://registry.npmjs.org/",
