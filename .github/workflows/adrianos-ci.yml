@@ -2,15 +2,9 @@ name: AdrianOS CI
 
 on:
   pull_request:
-    paths:
-      - "adrianos-play-starter/**"
-      - ".github/workflows/adrianos-ci.yml"
   push:
     branches:
       - main
-    paths:
-      - "adrianos-play-starter/**"
-      - ".github/workflows/adrianos-ci.yml"
   workflow_dispatch:
 
 permissions:
