@@ -1,0 +1,53 @@
+name: Refresh patched AdrianOS lockfile
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/refresh-lockfile.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: adrianos-lockfile-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh-lockfile:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: adrianos-play-starter
+
+    steps:
+      - name: Check out current pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply and verify patched graph
+        run: |
+          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm audit --audit-level=high
+          git diff --check
+
+      - name: Verify scope and commit
+        shell: bash
+        run: |
+          rm -rf node_modules
+          changed="$(git status --short)"
+          test "$changed" = ' M package-lock.json'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          git commit -m 'Apply patched PostCSS and Sharp overrides'
+          git push origin HEAD:${{ github.head_ref }}
