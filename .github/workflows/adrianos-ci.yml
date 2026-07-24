@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   unit-coverage:
-    name: Unit tests and coverage
+    name: Unit tests, audit, and enforced coverage
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -31,22 +31,49 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: adrianos-play-starter/package-lock.json
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Clean dependency install
+        run: npm ci --no-audit --no-fund
 
-      - name: Run unit tests with native coverage
+      - name: Capture high-severity dependency audit
+        id: audit
+        shell: bash
+        run: |
+          set +e
+          npm audit --audit-level=high --json > npm-audit.json
+          exit_code=$?
+          echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload dependency audit
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: adrianos-npm-audit
+          path: adrianos-play-starter/npm-audit.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce dependency audit
+        if: steps.audit.outputs.exit_code != '0'
+        run: exit 1
+
+      - name: Run unit tests with enforced native coverage
         run: npm run test:coverage
 
       - name: Upload unit coverage summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: adrianos-unit-coverage
           path: adrianos-play-starter/coverage
@@ -64,32 +91,44 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: adrianos-play-starter/package-lock.json
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Clean dependency install
+        run: npm ci --no-audit --no-fund
 
       - name: Run production build and static contracts
-        run: npm run build
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
       - name: Run full AdrianOS browser regression matrix
-        run: npm run test:games
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:games 2>&1 | tee playwright.log
 
-      - name: Upload browser QA report
+      - name: Upload production and browser evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: adrianos-browser-report
           path: |
+            adrianos-play-starter/build.log
+            adrianos-play-starter/playwright.log
             adrianos-play-starter/playwright-report
             adrianos-play-starter/test-results
-          if-no-files-found: ignore
+          if-no-files-found: warn
           retention-days: 14
