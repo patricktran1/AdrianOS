@@ -295,13 +295,12 @@
 }
 
 .landmarkLabel {
-  white-space: nowrap;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   overflow: hidden;
-  max-width: 18ch;
+  max-width: 11ch;
   padding: 3px 9px;
   border-radius: 999px;
   background: rgba(8, 11, 18, .68);

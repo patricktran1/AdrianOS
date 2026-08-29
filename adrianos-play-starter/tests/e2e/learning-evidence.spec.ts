@@ -25,6 +25,44 @@ async function readEvidence(page: Page): Promise<Evidence[]> {
   }, EVIDENCE_KEY);
 }
 
+/** Hands the beacon to the learner model instead of a planned session. */
+async function disableSchoolMode(page: Page) {
+  await page.addInitScript(() => {
+    const key = "adrianos-learning-v1:qa-learner";
+    const learning = JSON.parse(window.localStorage.getItem(key) ?? "{}");
+    const queue = Array.isArray(learning.reviewQueue) ? learning.reviewQueue : [];
+    window.localStorage.setItem(key, JSON.stringify({
+      ...learning,
+      reviewQueue: [...queue, {
+        id: "learning-schedule",
+        gameSlug: "adrianos-learning-schedule",
+        skillId: "learning-schedule",
+        subject: "Learning Skills",
+        prompt: "Weekly learning schedule",
+        correctAnswer: "",
+        dueAt: "9999-12-31T23:59:59.999Z",
+        updatedAt: new Date().toISOString(),
+        successes: 0,
+        status: "resolved",
+        data: {
+          scheduleJson: JSON.stringify({
+            version: 1,
+            days: {
+              monday: "full", tuesday: "full", wednesday: "full", thursday: "full",
+              friday: "full", saturday: "light", sunday: "free",
+            },
+            fullMinutes: 12,
+            lightMinutes: 6,
+            schoolMode: false,
+            libraryAfterSession: true,
+            updatedAt: new Date().toISOString(),
+          }),
+        },
+      }],
+    }));
+  });
+}
+
 async function unlockParent(page: Page) {
   await page.addInitScript(() => {
     window.sessionStorage.setItem("adrianos-parent-unlocked", "yes");
@@ -183,6 +221,72 @@ test.describe("gameplay produces real learning evidence", () => {
     );
     const guide = await page.locator('[data-world-guide="true"]').innerText();
     expect(guide).not.toMatch(/wrong|misunderstand|reteach|%|score/i);
+  });
+
+  test("the world and the post-win screen name the same next step", async ({ page }) => {
+    await seedQaFamily(page, { clear: true, grade: 2 });
+    // With School Mode off the learner model leads the world, which is the
+    // case where the two surfaces must not contradict each other.
+    await disableSchoolMode(page);
+
+    // Fluent everywhere except place value, where one wrong answer repeats.
+    await page.addInitScript((key) => {
+      const rows = [];
+      for (let index = 0; index < 18; index += 1) {
+        const wrong = index >= 8;
+        rows.push({
+          at: new Date(Date.now() - (60 - index) * 60_000).toISOString(),
+          gameSlug: "number-quest",
+          subject: "Math",
+          skillId: "math-place-value",
+          skillLabel: "Place value",
+          prompt: "In 147, what digit is in the tens place?",
+          correctAnswer: "4",
+          givenAnswer: wrong ? "7" : "4",
+          correct: !wrong,
+          responseMs: 3800,
+          hintsUsed: wrong ? 1 : 0,
+          wrongAttempts: wrong ? 1 : 0,
+          standardCode: "2.NBT.B.5",
+        });
+      }
+      window.localStorage.setItem(key, JSON.stringify(rows));
+    }, EVIDENCE_KEY);
+
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('[data-world-stage="active"]')).toHaveAttribute(
+      "data-world-intent",
+      "reteach"
+    );
+    const worldLine = await page.locator('[data-world-guide="true"]').innerText();
+    expect(worldLine.toLowerCase()).toContain("place value");
+
+    // Finishing a different game must not contradict the world's advice.
+    await page.goto("/games/memory-match", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('[data-adventure-chain-controller="active"]'))
+      .toHaveAttribute("data-controller-ready", "true");
+
+    await page.evaluate((key) => {
+      const progress = JSON.parse(window.localStorage.getItem(key) ?? "{}");
+      const now = new Date().toISOString();
+      progress.games = {
+        ...(progress.games ?? {}),
+        "memory-match": {
+          plays: 1, completions: 1, bestScore: 90, lastPlayed: now, lastCompleted: now,
+        },
+      };
+      window.localStorage.setItem(key, JSON.stringify(progress));
+      window.dispatchEvent(new Event("adrianos-progress-updated"));
+    }, "adrianos-progress-v2:qa-learner");
+
+    const chain = page.locator('[data-adventure-chain="active"]');
+    await expect(chain).toBeVisible({ timeout: 15_000 });
+
+    // The rescue slot repeats the world's line rather than inventing its own.
+    const rescue = chain.locator('[data-chain-kind="rescue"]');
+    await expect(rescue).toHaveCount(1);
+    await expect(rescue).toContainText("place value");
+    expect(await rescue.innerText()).not.toMatch(/score|%|wrong|behind/i);
   });
 
   test("the parent panel refuses to summarize when there is no evidence", async ({ page }) => {

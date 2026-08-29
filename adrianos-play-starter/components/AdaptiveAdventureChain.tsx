@@ -9,6 +9,7 @@ import {
 import { readAdrianProgress } from "@/lib/adrian-progress";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import { games } from "@/lib/generated-games";
+import { readLearnerModel } from "@/lib/adrian-evidence";
 
 function slugFromPath(pathname: string): string {
   const marker = "/games/";
@@ -66,6 +67,8 @@ export default function AdaptiveAdventureChain() {
           games,
           progress: next,
           profile: activeProfile,
+          // Read fresh: the run that just finished is part of the evidence.
+          learner: readLearnerModel(activeProfile.id),
         });
         setChoices(nextChoices);
         setOpen(false);

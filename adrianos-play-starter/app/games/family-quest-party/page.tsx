@@ -134,7 +134,7 @@ export default function FamilyQuestParty() {
             <h1>{card.prompt}</h1>
             <div style={{ display: "grid", gap: 12, marginTop: 22 }}>
               {card.choices.map((choice) => (
-                <button key={choice} data-correct={choice === card.answer} onClick={() => answer(choice)} style={{ minHeight: 76, padding: 14, fontSize: 20, borderRadius: 20 }}>{choice}</button>
+                <button key={choice} data-correct={choice === card.answer} onClick={() => answer(choice)} style={{ minHeight: 80, padding: 14, fontSize: 20, borderRadius: 20 }}>{choice}</button>
               ))}
             </div>
             {message && <div role="status" style={{ marginTop: 18, padding: 16, borderRadius: 18, background: wrong ? "#fff3b0" : "#d9ffbf", color: "#1a1a1a", fontWeight: 800 }}>{wrong ? `Coach clue: ${message}` : message}</div>}
