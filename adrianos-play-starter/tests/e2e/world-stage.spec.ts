@@ -341,19 +341,19 @@ test.describe("the AdrianOS world", () => {
     await expect(page).toHaveURL(/\/games\/memory-match/);
   });
 
-  test("a found secret pays out once and stays found", async ({ page }) => {
+  test("a found glint pays out once and stays found", async ({ page }) => {
     await seedWorld(page, { schoolMode: false });
     await page.setViewportSize(DESKTOP);
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
-    const secrets = page.locator('[data-world-secret="true"]');
-    await expect(secrets).toHaveCount(3);
-    await secrets.first().click();
-    await expect(page.getByRole("status")).toContainText("Secret found");
-    await expect(secrets).toHaveCount(2);
+    const glints = page.locator('[data-world-glint="true"]');
+    await expect(glints).toHaveCount(3);
+    await glints.first().click();
+    await expect(page.getByRole("status")).toContainText("You found something");
+    await expect(glints).toHaveCount(2);
 
     await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.locator('[data-world-secret="true"]')).toHaveCount(2);
+    await expect(page.locator('[data-world-glint="true"]')).toHaveCount(2);
 
     await page.locator('[data-world-me="true"]').click();
     await expect(page.locator('[data-world-sheet="me"]')).toContainText("5");
@@ -415,7 +415,7 @@ test.describe("the AdrianOS world", () => {
       const nodes = [
         ...document.querySelectorAll('[data-world-landmark][data-beacon="true"] span'),
         ...document.querySelectorAll('[class*="structure"]'),
-        ...document.querySelectorAll('[data-world-secret="true"]'),
+        ...document.querySelectorAll('[data-world-glint="true"]'),
       ];
       return nodes.filter((node) =>
         getComputedStyle(node).animationName !== "none"

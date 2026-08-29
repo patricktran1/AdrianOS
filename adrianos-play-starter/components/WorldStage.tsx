@@ -45,9 +45,9 @@ import { useAdrianSound } from "@/lib/adrian-sound";
 import type { Game } from "@/lib/games";
 import styles from "./WorldStage.module.css";
 
-const SECRET_STORE_PREFIX = "adrianos-world-secrets-v1:";
+const GLINT_STORE_PREFIX = "adrianos-world-glints-v1:";
 const AVATAR_STORE_PREFIX = "adrianos-world-avatar-v1:";
-const SECRET_COINS = 5;
+const GLINT_COINS = 5;
 const PRIZE_SEEN_PREFIX = "adrianos-world-prize-seen-v1:";
 
 const AVATARS = [
@@ -95,7 +95,7 @@ export default function WorldStage({ games }: { games: Game[] }) {
 
   const [arcade, setArcade] = useState<ArcadeState>({ favorites: [], recent: [] });
   const [arcadeReady, setArcadeReady] = useState(false);
-  const [foundSecrets, setFoundSecrets] = useState<number[]>([]);
+  const [foundGlints, setFoundGlints] = useState<number[]>([]);
   const [avatarIndex, setAvatarIndex] = useState(0);
   const [unlockedAvatars, setUnlockedAvatars] = useState<number[]>([0]);
   const [sheet, setSheet] = useState<SheetId>(null);
@@ -113,7 +113,7 @@ export default function WorldStage({ games }: { games: Game[] }) {
     const refresh = () => {
       setArcade(readArcadeState(activeProfile.id));
       setArcadeReady(true);
-      setFoundSecrets(readStoredList(`${SECRET_STORE_PREFIX}${activeProfile.id}:${todayKey()}`));
+      setFoundGlints(readStoredList(`${GLINT_STORE_PREFIX}${activeProfile.id}:${todayKey()}`));
       setUnlockedAvatars(() => {
         const stored = readStoredList(`${AVATAR_STORE_PREFIX}${activeProfile.id}`);
         return stored.includes(0) ? stored : [0, ...stored];
@@ -212,8 +212,8 @@ export default function WorldStage({ games }: { games: Game[] }) {
   }, [games, pendingMission]);
 
   const map = useMemo(
-    () => (world ? buildWorldMap(world, learner, next, foundSecrets, priority) : null),
-    [foundSecrets, learner, next, priority, world]
+    () => (world ? buildWorldMap(world, learner, next, foundGlints, priority) : null),
+    [foundGlints, learner, next, priority, world]
   );
 
   const quest = useMemo(() => {
@@ -339,23 +339,23 @@ export default function WorldStage({ games }: { games: Game[] }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [closeSheet, sheet]);
 
-  const findSecret = useCallback((index: number) => {
-    if (!profileId || foundSecrets.includes(index)) return;
-    const nextFound = [...foundSecrets, index];
-    setFoundSecrets(nextFound);
+  const findGlint = useCallback((index: number) => {
+    if (!profileId || foundGlints.includes(index)) return;
+    const nextFound = [...foundGlints, index];
+    setFoundGlints(nextFound);
     try {
       window.localStorage.setItem(
-        `${SECRET_STORE_PREFIX}${profileId}:${todayKey()}`,
+        `${GLINT_STORE_PREFIX}${profileId}:${todayKey()}`,
         JSON.stringify(nextFound)
       );
     } catch {
-      // A found secret is a bonus; storage failure must not break the world.
+      // A found glint is a bonus; storage failure must not break the world.
     }
-    addCoins(SECRET_COINS);
+    addCoins(GLINT_COINS);
     play("reward");
     vibrate([10, 40, 14]);
-    setToast(`Secret found! +${SECRET_COINS} coins`);
-  }, [addCoins, foundSecrets, play, profileId, vibrate]);
+    setToast(`You found something! +${GLINT_COINS} coins`);
+  }, [addCoins, foundGlints, play, profileId, vibrate]);
 
   const equipCompanion = useCallback((index: number) => {
     const item = unlockedPrizes.find((prize) => prize.index === index);
@@ -534,23 +534,23 @@ export default function WorldStage({ games }: { games: Game[] }) {
           </span>
         ))}
 
-        {map.secrets.map((secret, index) => (
+        {map.glints.map((glint, index) => (
           <button
-            key={`secret-${secret.emoji}-${index}`}
+            key={`glint-${glint.emoji}-${index}`}
             type="button"
-            className={styles.secret}
+            className={styles.glint}
             style={{
-              "--x": `${secret.wide.x}%`,
-              "--y": `${secret.wide.y}%`,
-              "--xt": `${secret.tall.x}%`,
-              "--yt": `${secret.tall.y}%`,
+              "--x": `${glint.wide.x}%`,
+              "--y": `${glint.wide.y}%`,
+              "--xt": `${glint.tall.x}%`,
+              "--yt": `${glint.tall.y}%`,
             } as React.CSSProperties}
-            onClick={() => findSecret(index)}
+            onClick={() => findGlint(index)}
             aria-label="Something is hidden here"
-            data-world-secret="true"
-            title={secret.emoji}
+            data-world-glint="true"
+            title={glint.emoji}
           >
-            <span className={styles.secretGlint} aria-hidden="true" />
+            <span className={styles.glintSpark} aria-hidden="true" />
           </button>
         ))}
 

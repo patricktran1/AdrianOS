@@ -390,7 +390,7 @@
 }
 
 /* ---------------------------------------------------------------- */
-/* Structures, secrets, guide                                        */
+/* Structures, glints, guide                                         */
 /* ---------------------------------------------------------------- */
 
 .structure {
@@ -412,11 +412,11 @@
 }
 
 /*
- * Secrets are glints, not buttons. They stay at a 44px hit target for small
- * fingers while showing only a faint sparkle, so finding one feels like
+ * Glints are sparkles, not buttons. They stay at a 44px hit target for small
+ * fingers while showing only a faint shimmer, so finding one feels like
  * noticing something rather than clicking an obvious control.
  */
-.secret {
+.glint {
   position: absolute;
   left: var(--x);
   top: var(--y);
@@ -435,7 +435,7 @@
   animation: shimmer 3.6s ease-in-out infinite;
 }
 
-.secretGlint {
+.glintSpark {
   display: block;
   width: 9px;
   height: 9px;
@@ -444,8 +444,8 @@
   box-shadow: 0 0 10px 3px rgba(255, 255, 255, .55);
 }
 
-.secret:hover .secretGlint,
-.secret:focus-visible .secretGlint {
+.glint:hover .glintSpark,
+.glint:focus-visible .glintSpark {
   width: 15px;
   height: 15px;
   box-shadow: 0 0 18px 6px rgba(255, 255, 255, .7);
@@ -887,7 +887,7 @@
  * map still reads as one place on a phone held upright.
  */
 @media (max-aspect-ratio: 4 / 5) {
-  .landmark, .structure, .secret, .guide {
+  .landmark, .structure, .glint, .guide {
     left: var(--xt, var(--x));
     top: var(--yt, var(--y));
   }
@@ -924,7 +924,7 @@
 @media (prefers-reduced-motion: reduce) {
   .landmark[data-beacon="true"] .landmarkOrb,
   .guideAvatar,
-  .secret,
+  .glint,
   .structure,
   .sheet,
   .toast,
@@ -940,7 +940,7 @@
 /* The same suppression, driven by the in-app setting rather than the OS. */
 .stage[data-reduced-motion="true"] .landmark[data-beacon="true"] .landmarkOrb,
 .stage[data-reduced-motion="true"] .guideAvatar,
-.stage[data-reduced-motion="true"] .secret,
+.stage[data-reduced-motion="true"] .glint,
 .stage[data-reduced-motion="true"] .structure,
 .stage[data-reduced-motion="true"] .celebrationEmoji {
   animation: none;

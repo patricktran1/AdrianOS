@@ -252,12 +252,12 @@ test("structures accumulate with clears and sit on terrain", () => {
   }
 });
 
-test("found secrets disappear from the map", () => {
+test("found glints disappear from the map", () => {
   const all = buildWorldMap(world(), EMPTY_LEARNER_MODEL, recommendNextActivity(EMPTY_LEARNER_MODEL));
-  assert.equal(all.secrets.length, 3);
+  assert.equal(all.glints.length, 3);
   const partial = buildWorldMap(world(), EMPTY_LEARNER_MODEL, recommendNextActivity(EMPTY_LEARNER_MODEL), [0, 2]);
-  assert.equal(partial.secrets.length, 1);
-  assert.equal(partial.secrets[0].emoji, "🦴");
+  assert.equal(partial.glints.length, 1);
+  assert.equal(partial.glints[0].emoji, "🦴");
 });
 
 test("the trail visits every landmark in a fixed order", () => {

@@ -89,7 +89,8 @@ export type WorldMap = {
   intent: WorldIntent;
   /** Adult-facing explanation of the beacon choice, for the parent surface. */
   rationale: string;
-  secrets: Array<{ emoji: string; wide: WorldPoint; tall: WorldPoint }>;
+  /** Hidden glints the child can find on the map, worth a few coins. */
+  glints: Array<{ emoji: string; wide: WorldPoint; tall: WorldPoint }>;
 };
 
 /**
@@ -134,7 +135,7 @@ const STRUCTURE_POSITIONS: Array<{
   { wide: { x: 46, y: 44 }, tall: { x: 50, y: 56 }, scale: .62 },
 ];
 
-const SECRET_POSITIONS: Array<{ wide: WorldPoint; tall: WorldPoint }> = [
+const GLINT_POSITIONS: Array<{ wide: WorldPoint; tall: WorldPoint }> = [
   { wide: { x: 5, y: 40 }, tall: { x: 6, y: 36 } },
   { wide: { x: 96, y: 55 }, tall: { x: 94, y: 52 } },
   { wide: { x: 38, y: 86 }, tall: { x: 34, y: 86 } },
@@ -253,7 +254,7 @@ export function buildWorldMap(
   world: AdventureWorldModel,
   learner: LearnerModel,
   next: NextActivity,
-  foundSecrets: number[] = [],
+  foundGlints: number[] = [],
   priority: WorldPriority | null = null,
   now = new Date()
 ): WorldMap {
@@ -300,14 +301,14 @@ export function buildWorldMap(
     };
   });
 
-  const secrets = world.secretIcons
+  const glints = world.secretIcons
     .map((emoji, index) => ({
       emoji,
-      wide: SECRET_POSITIONS[index].wide,
-      tall: SECRET_POSITIONS[index].tall,
+      wide: GLINT_POSITIONS[index].wide,
+      tall: GLINT_POSITIONS[index].tall,
       index,
     }))
-    .filter((secret) => !foundSecrets.includes(secret.index))
+    .filter((glint) => !foundGlints.includes(glint.index))
     .map(({ emoji, wide, tall }) => ({ emoji, wide, tall }));
 
   return {
@@ -324,7 +325,7 @@ export function buildWorldMap(
     guideLine: priority ? priority.guideLine : guideLineFor(next, beacon.portal, world.clears),
     intent: next.intent,
     rationale: priority ? `${priority.rationale} ${next.adultReason}` : next.adultReason,
-    secrets,
+    glints,
   };
 }
 
