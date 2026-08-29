@@ -83,7 +83,6 @@ console.log(
  * child.
  */
 const gamesDir = path.join(root, "app", "games");
-const CODE_IN_JSX = /\{[^{}]*\b(?:standardCode|\w+\.standard)\b[^{}]*\}\s*</;
 const childFacingCodes = [];
 async function gameSources() {
   const rows = [];
@@ -108,9 +107,17 @@ for (const { game: gameName, source } of await gameSources()) {
   for (const line of source.split("\n")) {
     // Only JSX text nodes matter; object properties that carry the code into
     // the evidence record are exactly what should be preserved.
-    const rendered = line.match(/>\s*\{[^{}]*\b(?:standardCode|standard)\b[^{}]*\}/);
-    if (rendered && !/standardCode:/.test(line) && !/standard:/.test(line)) {
-      childFacingCodes.push(`${entry.name}: ${rendered[0].trim().slice(0, 60)}`);
+    // Split on ">{" and inspect each braced expression directly rather than
+    // matching two unbounded classes around an alternation, which backtracks.
+    if (/standardCode:/.test(line) || /standard:/.test(line)) continue;
+    for (const segment of line.split(">{").slice(1)) {
+      const close = segment.indexOf("}");
+      if (close < 0) continue;
+      const expression = segment.slice(0, close);
+      if (expression.includes("{") || expression.includes("}")) continue;
+      if (/\bstandardCode\b/.test(expression) || /\bstandard\b/.test(expression)) {
+        childFacingCodes.push(`${entry.name}: >{${expression.trim().slice(0, 60)}}`);
+      }
     }
   }
 }

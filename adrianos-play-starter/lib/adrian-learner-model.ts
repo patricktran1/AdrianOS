@@ -154,16 +154,21 @@ function safeCount(value: unknown): number {
     : 0;
 }
 
+const TRAILING_PUNCTUATION = new Set([".", "!", "?"]);
+
 /**
  * Answers are compared after light normalization so that "12", " 12 " and "12."
  * cluster as the same misconception, while genuinely different answers do not.
  */
 export function normalizeAnswer(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[\s,]+/g, " ")
-    .replace(/[.!?]+$/g, "")
-    .trim();
+  const collapsed = value.toLowerCase().replace(/[\s,]+/g, " ").trim();
+  // Trailing punctuation is trimmed with a loop rather than an anchored
+  // repetition such as /[.!?]+$/. A repetition pinned to the end of the input
+  // backtracks quadratically on a long run of those characters, and this runs
+  // on stored answer text.
+  let end = collapsed.length;
+  while (end > 0 && TRAILING_PUNCTUATION.has(collapsed[end - 1])) end -= 1;
+  return collapsed.slice(0, end).trim();
 }
 
 export function normalizeEvidence(value: unknown): LearningEvidence | null {
