@@ -12,6 +12,7 @@ import {
 import { usePathname } from "next/navigation";
 import { games } from "@/lib/generated-games";
 import { readAdrianProgress } from "@/lib/adrian-progress";
+import { markQuestionShown } from "@/lib/adrian-evidence";
 
 type GameTheme = {
   key: string;
@@ -114,6 +115,18 @@ function addTemporaryClass(element: HTMLElement, className: string, duration: nu
 export default function GameFeelShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const slug = slugFromPath(pathname);
+
+  /*
+   * Arm the response clock for every game route.
+   *
+   * Games that use the session SDK arm it themselves, but not every game
+   * does, and an unarmed clock silently costs the learner model its timing
+   * evidence. The feel shell wraps all of them, so this is the one place
+   * that guarantees the first answer of a run is timed.
+   */
+  useEffect(() => {
+    if (slug) markQuestionShown(slug);
+  }, [slug]);
   const theme = useMemo(() => themeFor(slug), [slug]);
   const rootRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);

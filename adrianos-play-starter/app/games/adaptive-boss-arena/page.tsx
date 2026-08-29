@@ -89,7 +89,7 @@ export default function AdaptiveBossArenaPage() {
   function choose(choice: string) {
     if (!mission || feedback === "result") return;
     const correct = choice === mission.answer;
-    recordLearningAttempt({ gameSlug: GAME_SLUG, subject: mission.skillId.startsWith("math") ? "Math" : mission.skillId.startsWith("reading") ? "Reading" : "Science", skillId: mission.skillId, skillLabel: mission.skillLabel, prompt: mission.prompt, correctAnswer: mission.answer, correct, data: { standardCode: mission.standard, adaptiveLevel: level, bossRound: round + 1 } }, activeProfile.id);
+    recordLearningAttempt({ gameSlug: GAME_SLUG, subject: mission.skillId.startsWith("math") ? "Math" : mission.skillId.startsWith("reading") ? "Reading" : "Science", skillId: mission.skillId, skillLabel: mission.skillLabel, prompt: mission.prompt, correctAnswer: mission.answer, correct, givenAnswer: choice, wrongAttempts: misses, data: { standardCode: mission.standard, adaptiveLevel: level, bossRound: round + 1 } }, activeProfile.id);
     sound(soundOn && correct);
     if (!correct) { setMisses((v) => v + 1); setHearts((v) => Math.max(0, v - 1)); setCombo(0); setFeedback("hint"); return; }
     const nextCombo = misses === 0 ? combo + 1 : 0;

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { seedQaFamily } from "./helpers/seed-family";
 
 const PROGRESS_KEY = "adrianos-progress-v2:qa-learner";
@@ -9,6 +9,20 @@ async function completionCount(page: import("@playwright/test").Page) {
     const progress = JSON.parse(window.localStorage.getItem(key) ?? "{}");
     return progress.games?.["dino-habitat-builder"]?.completions ?? 0;
   }, PROGRESS_KEY);
+}
+
+/** Drags a tray piece onto the construction zone with explicit pointer steps. */
+async function dragOntoZone(page: Page, piece: Locator) {
+  const zone = page.getByRole("region", { name: "Dinosaur habitat construction zone" });
+  const from = await piece.boundingBox();
+  const to = await zone.boundingBox();
+  expect(from, "the piece should be laid out").not.toBeNull();
+  expect(to, "the construction zone should be laid out").not.toBeNull();
+
+  await page.mouse.move(from!.x + from!.width / 2, from!.y + from!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to!.x + to!.width / 2, to!.y + to!.height / 2, { steps: 12 });
+  await page.mouse.up();
 }
 
 test.describe("Dino Habitat Builder", () => {
@@ -27,7 +41,9 @@ test.describe("Dino Habitat Builder", () => {
 
     const correctPiece = page.locator('[data-piece-id="45"]');
     await expect(correctPiece).toHaveAttribute("draggable", "true");
-    await correctPiece.dragTo(page.getByRole("region", { name: "Dinosaur habitat construction zone" }));
+    // dragTo() occasionally drops the payload under parallel load; stepping the
+    // pointer explicitly makes the drag deterministic without weakening it.
+    await dragOntoZone(page, correctPiece);
     await expect(page.getByRole("region", { name: "Dinosaur habitat construction zone" })).toHaveAttribute("data-habitat-parts", "1");
     await expect(page.getByRole("heading", { name: "Which plant belongs in a Triceratops feeding zone?" })).toBeVisible({ timeout: 5_000 });
 

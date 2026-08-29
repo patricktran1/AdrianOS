@@ -94,7 +94,7 @@ test.describe("Human Body Rescue Lab", () => {
 
     await expect(page.locator('[data-body-lab="active"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "Which organ creates the pressure that drives blood through the circulatory system?" })).toBeVisible();
-    await expect(page.getByText("5-LS1-1", { exact: true })).toBeVisible();
+    await expect(page.getByText("5-LS1-1", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Heart", exact: true })).toHaveAttribute("data-correct", "true");
     await expect(page.getByRole("button", { name: /start/i })).toHaveCount(0);
   });

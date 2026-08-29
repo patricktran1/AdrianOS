@@ -291,7 +291,7 @@ export default function DailyAdventureRemixPage() {
         </header>
         <section style={track}><div className="remix-run" style={{ ...trackFill, width: `${((index + (feedback === "explanation" ? 1 : 0)) / missions.length) * 100}%`, background: theme.accent }}><span>{theme.emoji}</span></div></section>
         <section style={{ ...card, borderColor: `${theme.accent}88` }}>
-          <div style={topRow}><span style={{ ...subjectChip, background: theme.accent }}>{mission.subject}</span><span style={standard}>{mission.standard}</span></div>
+          <div style={topRow}><span style={{ ...subjectChip, background: theme.accent }}>{mission.subject}</span></div>
           <div className="remix-float" style={visual}>{mission.visual}</div>
           <h1 style={question}>{mission.prompt}</h1>
           {(youngLearner || mission.prompt.length > 70) && <button type="button" onClick={speakMission} style={listenButton}>🔊 Read it aloud</button>}
@@ -359,7 +359,6 @@ const trackFill: React.CSSProperties = { height: "100%", display: "flex", justif
 const card: React.CSSProperties = { width: "min(920px,100%)", margin: "0 auto", padding: "clamp(22px,5vw,46px)", borderRadius: 30, background: "rgba(18,24,36,.94)", border: "1px solid rgba(255,255,255,.14)", textAlign: "center" };
 const topRow: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" };
 const subjectChip: React.CSSProperties = { padding: "7px 11px", borderRadius: 999, color: "#10131b", fontSize: 11, fontWeight: 950 };
-const standard: React.CSSProperties = { color: "#aab1bf", fontSize: 12, fontWeight: 850 };
 const visual: React.CSSProperties = { margin: "22px auto 8px", fontSize: "clamp(2.1rem,8vw,4.2rem)", lineHeight: 1.3 };
 const question: React.CSSProperties = { maxWidth: 800, margin: "10px auto 20px", fontSize: "clamp(2rem,6vw,4rem)", lineHeight: 1.02, letterSpacing: "-.045em" };
 const listenButton: React.CSSProperties = { margin: "-6px auto 18px", padding: "10px 14px", borderRadius: 999, border: "1px solid rgba(255,255,255,.15)", background: "#222936", color: "#fff", fontWeight: 900, cursor: "pointer" };

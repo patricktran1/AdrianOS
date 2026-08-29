@@ -107,7 +107,7 @@ test.describe("Question Quest Wonder Lab", () => {
 
     await expect(page.locator('[data-wonder-lab="active"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "Which process best explains why a complex program needs loading time?" })).toBeVisible();
-    await expect(page.getByText("5-ETS1-1", { exact: true })).toBeVisible();
+    await expect(page.getByText("5-ETS1-1", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "It fetches and arranges code, images, and data", exact: true })).toHaveAttribute("data-correct", "true");
     await expect(page.getByRole("button", { name: /start/i })).toHaveCount(0);
   });

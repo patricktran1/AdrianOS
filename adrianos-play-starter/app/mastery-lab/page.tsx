@@ -99,6 +99,7 @@ export default function MasteryLabPage() {
       correctAnswer: lesson.choices[lesson.answerIndex],
       correct: isCorrect,
       review: true,
+      givenAnswer: lesson.choices[index],
       data: {
         masteryLab: true,
         interventionId: intervention.id,

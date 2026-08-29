@@ -484,7 +484,6 @@ export default function QuestionQuest() {
         <section className={styles.missionCard} data-solved={solved ? "true" : "false"} data-misses={misses}>
           <div className={styles.missionTop}>
             <span className={styles.mechanic}>{copy.eyebrow}</span>
-            <span className={styles.standard}>{mission.standard}</span>
           </div>
           <div className={styles.missionIcon} aria-hidden="true">{copy.icon}</div>
           <h1>{mission.prompt}</h1>

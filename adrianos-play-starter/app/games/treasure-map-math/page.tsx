@@ -348,7 +348,7 @@ export default function Page() {
           <section className={styles.missionCard} data-misses={misses} data-solved={solved ? "true" : "false"}>
             <div className={styles.missionTop}>
               <span className={styles.mechanic}>{copy.eyebrow}</span>
-              <span className={styles.standard}>{mission.standard}</span>
+              
             </div>
             <div className={styles.missionIcon} aria-hidden="true">
               {mission.mechanic === "cannon" ? "💥" : mission.mechanic === "cargo" ? "📦" : "🧭"}

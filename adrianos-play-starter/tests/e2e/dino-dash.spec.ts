@@ -73,7 +73,9 @@ test.describe("Dino Dash: Volcano Escape", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/games/${GAME_SLUG}`, { waitUntil: "domcontentloaded" });
 
-    await expect(page.getByText(/Grade 5 · 5\.NBT/)).toBeVisible();
+    await expect(page.getByText("Grade 5", { exact: false })).toBeVisible();
+    // The standard stays in the evidence record, never on the child's screen.
+    await expect(page.getByText(/5\.NBT/)).toHaveCount(0);
     await expect(page.locator('[data-dino-answer]')).toHaveCount(3);
     await expect.poll(async () => page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,

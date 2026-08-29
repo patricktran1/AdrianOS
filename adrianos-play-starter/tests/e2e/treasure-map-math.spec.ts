@@ -93,7 +93,7 @@ test.describe("Treasure Island Expedition", () => {
 
     await expect(page.locator('[data-treasure-expedition="active"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "The safe route is 0.72 of a mile. Which marker matches?" })).toBeVisible();
-    await expect(page.getByText("5.NBT.A.3", { exact: true })).toBeVisible();
+    await expect(page.getByText("5.NBT.A.3", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "0.72", exact: true })).toHaveAttribute("data-correct", "true");
     await expect(page.getByRole("button", { name: /start/i })).toHaveCount(0);
   });

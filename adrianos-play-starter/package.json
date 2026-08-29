@@ -13,14 +13,15 @@
     "test:games:smoke": "playwright test tests/e2e/game-routes.spec.ts",
     "test:games:completion": "playwright test tests/e2e/game-completion.spec.ts",
     "validate": "npm run test:unit && npm run build",
-    "check:contracts": "npm run check:school-controls && npm run check:game-session && npm run check:curriculum && npm run check:teaching-loop && npm run check:blank-slate && npm run check:mastery-loop && npm run check:elementary-scope",
+    "check:contracts": "npm run check:school-controls && npm run check:game-session && npm run check:curriculum && npm run check:teaching-loop && npm run check:blank-slate && npm run check:mastery-loop && npm run check:elementary-scope && npm run check:learning-evidence",
     "check:school-controls": "node scripts/check-school-mode-controls.mjs",
     "check:game-session": "node scripts/check-game-session-sdk.mjs",
     "check:curriculum": "node scripts/check-curriculum-map.mjs",
     "check:teaching-loop": "node scripts/check-teaching-loop.mjs",
     "check:blank-slate": "node scripts/check-blank-slate-personalization.mjs",
     "check:mastery-loop": "node scripts/check-mastery-loop.mjs",
-    "check:elementary-scope": "node scripts/check-elementary-scope.mjs"
+    "check:elementary-scope": "node scripts/check-elementary-scope.mjs",
+    "check:learning-evidence": "node scripts/check-learning-evidence.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
