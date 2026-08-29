@@ -55,6 +55,9 @@ export function useAdrianSound() {
   const [settings, setSettings] = useState<GamePlaySettings>(DEFAULT_GAME_PLAY_SETTINGS);
   const [reducedMotion, setReducedMotion] = useState(false);
   const contextRef = useRef<AudioContext | null>(null);
+  // Browsers reject vibration before the first gesture and log a warning.
+  // Tracking the gesture keeps the console clean and the behaviour honest.
+  const gestureRef = useRef(false);
 
   useEffect(() => {
     const sync = () => setSettings(readGamePlaySettings());
@@ -70,6 +73,16 @@ export function useAdrianSound() {
     sync();
     query.addEventListener("change", sync);
     return () => query.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    const mark = () => { gestureRef.current = true; };
+    window.addEventListener("pointerdown", mark, { once: true });
+    window.addEventListener("keydown", mark, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", mark);
+      window.removeEventListener("keydown", mark);
+    };
   }, []);
 
   useEffect(() => () => {
@@ -119,7 +132,7 @@ export function useAdrianSound() {
   }, [ensureContext, settings.sfx]);
 
   const vibrate = useCallback((pattern: number | number[]) => {
-    if (!settings.haptics) return;
+    if (!settings.haptics || !gestureRef.current) return;
     if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
     try {
       navigator.vibrate(pattern);

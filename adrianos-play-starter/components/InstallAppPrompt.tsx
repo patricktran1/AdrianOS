@@ -25,7 +25,9 @@ export default function InstallAppPrompt() {
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
   const [installing, setInstalling] = useState(false);
 
-  const allowedPath = (pathname === "/" || pathname === "/parent") && hasProfiles;
+  // Installing to a home screen is a grown-up decision, and a floating prompt
+  // over the child's world competes with the thing they came to tap.
+  const allowedPath = pathname === "/parent" && hasProfiles;
 
   useEffect(() => {
     if (!allowedPath || isStandaloneMode()) return;

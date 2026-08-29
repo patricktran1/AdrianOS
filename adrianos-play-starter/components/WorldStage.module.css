@@ -700,7 +700,9 @@
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, .1);
   background: #1b2230;
+  color: #fff;
   text-align: center;
+  font: inherit;
 }
 
 .prize[data-locked="true"] { opacity: .32; }
@@ -757,6 +759,102 @@
 
 .avatarPick[data-active="true"] { border-color: var(--world-accent, #d9ff5b); }
 .avatarPick[data-locked="true"] { opacity: .38; cursor: not-allowed; }
+
+/*
+ * A new treasure is announced over the world itself. It is dismissed by one
+ * tap anywhere on it, so it never becomes a modal a child has to escape.
+ */
+.celebration {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  border: 0;
+  padding: 24px;
+  background: radial-gradient(circle at 50% 42%, rgba(8, 11, 18, .55), rgba(8, 11, 18, .82));
+  color: #fff;
+  cursor: pointer;
+  animation: celebrationIn .28s ease-out both;
+}
+
+.celebrationEmoji {
+  font-size: clamp(72px, 22vmin, 150px);
+  line-height: 1;
+  filter: drop-shadow(0 0 34px color-mix(in srgb, var(--world-accent) 65%, transparent));
+  animation: celebrationPop .5s cubic-bezier(.2, 1.5, .4, 1) both;
+}
+
+.celebrationTitle {
+  font-size: clamp(19px, 4.6vmin, 30px);
+  font-weight: 950;
+  letter-spacing: -.03em;
+  text-align: center;
+}
+
+.celebrationHint {
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .62);
+}
+
+@keyframes celebrationIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes celebrationPop {
+  0% { transform: scale(.3) rotate(-12deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.companionChip {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--world-accent) 26%, transparent);
+  font-size: 14px;
+  vertical-align: -5px;
+}
+
+.sheetHint {
+  margin: -4px 0 10px;
+  color: #8f98a8;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.tileWrap { position: relative; display: grid; }
+
+.favorite {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: rgba(255, 255, 255, .38);
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.favorite[data-favorite="true"] { color: var(--world-accent, #d9ff5b); }
+.favorite:hover { color: #fff; }
+
+.prize[data-active="true"] {
+  border-color: var(--world-accent, #d9ff5b);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--world-accent, #d9ff5b) 30%, transparent);
+}
+
+.prize:not([data-locked="true"]) { cursor: pointer; }
+.prize:not([data-locked="true"]):hover { background: #263043; }
 
 /* Reward toast: a brief, non-blocking confirmation. */
 .toast {
@@ -830,7 +928,9 @@
   .secret,
   .structure,
   .sheet,
-  .toast {
+  .toast,
+  .celebration,
+  .celebrationEmoji {
     animation: none;
   }
   .landmark:hover .landmarkOrb,
@@ -842,6 +942,7 @@
 .stage[data-reduced-motion="true"] .landmark[data-beacon="true"] .landmarkOrb,
 .stage[data-reduced-motion="true"] .guideAvatar,
 .stage[data-reduced-motion="true"] .secret,
-.stage[data-reduced-motion="true"] .structure {
+.stage[data-reduced-motion="true"] .structure,
+.stage[data-reduced-motion="true"] .celebrationEmoji {
   animation: none;
 }

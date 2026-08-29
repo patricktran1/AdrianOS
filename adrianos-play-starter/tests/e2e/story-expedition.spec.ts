@@ -102,11 +102,15 @@ test.describe("TK-5 Story Expedition", () => {
     await expect(spotlight.getByRole("link", { name: "Enter the story portal →" })).toHaveAttribute("href", "/games/story-expedition");
   });
 
-  test("places Story Expedition inside the Story Worlds arcade portal", async ({ page }) => {
+  test("reaches Story Expedition from the world in two taps", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    const arcade = page.getByRole("region", { name: "Adventure Arcade" });
-    await arcade.getByRole("button", { name: "Story worlds" }).click();
-    await expect(arcade.getByRole("heading", { name: "Story Expedition" })).toBeVisible();
+
+    await page.getByRole("button", { name: /All places/ }).click();
+    const tile = page.locator('[data-world-sheet="places"] [data-game-slug="story-expedition"]');
+    await expect(tile).toBeVisible();
+    await expect(tile).toContainText("Story Expedition");
+    await tile.click();
+    await expect(page).toHaveURL(/\/games\/story-expedition/);
   });
 });

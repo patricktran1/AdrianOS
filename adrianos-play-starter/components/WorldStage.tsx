@@ -6,7 +6,19 @@ import { useAdrianProgress } from "@/lib/adrian-progress";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import { readProfileGrade } from "@/lib/adrian-profile-grade";
 import { readLearningProfile } from "@/lib/adrian-learning-profile";
-import { readArcadeState, isGameAgeFit, type ArcadeState } from "@/lib/adventure-arcade";
+import {
+  isGameAgeFit,
+  readArcadeState,
+  toggleArcadeFavorite,
+  type ArcadeState,
+} from "@/lib/adventure-arcade";
+import {
+  POWER_LOCKER_EVENT,
+  equipPowerLockerPrize,
+  powerLockerPrizeKey,
+  readPowerLockerState,
+  unlockedPowerLockerPrizes,
+} from "@/lib/adrian-power-locker";
 import { buildAdventureWorld } from "@/lib/adventure-world";
 import { useLearnerModel } from "@/lib/adrian-evidence";
 import { recommendNextActivity } from "@/lib/adrian-learner-model";
@@ -36,6 +48,7 @@ import styles from "./WorldStage.module.css";
 const SECRET_STORE_PREFIX = "adrianos-world-secrets-v1:";
 const AVATAR_STORE_PREFIX = "adrianos-world-avatar-v1:";
 const SECRET_COINS = 5;
+const PRIZE_SEEN_PREFIX = "adrianos-world-prize-seen-v1:";
 
 const AVATARS = [
   { emoji: "🚀", name: "Rocket", cost: 0 },
@@ -90,6 +103,8 @@ export default function WorldStage({ games }: { games: Game[] }) {
   const [schoolMode, setSchoolMode] = useState(false);
   const [session, setSession] = useState<DailySession | null>(null);
   const [learningRevision, setLearningRevision] = useState(0);
+  const [equippedKey, setEquippedKey] = useState<string | null>(null);
+  const [celebration, setCelebration] = useState<{ emoji: string; name: string } | null>(null);
 
   const profileId = profilesReady ? activeProfile.id : "";
 
@@ -104,16 +119,19 @@ export default function WorldStage({ games }: { games: Game[] }) {
         return stored.includes(0) ? stored : [0, ...stored];
       });
       setSchoolMode(readLearningSchedule(activeProfile.id).schoolMode === true);
+      setEquippedKey(readPowerLockerState(activeProfile.id).equippedPrizeKey);
       setLearningRevision((value) => value + 1);
     };
     refresh();
     window.addEventListener("adrianos-learning-updated", refresh);
     window.addEventListener("adrianos-family-updated", refresh);
     window.addEventListener("adrianos-learning-schedule-updated", refresh);
+    window.addEventListener(POWER_LOCKER_EVENT, refresh);
     return () => {
       window.removeEventListener("adrianos-learning-updated", refresh);
       window.removeEventListener("adrianos-family-updated", refresh);
       window.removeEventListener("adrianos-learning-schedule-updated", refresh);
+      window.removeEventListener(POWER_LOCKER_EVENT, refresh);
     };
   }, [activeProfile.id, profilesReady]);
 
@@ -213,6 +231,17 @@ export default function WorldStage({ games }: { games: Game[] }) {
     return fit.length >= 6 ? fit : playableGames;
   }, [activeProfile.age, playableGames]);
 
+  // Favourites lead, then everything else in catalogue order: a child who
+  // starred a game should find it without hunting through 43 tiles.
+  const sortedPlaces = useMemo(() => {
+    const favorites = new Set(arcade.favorites);
+    return [...ageFitGames].sort((left, right) => {
+      const leftFavorite = favorites.has(left.slug) ? 0 : 1;
+      const rightFavorite = favorites.has(right.slug) ? 0 : 1;
+      return leftFavorite - rightFavorite;
+    });
+  }, [ageFitGames, arcade.favorites]);
+
   const lastPlayed = useMemo(() => {
     const slug = arcade.recent[0];
     return slug ? playableGames.find((game) => game.slug === slug) ?? null : null;
@@ -223,6 +252,46 @@ export default function WorldStage({ games }: { games: Game[] }) {
     [grade, progress]
   );
   const collection = ADRIAN_PRIZE_COLLECTIONS[grade];
+
+  const unlockedPrizes = useMemo(
+    () => (progressReady ? unlockedPowerLockerPrizes(progress, grade) : []),
+    [grade, progress, progressReady]
+  );
+  const companion = useMemo(
+    () => unlockedPrizes.find((item) => item.key === equippedKey) ?? unlockedPrizes.at(-1) ?? null,
+    [equippedKey, unlockedPrizes]
+  );
+
+  /*
+   * A new prize is announced in the world, not buried in a panel. The last
+   * seen count is stored per profile so a clear celebrates exactly once, and
+   * only ever after a verified completion raised the count.
+   */
+  useEffect(() => {
+    if (!profileId || !progressReady) return;
+    const key = `${PRIZE_SEEN_PREFIX}${profileId}`;
+    let seen = 0;
+    try {
+      seen = Number(window.localStorage.getItem(key) ?? "0");
+    } catch {
+      seen = 0;
+    }
+    if (!Number.isFinite(seen)) seen = 0;
+    if (prize.unlocked <= seen) return;
+    try {
+      window.localStorage.setItem(key, String(prize.unlocked));
+    } catch {
+      // Celebrating twice is better than crashing on a full store.
+    }
+    const item = collection.prizes[prize.unlocked - 1];
+    if (item) setCelebration({ emoji: item.emoji, name: item.name });
+  }, [collection.prizes, prize.unlocked, profileId, progressReady]);
+
+  useEffect(() => {
+    if (!celebration) return;
+    play("reward");
+    vibrate([12, 60, 18, 60, 24]);
+  }, [celebration, play, vibrate]);
 
   const travel = useCallback((href: string) => {
     play("travel");
@@ -287,6 +356,21 @@ export default function WorldStage({ games }: { games: Game[] }) {
     vibrate([10, 40, 14]);
     setToast(`Secret found! +${SECRET_COINS} coins`);
   }, [addCoins, foundSecrets, play, profileId, vibrate]);
+
+  const equipCompanion = useCallback((index: number) => {
+    const item = unlockedPrizes.find((prize) => prize.index === index);
+    if (!item || !profileId) return;
+    equipPowerLockerPrize(profileId, item);
+    setEquippedKey(item.key);
+    play("reveal");
+    setToast(`${item.name} joins you`);
+  }, [play, profileId, unlockedPrizes]);
+
+  const toggleFavorite = useCallback((slug: string) => {
+    if (!profileId) return;
+    setArcade(toggleArcadeFavorite(profileId, slug));
+    play("tap");
+  }, [play, profileId]);
 
   const chooseAvatar = useCallback((index: number) => {
     const avatar = AVATARS[index];
@@ -358,6 +442,15 @@ export default function WorldStage({ games }: { games: Game[] }) {
         </button>
 
         <p className={styles.worldName}>
+          {companion ? (
+            <span
+              className={styles.companionChip}
+              data-power-locker-active={companion.name}
+              data-power-locker-aura={companion.aura}
+            >
+              <span aria-hidden="true">{companion.emoji}</span>
+            </span>
+          ) : null}
           {map.title} · {map.stageTitle}
         </p>
 
@@ -509,6 +602,19 @@ export default function WorldStage({ games }: { games: Game[] }) {
           <p className={styles.guideLine} data-world-guide="true">{map.guideLine}</p>
         </div>
 
+        {celebration ? (
+          <button
+            type="button"
+            className={styles.celebration}
+            onClick={() => { play("tap"); setCelebration(null); }}
+            data-world-celebration="true"
+          >
+            <span className={styles.celebrationEmoji} aria-hidden="true">{celebration.emoji}</span>
+            <strong className={styles.celebrationTitle}>{celebration.name} joined you!</strong>
+            <span className={styles.celebrationHint}>Tap to keep exploring</span>
+          </button>
+        ) : null}
+
         {toast ? <p className={styles.toast} role="status">{toast}</p> : null}
       </div>
 
@@ -580,23 +686,37 @@ export default function WorldStage({ games }: { games: Game[] }) {
             <div className={styles.sheetBody}>
               {sheet === "places" ? (
                 <div className={styles.tileGrid}>
-                  {ageFitGames.map((game) => {
+                  {sortedPlaces.map((game) => {
                     const row = progress.games[game.slug];
                     const cleared = (row?.completions ?? 0) > 0;
+                    const favorite = arcade.favorites.includes(game.slug);
                     return (
-                      <button
-                        key={game.slug}
-                        type="button"
-                        className={styles.tile}
-                        data-cleared={cleared ? "true" : "false"}
-                        onClick={() => travel(`/games/${game.slug}?from=world-places`)}
-                      >
-                        <span className={styles.tileEmoji} aria-hidden="true">{game.emoji}</span>
-                        <span className={styles.tileName}>{game.title}</span>
-                        <span className={styles.tileMeta}>
-                          {cleared ? `Cleared ${row?.completions}×` : row?.plays ? "Continue" : "New"}
-                        </span>
-                      </button>
+                      <div key={game.slug} className={styles.tileWrap}>
+                        <button
+                          type="button"
+                          className={styles.tile}
+                          data-cleared={cleared ? "true" : "false"}
+                          data-game-slug={game.slug}
+                          onClick={() => travel(`/games/${game.slug}?from=world-places`)}
+                        >
+                          <span className={styles.tileEmoji} aria-hidden="true">{game.emoji}</span>
+                          <span className={styles.tileName}>{game.title}</span>
+                          <span className={styles.tileMeta}>
+                            {cleared ? `Cleared ${row?.completions}×` : row?.plays ? "Continue" : "New"}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.favorite}
+                          data-favorite={favorite ? "true" : "false"}
+                          data-favorite-slug={game.slug}
+                          onClick={() => toggleFavorite(game.slug)}
+                          aria-pressed={favorite}
+                          aria-label={favorite ? `Remove ${game.title} from favourites` : `Add ${game.title} to favourites`}
+                        >
+                          <span aria-hidden="true">{favorite ? "★" : "☆"}</span>
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -618,17 +738,37 @@ export default function WorldStage({ games }: { games: Game[] }) {
                       <span className={styles.statLabel}>Built</span>
                     </div>
                   </div>
-                  <p className={styles.sectionLabel}>Treasures</p>
-                  <div className={styles.prizeGrid}>
+                  <p className={styles.sectionLabel}>
+                    {companion ? `${companion.emoji} ${companion.name} travels with you` : "Treasures"}
+                  </p>
+                  <p className={styles.sheetHint}>
+                    {prize.unlocked === 0
+                      ? "Finish any game to open your first treasure."
+                      : "Tap a treasure to bring it into every game."}
+                  </p>
+                  <div className={styles.prizeGrid} data-power-locker="active">
                     {collection.prizes.map((item, index) => {
                       const locked = index >= prize.unlocked;
+                      const active = companion?.index === index;
                       return (
-                        <div key={item.name} className={styles.prize} data-locked={locked ? "true" : "false"}>
+                        <button
+                          key={item.name}
+                          type="button"
+                          className={styles.prize}
+                          data-locked={locked ? "true" : "false"}
+                          data-active={active ? "true" : "false"}
+                          data-power-locker-prize={powerLockerPrizeKey(grade, index)}
+                          data-power-locker-selected={active ? "true" : "false"}
+                          disabled={locked}
+                          onClick={() => equipCompanion(index)}
+                          aria-label={locked ? "Locked treasure" : `Travel with ${item.name}`}
+                          aria-pressed={locked ? undefined : active}
+                        >
                           <span className={styles.prizeEmoji} aria-hidden="true">
                             {locked ? "❔" : item.emoji}
                           </span>
                           <span className={styles.prizeName}>{locked ? "Locked" : item.name}</span>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
