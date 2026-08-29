@@ -14,6 +14,9 @@ export default function MobileAppDock() {
   const pathname = usePathname();
   const { hydrated, hasProfiles } = useFamilyProfiles();
   if (!hydrated || !hasProfiles) return null;
+  // The world screen and gameplay own their full viewport: a floating dock
+  // over either one competes with the child's primary target.
+  if (pathname === "/" || pathname.startsWith("/games/")) return null;
   if (pathname === "/join" || pathname.startsWith("/family/setup") || pathname === "/install") return null;
 
   return (

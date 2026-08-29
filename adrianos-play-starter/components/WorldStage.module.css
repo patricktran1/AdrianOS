@@ -1,0 +1,847 @@
+/*
+ * The AdrianOS world screen.
+ *
+ * One viewport, no page scroll. Everything the child needs is reachable
+ * without moving the page: the world fills the space between a thin identity
+ * rail and a thin travel rail, and secondary surfaces open as sheets over it.
+ */
+
+.stage {
+  --world-accent: #d9ff5b;
+  --world-accent-2: #7fdcff;
+  --sky-top: #1b3a63;
+  --sky-bottom: #2d6ea8;
+  --ground: #1d3b2a;
+  --ground-2: #16301f;
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  color: #fff;
+  /* The rails sit on a stable dark ground so they stay legible against every
+     sky. Only the map itself is painted by the time of day. */
+  background: #0b0f17;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  touch-action: manipulation;
+}
+
+.stage[data-world-theme="space"] { --world-accent: #8dd7ff; --world-accent-2: #c6b8ff; }
+.stage[data-world-theme="robot"] { --world-accent: #76f2c0; --world-accent-2: #8dd7ff; }
+.stage[data-world-theme="wildwood"] { --world-accent: #9df06d; --world-accent-2: #ffd45c; }
+.stage[data-world-theme="storylight"] { --world-accent: #ff9bd2; --world-accent-2: #c6b8ff; }
+.stage[data-world-theme="rainbow"] { --world-accent: #ffd45c; --world-accent-2: #ff9bd2; }
+.stage[data-world-theme="temple"] { --world-accent: #ffd45c; --world-accent-2: #70e0d0; }
+.stage[data-world-theme="cyber"] { --world-accent: #72f6ff; --world-accent-2: #bf7cff; }
+
+.stage[data-sky="sunrise"] { --sky-top: #3a2350; --sky-bottom: #f0a05a; --ground: #2f4a30; --ground-2: #1f3421; }
+.stage[data-sky="day"] { --sky-top: #1d5fa8; --sky-bottom: #7fc9f0; --ground: #2c5c34; --ground-2: #1c3f24; }
+.stage[data-sky="sunset"] { --sky-top: #2b1f4a; --sky-bottom: #e2705f; --ground: #34324a; --ground-2: #221f33; }
+.stage[data-sky="night"] { --sky-top: #0b1026; --sky-bottom: #24406e; --ground: #16233a; --ground-2: #0e182a; }
+
+/* ---------------------------------------------------------------- */
+/* Identity rail                                                     */
+/* ---------------------------------------------------------------- */
+
+.topRail {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #0b0f17;
+}
+
+.meChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 14px 6px 8px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: rgba(10, 14, 22, .6);
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.meAvatar { font-size: 24px; line-height: 1; }
+.meName { font-size: 15px; }
+
+.meLevel {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--world-accent);
+  color: #10131b;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.worldName {
+  min-width: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  color: rgba(255, 255, 255, .82);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parentDoor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 999px;
+  background: rgba(10, 14, 22, .5);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------- */
+/* The map                                                           */
+/* ---------------------------------------------------------------- */
+
+.map {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* A short fade at each edge keeps the map from ending in a hard seam. */
+.map::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(11, 15, 23, .5), transparent 9%),
+    linear-gradient(0deg, rgba(11, 15, 23, .55), transparent 10%);
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
+}
+
+.stars {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 18%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 28% 8%, #fff, transparent),
+    radial-gradient(1.8px 1.8px at 47% 22%, #fff, transparent),
+    radial-gradient(1.3px 1.3px at 63% 11%, #fff, transparent),
+    radial-gradient(1.7px 1.7px at 81% 24%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 92% 9%, #fff, transparent);
+}
+
+.stage[data-sky="night"] .stars { opacity: .9; }
+.stage[data-sky="sunrise"] .stars { opacity: .35; }
+
+/*
+ * Three overlapping bands build terrain depth with no image assets: a distant
+ * ridge, a mid ridge, and the ground the child stands on. Offsetting their
+ * radii keeps the silhouette from reading as concentric arcs.
+ */
+.ridgeFar {
+  position: absolute;
+  left: -14%;
+  right: -22%;
+  bottom: 30%;
+  /* The bands overlap deliberately: any gap between them shows sky through
+     the ground and breaks the illusion of solid terrain. */
+  height: 52%;
+  border-radius: 58% 42% 0 0 / 100% 100% 0 0;
+  background: color-mix(in srgb, var(--ground) 72%, var(--sky-bottom));
+  opacity: .9;
+}
+
+.ridgeMid {
+  position: absolute;
+  left: -24%;
+  right: -8%;
+  bottom: 19%;
+  height: 46%;
+  border-radius: 38% 62% 0 0 / 100% 100% 0 0;
+  background: color-mix(in srgb, var(--ground) 74%, #000);
+}
+
+.ground {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  bottom: 0;
+  height: 34%;
+  border-radius: 46% 54% 0 0 / 46% 46% 0 0;
+  background: linear-gradient(180deg, var(--ground), var(--ground-2));
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, .35);
+}
+
+/* Sun by day, moon by night. One object, repositioned by the sky token. */
+.celestial {
+  position: absolute;
+  right: 5%;
+  top: 7%;
+  width: clamp(42px, 8vmin, 78px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #fffbe8, #ffd979 62%, rgba(255, 217, 121, 0));
+  filter: drop-shadow(0 0 26px rgba(255, 216, 130, .55));
+}
+
+.stage[data-sky="night"] .celestial {
+  background: radial-gradient(circle at 40% 34%, #f4f7ff, #c9d6ff 58%, rgba(201, 214, 255, 0));
+  filter: drop-shadow(0 0 22px rgba(190, 210, 255, .45));
+}
+
+.stage[data-sky="sunset"] .celestial { top: 16%; right: 4%; }
+.stage[data-sky="sunrise"] .celestial { top: 16%; left: 4%; right: auto; }
+
+/* The trail is what makes five buttons read as one connected map. */
+.trail {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.trailLine {
+  fill: none;
+  stroke: color-mix(in srgb, var(--ground-2) 60%, rgba(255, 255, 255, .55));
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 2.4 3.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.trailTall { display: none; }
+
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: min(78vw, 620px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--world-accent) 26%, transparent),
+    transparent 62%
+  );
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- */
+/* Landmarks                                                         */
+/* ---------------------------------------------------------------- */
+
+.landmark {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: max-content;
+  max-width: 34%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+  text-align: center;
+  z-index: 2;
+}
+
+.landmarkOrb {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .34);
+  background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .3), rgba(8, 12, 20, .78));
+  box-shadow: 0 12px 26px rgba(0, 0, 0, .42);
+  font-size: 30px;
+  line-height: 1;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.landmark:hover .landmarkOrb,
+.landmark:focus-visible .landmarkOrb { transform: scale(1.08); }
+
+.landmark:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 6px;
+  border-radius: 20px;
+}
+
+.landmarkLabel {
+  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  max-width: 18ch;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(8, 11, 18, .68);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.25;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .6);
+}
+
+.landmarkStatus {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  max-width: 14ch;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, .82);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .75);
+}
+
+/* A cleared place carries a small tally so progress is visible on the map. */
+.clearBadge {
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  min-width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--world-accent);
+  color: #10131b;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.orbWrap { position: relative; display: grid; place-items: center; }
+
+.landmark[data-cleared="true"] .landmarkOrb {
+  border-color: color-mix(in srgb, var(--world-accent) 70%, transparent);
+}
+
+/* The beacon is the single primary target: bigger, brighter, and announced
+   by the guide standing beside it. */
+.landmark[data-beacon="true"] { z-index: 3; }
+
+.landmark[data-beacon="true"] .landmarkOrb {
+  width: 104px;
+  height: 104px;
+  font-size: 50px;
+  border-color: var(--world-accent);
+  background: radial-gradient(
+    circle at 32% 26%,
+    color-mix(in srgb, var(--world-accent) 55%, #fff),
+    color-mix(in srgb, var(--world-accent) 30%, #0b1018)
+  );
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--world-accent) 22%, transparent),
+    0 18px 40px rgba(0, 0, 0, .5);
+  animation: beaconPulse 2.6s ease-in-out infinite;
+}
+
+.landmark[data-beacon="true"] .landmarkLabel {
+  font-size: 15px;
+  background: var(--world-accent);
+  color: #10131b;
+  text-shadow: none;
+}
+
+.landmark[data-beacon="true"] .landmarkStatus { color: var(--world-accent); }
+
+@keyframes beaconPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 6px color-mix(in srgb, var(--world-accent) 20%, transparent),
+      0 18px 40px rgba(0, 0, 0, .5);
+  }
+  50% {
+    box-shadow:
+      0 0 0 18px color-mix(in srgb, var(--world-accent) 7%, transparent),
+      0 18px 44px rgba(0, 0, 0, .5);
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Structures, secrets, guide                                        */
+/* ---------------------------------------------------------------- */
+
+.structure {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  transform: translate(-50%, -50%) scale(var(--scale, 1));
+  font-size: 26px;
+  line-height: 1;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .45));
+  pointer-events: none;
+  z-index: 1;
+  animation: structureRise .5s ease-out both;
+}
+
+@keyframes structureRise {
+  from { opacity: 0; transform: translate(-50%, -20%) scale(calc(var(--scale, 1) * .6)); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(var(--scale, 1)); }
+}
+
+/*
+ * Secrets are glints, not buttons. They stay at a 44px hit target for small
+ * fingers while showing only a faint sparkle, so finding one feels like
+ * noticing something rather than clicking an obvious control.
+ */
+.secret {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: rgba(255, 255, 255, .78);
+  font-size: 13px;
+  cursor: pointer;
+  z-index: 2;
+  animation: shimmer 3.6s ease-in-out infinite;
+}
+
+.secretGlint {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px 3px rgba(255, 255, 255, .55);
+}
+
+.secret:hover .secretGlint,
+.secret:focus-visible .secretGlint {
+  width: 15px;
+  height: 15px;
+  box-shadow: 0 0 18px 6px rgba(255, 255, 255, .7);
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: .28; }
+  50% { opacity: .95; }
+}
+
+/* Weekly quest marker: progress the child can read at a glance. */
+.questFlag {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: rgba(10, 14, 22, .66);
+  color: #fff;
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.questDots { display: inline-flex; gap: 4px; }
+
+.questDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .28);
+}
+
+.questDot[data-done="true"] { background: var(--world-accent); }
+
+.guide {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  z-index: 3;
+  pointer-events: none;
+  max-width: 46vw;
+}
+
+.guideAvatar {
+  font-size: 40px;
+  line-height: 1;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .5));
+  animation: guideBob 2.4s ease-in-out infinite;
+}
+
+@keyframes guideBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+.guideLine {
+  margin: 0;
+  padding: 7px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .95);
+  color: #14161f;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.3;
+  text-align: center;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .38);
+}
+
+/* ---------------------------------------------------------------- */
+/* Travel rail                                                       */
+/* ---------------------------------------------------------------- */
+
+.worldRail {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px 12px;
+  background: #0b0f17;
+}
+
+.railButton {
+  flex: 1 1 0;
+  max-width: 190px;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 18px;
+  background: rgba(12, 16, 24, .72);
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.railButton:hover { background: rgba(24, 30, 42, .86); }
+.railIcon { font-size: 22px; line-height: 1; }
+
+.railText {
+  min-width: 0;
+  display: grid;
+  text-align: left;
+  line-height: 1.15;
+}
+
+.railTitle {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.railMeta {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, .62);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- */
+/* Sheets                                                            */
+/* ---------------------------------------------------------------- */
+
+.sheetBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  align-items: end;
+  background: rgba(6, 8, 14, .62);
+  backdrop-filter: blur(3px);
+}
+
+.sheet {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  max-height: min(86dvh, 860px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border-radius: 28px 28px 0 0;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-bottom: 0;
+  background: #141924;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, .5);
+  animation: sheetIn .22s ease-out both;
+}
+
+@keyframes sheetIn {
+  from { transform: translateY(22px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.sheetHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, .09);
+}
+
+.sheetTitle { margin: 0; font-size: 20px; letter-spacing: -.02em; }
+.sheetSubtitle { margin: 3px 0 0; font-size: 12px; color: #9aa3b2; font-weight: 750; }
+
+.sheetClose {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 50%;
+  background: #202737;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sheetBody {
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 18px calc(20px + env(safe-area-inset-bottom));
+}
+
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(122px, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-height: 118px;
+  padding: 14px 10px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 20px;
+  background: #1d2432;
+  color: #fff;
+  text-align: center;
+  cursor: pointer;
+}
+
+.tile:hover { background: #263043; border-color: rgba(255, 255, 255, .22); }
+.tileEmoji { font-size: 34px; line-height: 1; }
+.tileName { font-size: 13px; font-weight: 900; line-height: 1.2; }
+
+.tileMeta {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #8f98a8;
+}
+
+.tile[data-cleared="true"] { border-color: color-mix(in srgb, var(--world-accent, #d9ff5b) 46%, transparent); }
+
+.prizeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 8px;
+}
+
+.prize {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: #1b2230;
+  text-align: center;
+}
+
+.prize[data-locked="true"] { opacity: .32; }
+.prizeEmoji { font-size: 26px; line-height: 1; }
+.prizeName { font-size: 10px; font-weight: 850; color: #c3cad6; line-height: 1.2; }
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.stat {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #1b2230;
+  border: 1px solid rgba(255, 255, 255, .09);
+}
+
+.statValue { font-size: 22px; font-weight: 950; letter-spacing: -.03em; }
+.statLabel { font-size: 10px; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; color: #8f98a8; }
+
+.sectionLabel {
+  margin: 18px 0 8px;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--world-accent, #d9ff5b);
+}
+
+.sectionLabel:first-child { margin-top: 0; }
+
+.avatarRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.avatarPick {
+  width: 60px;
+  height: 60px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  border: 2px solid transparent;
+  background: #1d2432;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.avatarPick[data-active="true"] { border-color: var(--world-accent, #d9ff5b); }
+.avatarPick[data-locked="true"] { opacity: .38; cursor: not-allowed; }
+
+/* Reward toast: a brief, non-blocking confirmation. */
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--world-accent);
+  color: #10131b;
+  font-weight: 950;
+  font-size: 14px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .4);
+  animation: toastIn .24s ease-out both;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ---------------------------------------------------------------- */
+/* Small and short screens                                           */
+/* ---------------------------------------------------------------- */
+
+/*
+ * Portrait layouts get their own coordinate set. Landmarks keep the same
+ * relative arrangement but spread vertically instead of horizontally, so the
+ * map still reads as one place on a phone held upright.
+ */
+@media (max-aspect-ratio: 4 / 5) {
+  .landmark, .structure, .secret, .guide {
+    left: var(--xt, var(--x));
+    top: var(--yt, var(--y));
+  }
+  .trailWide { display: none; }
+  .trailTall { display: block; }
+  .celestial { top: 8%; right: 14%; }
+  .ridgeFar { bottom: 34%; height: 46%; }
+  .ridgeMid { bottom: 22%; height: 40%; }
+  .ground { height: 30%; }
+}
+
+@media (max-width: 520px) {
+  .landmarkOrb { width: 54px; height: 54px; font-size: 26px; }
+  .landmark[data-beacon="true"] .landmarkOrb { width: 88px; height: 88px; font-size: 42px; }
+  .landmarkLabel { font-size: 11px; max-width: 12ch; }
+  .landmark[data-beacon="true"] .landmarkLabel { font-size: 13px; }
+  .structure { font-size: 21px; }
+  .railButton { padding: 8px 10px; }
+  .railTitle { font-size: 13px; }
+}
+
+/* Landscape phones have very little height; shrink rather than scroll. */
+@media (max-height: 560px) {
+  .landmarkOrb { width: 48px; height: 48px; font-size: 22px; }
+  .landmark[data-beacon="true"] .landmarkOrb { width: 74px; height: 74px; font-size: 34px; }
+  .landmarkStatus { display: none; }
+  .guideAvatar { font-size: 30px; }
+  .guideLine { font-size: 11px; padding: 5px 9px; }
+  .structure { font-size: 17px; }
+  .railButton { min-height: 48px; }
+  .topRail { padding: 5px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landmark[data-beacon="true"] .landmarkOrb,
+  .guideAvatar,
+  .secret,
+  .structure,
+  .sheet,
+  .toast {
+    animation: none;
+  }
+  .landmark:hover .landmarkOrb,
+  .landmark:focus-visible .landmarkOrb { transform: none; }
+  .landmarkOrb { transition: none; }
+}
+
+/* The same suppression, driven by the in-app setting rather than the OS. */
+.stage[data-reduced-motion="true"] .landmark[data-beacon="true"] .landmarkOrb,
+.stage[data-reduced-motion="true"] .guideAvatar,
+.stage[data-reduced-motion="true"] .secret,
+.stage[data-reduced-motion="true"] .structure {
+  animation: none;
+}

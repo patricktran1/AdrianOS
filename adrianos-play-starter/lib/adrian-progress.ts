@@ -252,6 +252,27 @@ export function useAdrianProgress() {
     return next;
   }, []);
 
+  /**
+   * Credits coins for something that is not a game clear, such as a secret
+   * found on the world map. Kept separate from award() so shell rewards never
+   * write phantom entries into the per-game play record.
+   */
+  const addCoins = useCallback((amount: number, xp = 0) => {
+    const coins = Math.max(0, Math.floor(amount));
+    const earnedXp = Math.max(0, Math.floor(xp));
+    if (coins === 0 && earnedXp === 0) return;
+    const profileId = getActiveProfile().id;
+    const current = readProgressForProfile(profileId);
+    const nextXp = current.xp + earnedXp;
+    setProgress(writeProgressForProfile(profileId, {
+      ...current,
+      xp: nextXp,
+      coins: current.coins + coins,
+      level: Math.floor(nextXp / XP_PER_LEVEL) + 1,
+      activity: updateTodayActivity(current.activity, { coins, xp: earnedXp }),
+    }));
+  }, []);
+
   const spendCoins = useCallback((amount: number): boolean => {
     const cost = Math.max(0, Math.floor(amount));
     const profileId = getActiveProfile().id;
@@ -277,6 +298,7 @@ export function useAdrianProgress() {
     activeProfileId,
     recordPlay,
     award,
+    addCoins,
     spendCoins,
     xpIntoLevel: progress.xp % XP_PER_LEVEL,
     xpPerLevel: XP_PER_LEVEL,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { type ProgressReward, useAdrianProgress } from "@/lib/adrian-progress";
+import { markQuestionShown } from "@/lib/adrian-evidence";
 
 export type GameCompletionReward = Omit<ProgressReward, "completed">;
 
@@ -13,6 +14,7 @@ export type GameCompletionReward = Omit<ProgressReward, "completed">;
  * - Uses the existing progress event so School Mode, cloud sync, reports,
  *   portfolios, and dashboards update through the current snapshot system.
  * - restartGame() resets duplicate protection and records a new play.
+ * - Arms the response-time clock so the learner model sees real latency.
  */
 export function useGameSession(gameSlug: string) {
   const { recordPlay, award } = useAdrianProgress();
@@ -23,6 +25,8 @@ export function useGameSession(gameSlug: string) {
     if (startedRef.current) return;
     startedRef.current = true;
     recordPlay(gameSlug);
+    // Start the response clock so the first answer of the session is timed.
+    markQuestionShown(gameSlug);
   }, [gameSlug, recordPlay]);
 
   const completeGame = useCallback((reward: GameCompletionReward = {}) => {
@@ -35,6 +39,7 @@ export function useGameSession(gameSlug: string) {
   const restartGame = useCallback(() => {
     completedRef.current = false;
     recordPlay(gameSlug);
+    markQuestionShown(gameSlug);
   }, [gameSlug, recordPlay]);
 
   return { completeGame, restartGame };
