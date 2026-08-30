@@ -42,6 +42,9 @@ export default function BetaFeedbackLauncher() {
   );
 
   if (pathname === "/join" || pathname === "/family/setup") return null;
+  // Feedback is an adult tool. It must never float over a child's game or the
+  // world map, where it overlaps answer buttons and invites stray taps.
+  if (pathname === "/" || pathname.startsWith("/games/")) return null;
 
   async function submit() {
     setBusy(true);

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dragOnto } from "./helpers/drag";
 import { seedQaFamily } from "./helpers/seed-family";
 
 const PROGRESS_KEY = "adrianos-progress-v2:qa-learner";
@@ -68,7 +69,7 @@ test.describe("Treasure Island Expedition", () => {
 
     const cargo = page.getByRole("button", { name: "6", exact: true });
     await expect(cargo).toHaveAttribute("draggable", "true");
-    await cargo.dragTo(page.getByLabel("Ship cargo drop"));
+    await dragOnto(page, cargo, page.getByLabel("Ship cargo drop"));
     await expect(page.locator('[data-treasure-expedition="active"]')).toHaveAttribute("data-round", "4", { timeout: 5_000 });
 
     await chooseAndWait(page, "10", 5);
@@ -93,7 +94,7 @@ test.describe("Treasure Island Expedition", () => {
 
     await expect(page.locator('[data-treasure-expedition="active"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "The safe route is 0.72 of a mile. Which marker matches?" })).toBeVisible();
-    await expect(page.getByText("5.NBT.A.3", { exact: true })).toBeVisible();
+    await expect(page.getByText("5.NBT.A.3", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "0.72", exact: true })).toHaveAttribute("data-correct", "true");
     await expect(page.getByRole("button", { name: /start/i })).toHaveCount(0);
   });

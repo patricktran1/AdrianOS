@@ -56,7 +56,7 @@ test.describe("Word Forge Studio", () => {
     await page.goto("/games/word-forge-studio", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "Cyber Lexicon Core" })).toBeVisible();
     await page.getByRole("button", { name: "Start forging →" }).click();
-    await expect(page.getByText("L.5.4", { exact: true })).toBeVisible();
+    await expect(page.getByText("L.5.4", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "To state the opposite of a claim." })).toBeVisible();
   });
 });

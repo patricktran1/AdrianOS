@@ -129,6 +129,7 @@ export default function PatternMasterPage() {
       correctAnswer: current.answer,
       correct,
       review: reviewMode,
+      givenAnswer: value,
       data: { patternId: current.id, level: current.level },
     }, profileId);
   }

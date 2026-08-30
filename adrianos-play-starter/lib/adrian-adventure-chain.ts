@@ -4,6 +4,8 @@ import { getSubjectMastery, readLearningForProfile } from "@/lib/adrian-learning
 import type { AdrianProgress } from "@/lib/adrian-progress";
 import type { ChildProfile } from "@/lib/adrian-profiles";
 import type { Game } from "@/lib/games";
+import type { LearnerModel } from "@/lib/adrian-learner-model";
+import { recommendNextActivity } from "@/lib/adrian-learner-model";
 
 export type AdventureChainKind = "stretch" | "rescue" | "explore";
 
@@ -23,6 +25,15 @@ type BuildAdventureChainInput = {
   games: Game[];
   progress: AdrianProgress;
   profile: ChildProfile;
+  /**
+   * The same learner model the world map uses.
+   *
+   * Without it this screen reasons from subject averages and play counts,
+   * which can contradict what the world just told the child. When the model
+   * has enough evidence to lead, it decides here too, so the guidance a child
+   * gets after a win matches the guidance waiting for them on the map.
+   */
+  learner?: LearnerModel;
 };
 
 function minimumAge(ageLabel: string): number {
@@ -74,12 +85,10 @@ function stretchReason(subject: Game["subject"], mastery: number): string {
   return `Practice ${subject} again while the idea is still warm.`;
 }
 
-export function buildAdventureChain({
-  currentGame,
-  games,
-  progress,
-  profile,
-}: BuildAdventureChainInput): AdventureChainChoice[] {
+export function buildAdventureChain(
+  input: BuildAdventureChainInput
+): AdventureChainChoice[] {
+  const { currentGame, games, progress, profile } = input;
   const allPlayable = games.filter((game) => game.status === "playable");
   const ageMatched = allPlayable.filter((game) => ageAppropriate(game, profile.age));
   const pool = ageMatched.length >= 3 ? ageMatched : allPlayable;
@@ -91,6 +100,21 @@ export function buildAdventureChain({
     .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
   const selected = new Set<string>([currentGame.slug]);
   const choices: AdventureChainChoice[] = [];
+
+  const modelled = input.learner?.confident ? input.learner : null;
+  const nextActivity = modelled ? recommendNextActivity(modelled) : null;
+
+  /** A game where the child has actually met the skill the model named. */
+  const gameForSkill = (slugs: string[], subject: Game["subject"] | null) => {
+    const bySlug = pool.find((game) => slugs.includes(game.slug) && !selected.has(game.slug));
+    if (bySlug) return bySlug;
+    if (!subject) return undefined;
+    return leastPlayed(
+      pool.filter((game) => game.subject === subject && !selected.has(game.slug)),
+      progress,
+      subjectMastery
+    );
+  };
 
   const add = (
     game: Game | undefined,
@@ -118,14 +142,30 @@ export function buildAdventureChain({
     && !selected.has(game.slug)
   );
   const currentMastery = subjectMastery.get(currentGame.subject) ?? 0;
+  const modelStretch = nextActivity?.intent === "stretch"
+    ? gameForSkill(nextActivity.preferredSlugs, nextActivity.subject)
+    : undefined;
   add(
-    leastPlayed(sameSubject, progress, subjectMastery),
+    modelStretch ?? leastPlayed(sameSubject, progress, subjectMastery),
     "stretch",
     "KEEP THE POWER",
-    stretchReason(currentGame.subject, currentMastery)
+    modelStretch && nextActivity
+      ? nextActivity.childReason
+      : stretchReason(currentGame.subject, currentMastery)
   );
 
-  if (due.length > 0) {
+  const modelFocus = nextActivity && (nextActivity.intent === "reteach" || nextActivity.intent === "practice")
+    ? gameForSkill(nextActivity.preferredSlugs, nextActivity.subject)
+    : undefined;
+
+  if (modelFocus && nextActivity) {
+    add(
+      modelFocus,
+      "rescue",
+      nextActivity.intent === "reteach" ? "LET'S FIGURE IT OUT" : "ALMOST THERE",
+      nextActivity.childReason
+    );
+  } else if (due.length > 0) {
     const rescueLab = pool.find((game) => game.slug === "mastery-rescue-lab")
       ?? allPlayable.find((game) => game.slug === "mastery-rescue-lab");
     if (currentGame.slug !== "mastery-rescue-lab") {

@@ -17,41 +17,80 @@ if (testFiles.length === 0) {
   throw new Error("No unit test files were found.");
 }
 
-const child = spawn(
-  process.execPath,
-  [
-    "--experimental-test-coverage",
-    "--test-coverage-include=scripts/lib/game-catalog.mjs",
-    "--test-coverage-lines=100",
-    "--test-coverage-functions=100",
-    "--test-coverage-branches=95",
-    "--test",
-    ...testFiles,
-  ],
+/*
+ * Node applies coverage thresholds across every included file at once, so the
+ * catalog helpers and the adaptive learning core are measured in separate
+ * passes. Each gate reflects what that code can realistically hold: the
+ * catalog is fully covered, while the learner model keeps defensive branches
+ * for corrupt storage that tests should not have to enumerate exhaustively.
+ */
+const passes = [
   {
-    cwd: root,
-    env: process.env,
-    stdio: ["inherit", "pipe", "pipe"],
+    label: "Game catalog",
+    include: ["scripts/lib/game-catalog.mjs"],
+    lines: 100,
+    functions: 100,
+    branches: 95,
   },
-);
+  {
+    label: "Adaptive learning core",
+    include: ["lib/adrian-learner-model.ts", "lib/adrian-world-map.ts"],
+    lines: 97,
+    functions: 92,
+    branches: 86,
+  },
+];
 
-let output = "";
+async function runPass(pass) {
+  const child = spawn(
+    process.execPath,
+    [
+      "--experimental-strip-types",
+      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+      "--experimental-test-coverage",
+      ...pass.include.map((file) => `--test-coverage-include=${file}`),
+      `--test-coverage-lines=${pass.lines}`,
+      `--test-coverage-functions=${pass.functions}`,
+      `--test-coverage-branches=${pass.branches}`,
+      "--test",
+      ...testFiles,
+    ],
+    {
+      cwd: root,
+      env: process.env,
+      stdio: ["inherit", "pipe", "pipe"],
+    },
+  );
 
-child.stdout.on("data", (chunk) => {
-  output += chunk;
-  process.stdout.write(chunk);
-});
+  let output = `\n===== ${pass.label} =====\n`;
+  process.stdout.write(output);
 
-child.stderr.on("data", (chunk) => {
-  output += chunk;
-  process.stderr.write(chunk);
-});
+  child.stdout.on("data", (chunk) => {
+    output += chunk;
+    process.stdout.write(chunk);
+  });
 
-const exitCode = await new Promise((resolve, reject) => {
-  child.once("error", reject);
-  child.once("close", (code) => resolve(code ?? 1));
-});
+  child.stderr.on("data", (chunk) => {
+    output += chunk;
+    process.stderr.write(chunk);
+  });
 
-await fs.writeFile(coveragePath, output, "utf8");
+  const exitCode = await new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", (code) => resolve(code ?? 1));
+  });
+
+  return { output, exitCode };
+}
+
+let combined = "";
+let failed = 0;
+for (const pass of passes) {
+  const result = await runPass(pass);
+  combined += result.output;
+  if (result.exitCode !== 0) failed = result.exitCode;
+}
+
+await fs.writeFile(coveragePath, combined, "utf8");
 console.log(`Coverage summary saved to ${path.relative(root, coveragePath)}.`);
-process.exitCode = exitCode;
+process.exitCode = failed;

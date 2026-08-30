@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dragOnto } from "./helpers/drag";
 import { seedQaFamily } from "./helpers/seed-family";
 
 const PROGRESS_KEY = "adrianos-progress-v2:qa-learner";
@@ -84,7 +85,7 @@ test.describe("Question Quest Wonder Lab", () => {
 
     const oxygen = page.getByRole("button", { name: "Oxygen", exact: true });
     await expect(oxygen).toHaveAttribute("draggable", "true");
-    await oxygen.dragTo(page.getByLabel("Wonder machine installation bay"));
+    await dragOnto(page, oxygen, page.getByLabel("Wonder machine installation bay"));
     await expect(page.locator('[data-wonder-lab="active"]')).toHaveAttribute("data-round", "6", { timeout: 5_000 });
 
     await runGauge(page, "Energy use experiment level", 0, "complete");
@@ -107,7 +108,7 @@ test.describe("Question Quest Wonder Lab", () => {
 
     await expect(page.locator('[data-wonder-lab="active"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "Which process best explains why a complex program needs loading time?" })).toBeVisible();
-    await expect(page.getByText("5-ETS1-1", { exact: true })).toBeVisible();
+    await expect(page.getByText("5-ETS1-1", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "It fetches and arranges code, images, and data", exact: true })).toHaveAttribute("data-correct", "true");
     await expect(page.getByRole("button", { name: /start/i })).toHaveCount(0);
   });

@@ -22,7 +22,8 @@ test.describe("family beta feedback", () => {
 
   test("opens parent feedback with child and cohort context", async ({ page }) => {
     await seedFamily(page);
-    await page.goto("/", { waitUntil: "domcontentloaded" });
+    // Feedback is an adult tool and lives on adult surfaces, never over play.
+    await page.goto("/parent", { waitUntil: "domcontentloaded" });
 
     await page.getByRole("button", { name: "Parent feedback" }).click();
     await expect(page.getByRole("dialog", { name: "Parent beta feedback" })).toBeVisible();

@@ -4,6 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Game } from "@/lib/games";
 import type { AdrianProgress } from "@/lib/adrian-progress";
 import { getActiveProfile, type ChildProfile } from "@/lib/adrian-profiles";
+import {
+  appendEvidence,
+  markQuestionShown,
+  takeResponseMs,
+} from "@/lib/adrian-evidence";
 
 export type LearningStage = "Learning" | "Practicing" | "Mastered";
 
@@ -66,6 +71,15 @@ export type LearningAttempt = {
   correct: boolean;
   review?: boolean;
   data?: Record<string, string | number | boolean>;
+  /**
+   * Diagnostic evidence. All optional so existing games keep working; the
+   * learner model degrades to accuracy-only when a game cannot supply them.
+   */
+  givenAnswer?: string;
+  /** Explicit response time. Omit to use the centrally measured clock. */
+  responseMs?: number;
+  hintsUsed?: number;
+  wrongAttempts?: number;
 };
 
 export type SubjectMastery = {
@@ -212,6 +226,59 @@ function calculateMastery(attempts: number, correct: number, streak: number): nu
   return clamp(Math.round(accuracy * 62 + volume * 26 + momentum * 12), 0, 100);
 }
 
+/**
+ * Mirrors every attempt into the diagnostic evidence log.
+ *
+ * This runs centrally so all games contribute evidence without each one
+ * having to thread timers and answer capture through its own state. Games
+ * that supply richer fields override the derived values.
+ */
+function recordAttemptEvidence(
+  attempt: LearningAttempt,
+  profileId: string,
+  at: Date
+): void {
+  const data = attempt.data ?? {};
+  const usedSupport = data.adaptiveSupport === true || data.usedHint === true;
+  const responseMs =
+    typeof attempt.responseMs === "number"
+      ? attempt.responseMs
+      : takeResponseMs(attempt.gameSlug);
+  const standardCode =
+    typeof data.standardCode === "string" ? data.standardCode : null;
+
+  appendEvidence(profileId, {
+    at: at.toISOString(),
+    gameSlug: attempt.gameSlug,
+    subject: attempt.subject,
+    skillId: attempt.skillId,
+    skillLabel: attempt.skillLabel,
+    prompt: attempt.prompt,
+    correctAnswer: attempt.correctAnswer,
+    givenAnswer: attempt.givenAnswer ?? null,
+    correct: attempt.correct,
+    responseMs,
+    hintsUsed:
+      typeof attempt.hintsUsed === "number"
+        ? attempt.hintsUsed
+        : usedSupport
+          ? 1
+          : 0,
+    wrongAttempts:
+      typeof attempt.wrongAttempts === "number"
+        ? attempt.wrongAttempts
+        : usedSupport
+          ? 1
+          : 0,
+    standardCode,
+  });
+
+  // Arm the clock for the next question in this game. These games advance
+  // automatically, so the answer that just landed is the best available
+  // marker for when the next one becomes answerable.
+  markQuestionShown(attempt.gameSlug);
+}
+
 export function recordLearningAttempt(
   attempt: LearningAttempt,
   profileId = getActiveProfile().id
@@ -265,6 +332,8 @@ export function recordLearningAttempt(
       updatedAt: now.toISOString(),
     };
   }
+
+  recordAttemptEvidence(attempt, profileId, now);
 
   return writeLearningForProfile(profileId, {
     ...current,

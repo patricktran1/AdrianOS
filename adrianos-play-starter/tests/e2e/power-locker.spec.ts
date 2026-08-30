@@ -24,24 +24,33 @@ async function seedFourClears(page: Page) {
   }, PROGRESS_KEY);
 }
 
+/** The collection now lives in a sheet over the world rather than on a shelf. */
+async function openCollection(page: Page) {
+  const celebration = page.locator('[data-world-celebration="true"]');
+  if (await celebration.isVisible().catch(() => false)) await celebration.click();
+  await page.getByRole("button", { name: /Collection/ }).click();
+  return page.locator('[data-power-locker="active"]');
+}
+
 test.describe("Prize Vault Power Locker", () => {
   test("equips an unlocked prize and brings it into every game", async ({ page, context }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await seedFourClears(page);
 
-    const vault = page.getByRole("region", { name: "Prize Vault" });
-    await expect(vault).toHaveAttribute("data-power-locker", "active");
-    await expect(vault.locator('[data-power-locker-active="Blue Gem"]')).toBeVisible();
+    const vault = await openCollection(page);
+    await expect(vault).toBeVisible();
+    await expect(page.locator('[data-power-locker-active="Blue Gem"]')).toBeVisible();
     await expect(vault.locator('[data-power-locker-prize="2:0"]')).toBeVisible();
     await expect(vault.locator('[data-power-locker-prize="2:1"]')).toBeVisible();
     await expect(vault.locator('[data-power-locker-prize="2:2"]')).toBeVisible();
     await expect(vault.locator('[data-power-locker-prize="2:3"][data-power-locker-selected="true"]')).toBeVisible();
-    await expect(vault.getByRole("button", { name: /Tiny Crown/ })).toHaveCount(0);
+    // Prize five is still locked, so it cannot be equipped.
+    await expect(vault.locator('[data-power-locker-prize="2:4"][data-locked="true"]')).toBeDisabled();
 
     const before = await page.evaluate((progressKey) => window.localStorage.getItem(progressKey), PROGRESS_KEY);
     await vault.locator('[data-power-locker-prize="2:0"]').click();
-    await expect(vault.locator('[data-power-locker-active="Dragon Egg"]')).toBeVisible();
+    await expect(page.locator('[data-power-locker-active="Dragon Egg"]')).toBeVisible();
 
     await expect.poll(async () => page.evaluate((learningKey) => {
       const learning = JSON.parse(window.localStorage.getItem(learningKey) ?? "{}");
@@ -76,8 +85,8 @@ test.describe("Prize Vault Power Locker", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await seedFourClears(page);
 
-    const vault = page.getByRole("region", { name: "Prize Vault" });
-    await expect(vault.locator('[data-power-locker-active="Blue Gem"]')).toBeVisible();
+    await expect(page.locator('[data-power-locker-active="Blue Gem"]')).toBeVisible();
+    await openCollection(page);
     await expect.poll(async () => page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       scroll: document.documentElement.scrollWidth,

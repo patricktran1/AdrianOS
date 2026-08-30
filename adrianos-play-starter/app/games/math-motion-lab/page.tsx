@@ -154,12 +154,44 @@ function strategyGate(mission: Mission) {
   return candidate === mission.target ? mission.start : candidate;
 }
 
+/**
+ * Builds the labelled marks on the track.
+ *
+ * Two rules matter more than tidiness here:
+ *
+ * 1. The target is never labelled. A number line with the answer printed on
+ *    it turns "work out 27 + 18" into "find the odd tick", which is a
+ *    different and much easier task.
+ * 2. Marks that would sit on top of each other are dropped, because two
+ *    overlapping labels read as one nonsense number ("4445") to a child.
+ */
 function trackTicks(mission: Mission) {
-  const values = new Set<number>([mission.min, mission.max, mission.start, mission.target]);
+  const span = mission.max - mission.min;
+  if (span <= 0) return [mission.min];
+
+  const candidates = new Set<number>([mission.min, mission.max, mission.start]);
   for (let index = 1; index < 5; index += 1) {
-    values.add(snapToMission(mission.min + ((mission.max - mission.min) * index) / 5, mission));
+    candidates.add(snapToMission(mission.min + (span * index) / 5, mission));
   }
-  return [...values].sort((a, b) => a - b);
+
+  // Anchors keep their place; evenly spaced marks yield to them when close.
+  const anchors = [mission.min, mission.max, mission.start];
+  const minGap = span * 0.07;
+  const ordered = [...candidates].sort((a, b) => a - b);
+  const kept: number[] = [];
+  for (const value of ordered) {
+    if (Math.abs(value - mission.target) < 0.001) continue;
+    const clash = kept.find((existing) => Math.abs(existing - value) < minGap);
+    if (clash === undefined) {
+      kept.push(value);
+      continue;
+    }
+    // Replace a spacing mark with an anchor, but never drop an anchor.
+    if (anchors.includes(value) && !anchors.includes(clash)) {
+      kept[kept.indexOf(clash)] = value;
+    }
+  }
+  return kept.sort((a, b) => a - b);
 }
 
 export default function MathMotionLab() {
@@ -285,6 +317,8 @@ export default function MathMotionLab() {
       prompt: mission.prompt,
       correctAnswer: label(mission.target, grade),
       correct,
+      givenAnswer: label(position, grade),
+      wrongAttempts: misses,
       data: { grade, standardCode: mission.standard, supportUsed: misses > 0, routeMode, strategyGateCleared: gateCleared },
     }, activeProfile.id);
     ping(correct);
@@ -336,7 +370,7 @@ export default function MathMotionLab() {
       <section style={card} data-route-mode={routeMode} data-gate-cleared={gateCleared ? "true" : "false"}>
         <div className="motion-mode-row">
           <span className="motion-mode" style={{ borderColor: `${world.accent}88`, color: world.accent }}>{mode.icon} {mode.label}</span>
-          <span style={{ ...eyebrow, color: world.accent }}>{mission.standard}</span>
+          
         </div>
         <h1 style={question}>{mission.prompt}</h1>
         <p className="motion-instruction">{mode.instruction}</p>

@@ -72,7 +72,7 @@ export default function SchoolArcadeBreak({ games }: { games: Game[] }) {
           <h2>Take a fun route.</h2>
           <p>School is one way to play AdrianOS. Jump into any game without finishing a checklist first.</p>
         </div>
-        <Link href="/?from=school#quick-play" className={styles.fullArcade}>Open the full arcade →</Link>
+        <Link href="/?from=school" className={styles.fullArcade}>Open the full arcade →</Link>
       </div>
 
       <div className={styles.grid}>

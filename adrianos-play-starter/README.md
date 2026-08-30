@@ -1,6 +1,58 @@
 # AdrianOS Learning
 
-A parent-managed learning playground built with Next.js. It includes educational games, School Mode, multiple child profiles, parent reporting, optional Supabase cloud sync, structured family-beta feedback, and an installable family-device experience.
+A parent-managed learning playground built with Next.js. It includes educational
+games, School Mode, multiple child profiles, parent reporting, optional Supabase
+cloud sync, structured family-beta feedback, and an installable family-device
+experience.
+
+## The world screen
+
+The child's home is a single viewport that behaves like a place rather than a
+menu. `components/WorldStage.tsx` renders it, and `lib/adrian-world-map.ts`
+builds the model behind it:
+
+- **Landmarks hold fixed positions** per portal id, so the geography can be
+  learned. They are named after the place (Maker Bay, Power Peak) with the
+  activity currently waiting there as a subtitle; a place is stable even though
+  the game behind it rotates.
+- **Exactly one landmark is the beacon** — larger, glowing, with the guide
+  standing beside it. A child who cannot read fluently can still find the next
+  thing to do.
+- **A dashed trail** connects the landmarks so five buttons read as one map.
+- **Sky and sun follow the child's real clock**; terrain and earned structures
+  accumulate from verified clears, never from play counts.
+- **Nothing scrolls.** Secondary surfaces (all places, the collection, the
+  avatar) open as sheets over the world.
+
+Adult surfaces live at `/parent`. The mobile dock, feedback launcher, and
+install prompt never float over the world or over gameplay.
+
+## The learner model
+
+`lib/adrian-learner-model.ts` turns recorded gameplay into inferences the
+product acts on. It is pure and synchronous, so it is unit tested without a
+browser.
+
+- **Evidence capture is central.** `recordLearningAttempt` mirrors every attempt
+  into an evidence log and times it from a clock the game shell arms, so every
+  game contributes response latency without threading timers through each one.
+  Games that can report richer fields (the child's own answer, hint use,
+  retries) pass them explicitly.
+- **Derived signals**: fluency, support reliance, hesitation measured against
+  the child's own baseline (so a deliberate thinker is not scored as
+  struggling), confidence, trend, and misconception clusters.
+- **It says `unknown` rather than guessing.** Below explicit evidence
+  thresholds the product leads with interest and novelty instead.
+- **A repeating wrong answer outranks a low score**, because practising a
+  misunderstood method makes it more durable.
+
+The same model decides which landmark glows, what the post-win screen offers,
+and what `/parent` reports — so the child never gets contradictory guidance.
+
+Standards codes stay in the evidence record and on adult surfaces. They are
+never rendered to a child; `scripts/check-learning-evidence.mjs` enforces both
+that rule and the requirement that evidence-critical games report the child's
+answer.
 
 ## Run locally
 

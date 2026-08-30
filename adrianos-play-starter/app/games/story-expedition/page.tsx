@@ -333,7 +333,7 @@ export default function StoryExpeditionPage() {
         <div style={chapterHeader}>
           <div style={{ fontSize: 60 }}>{chapter.emoji}</div>
           <div>
-            <span style={{ ...eyebrow, color: pack.accent }}>{chapter.standardCode} · {chapter.standardGoal}</span>
+            <span style={{ ...eyebrow, color: pack.accent }}>{chapter.standardGoal}</span>
             <h1 style={chapterTitle}>{chapter.title}</h1>
           </div>
         </div>

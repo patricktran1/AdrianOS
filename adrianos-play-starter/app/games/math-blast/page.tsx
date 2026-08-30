@@ -359,7 +359,7 @@ export default function MathBlastPage() {
     setScreen("results");
   }
 
-  function saveAttempt(isCorrect: boolean) {
+  function saveAttempt(isCorrect: boolean, chosen?: number) {
     const skill = skillForProblem(problem);
     recordLearningAttempt({
       gameSlug: GAME_SLUG,
@@ -370,6 +370,11 @@ export default function MathBlastPage() {
       correctAnswer: formatValue(problem.answer, problem.money),
       correct: isCorrect,
       review: mode === "review",
+      // The chosen value is what turns a repeated slip into a diagnosable
+      // misconception on the parent surface.
+      givenAnswer: chosen === undefined ? undefined : formatValue(chosen, problem.money),
+      hintsUsed: usedHint ? 1 : 0,
+      wrongAttempts,
       data: {
         left: problem.left,
         right: problem.right,
@@ -398,7 +403,7 @@ export default function MathBlastPage() {
     const isCorrect = value === problem.answer;
 
     if (!isCorrect && wrongAttempts === 0) {
-      saveAttempt(false);
+      saveAttempt(false, value);
       setWrong((current) => current + 1);
       setWrongAttempts(1);
       setUsedHint(true);
@@ -419,7 +424,7 @@ export default function MathBlastPage() {
       return;
     }
 
-    saveAttempt(true);
+    saveAttempt(true, value);
     const quality = classifyResponse({ correct: true, wrongAttempts, usedHint });
     const nextIndependentStreak = quality === "first-try" ? independentStreak + 1 : 0;
     const formatBonus = problem.kind === "story" ? 8 : problem.kind === "missing" ? 5 : 0;
@@ -524,7 +529,7 @@ export default function MathBlastPage() {
         <section style={playCard}>
           <div style={skillRow}>
             <span style={eyebrow}>{mode === "daily" ? "DAILY CHALLENGE" : mode === "review" ? "SPACED REVIEW" : formatLabel}</span>
-            <span style={standardChip}>{teaching.standardCode}</span>
+            
           </div>
           <p style={goalText}>{teaching.learningGoal}</p>
           <h1 style={{ ...problemText, fontSize: problem.kind === "story" ? "clamp(2rem,6vw,3.8rem)" : problemText.fontSize, lineHeight: problem.kind === "story" ? 1.05 : .9 }}>
@@ -585,7 +590,6 @@ const topicButton: React.CSSProperties = { padding: "11px 15px", borderRadius: 9
 const statsGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 9, marginBottom: 15 };
 const playCard: React.CSSProperties = { padding: "clamp(25px,6vw,58px)", border: "1px solid rgba(255,255,255,.11)", borderRadius: 30, background: "#181d28", textAlign: "center" };
 const skillRow: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" };
-const standardChip: React.CSSProperties = { padding: "7px 10px", borderRadius: 999, background: "#7fdcff", color: "#10131b", fontSize: 12, fontWeight: 950 };
 const goalText: React.CSSProperties = { margin: "12px auto 0", maxWidth: 620, color: "#aab1bf", lineHeight: 1.5, fontWeight: 750 };
 const problemText: React.CSSProperties = { fontSize: "clamp(3.4rem,12vw,7rem)", margin: "22px 0 32px", lineHeight: .9, letterSpacing: "-.07em" };
 const listenButton: React.CSSProperties = { margin: "-16px auto 20px", padding: "10px 14px", borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", background: "transparent", color: "#c6b8ff", fontWeight: 900, cursor: "pointer" };

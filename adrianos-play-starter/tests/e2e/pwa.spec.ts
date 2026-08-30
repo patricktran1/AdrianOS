@@ -71,7 +71,8 @@ test.describe("installable AdrianOS app", () => {
     const manifest = await (await request.get("/manifest.webmanifest")).json();
     await page.goto(manifest.start_url, { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/?source=installed-app$/);
-    await expect(page.getByRole("region", { name: "Quick play launchpad" })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Choose child mode" }).getByRole("link", { name: /Arcade/ })).toHaveAttribute("aria-current", "page");
+    await expect(page.locator('[data-world-stage="active"]')).toBeVisible();
+    await expect(page.locator('[data-world-landmark][data-beacon="true"]')).toBeVisible();
+    await expect(page.locator('[data-world-stage="active"]')).toHaveAttribute("data-world-theme", /.+/);
   });
 });

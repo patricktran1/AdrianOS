@@ -183,7 +183,7 @@ export default function ReadingLabPage() {
     setMessage("Use the passage as evidence. It is okay to look back.");
   }
 
-  function saveAttempt(correct: boolean) {
+  function saveAttempt(correct: boolean, chosen?: string) {
     if (!currentStory || !currentQuestion) return;
     const skill = READING_SKILLS[currentQuestion.skill];
     recordLearningAttempt({
@@ -195,6 +195,8 @@ export default function ReadingLabPage() {
       correctAnswer: currentQuestion.answer,
       correct,
       review: reviewMode,
+      givenAnswer: chosen,
+      wrongAttempts: recordedMiss ? 1 : 0,
       data: {
         storyId: currentStory.id,
         questionId: currentQuestion.id,
@@ -209,7 +211,7 @@ export default function ReadingLabPage() {
     if (!currentQuestion || !selected || locked) return;
     if (selected !== currentQuestion.answer) {
       if (!recordedMiss) {
-        saveAttempt(false);
+        saveAttempt(false, selected);
         setRecordedMiss(true);
       }
       setSelected("");
@@ -217,7 +219,7 @@ export default function ReadingLabPage() {
       return;
     }
 
-    saveAttempt(true);
+    saveAttempt(true, selected);
     setLocked(true);
     const points = Math.max(5, 12 - (recordedMiss ? 4 : 0));
     setScore((value) => value + points);

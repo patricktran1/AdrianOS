@@ -18,11 +18,14 @@ AdrianOS explores a different learning loop from passive lessons or worksheet co
 
 Recent development includes:
 
+- a **single world screen** as the child's entire home: one viewport, no
+  scrolling, and one tap from arriving to playing
+- a **learner model** built from recorded answers — response times, hint use,
+  retries, and the specific wrong answers a child repeats
 - **Adrian's Wonder Lab** for assembly, process routing, and experiment calibration
 - **Human Body Explorer** as an interactive rescue laboratory
 - **Treasure Map Math** as an island expedition
 - **Math Motion Lab** for movement-based mathematical reasoning
-- an evolving **Adventure World** home and arcade
 - adaptive child-mode navigation and surprise-event systems
 
 The active Next.js application lives in [`adrianos-play-starter`](adrianos-play-starter).
@@ -34,6 +37,10 @@ The active Next.js application lives in [`adrianos-play-starter`](adrianos-play-
 - **Replay should deepen understanding.** New conditions should require transfer, not memorized clicking.
 - **Difficulty should adapt.** Challenges should remain reachable without becoming trivial.
 - **Children need agency.** The learner should make meaningful choices rather than follow a disguised worksheet.
+- **The interface should not read as coursework.** Standards codes, scores, and
+  assessment language belong on adult surfaces, not beside a child's question.
+- **Inference needs evidence.** Where there is not enough recorded gameplay to
+  support a conclusion, the product says so instead of estimating.
 
 ## Quality gates
 
@@ -41,8 +48,8 @@ Every pull request that changes the application runs visible, independent checks
 
 | Gate | What it verifies |
 | --- | --- |
-| Unit tests and coverage | Catalog normalization, metadata validation, deterministic ordering, duplicate detection, and generated-source contracts |
-| Static product contracts | School controls, session SDK, curriculum mapping, teaching loops, personalization, mastery loops, and elementary scope |
+| Unit tests and coverage | Catalog normalization, metadata validation, deterministic ordering, duplicate detection, generated-source contracts, and the adaptive learning core (learner model and world map) |
+| Static product contracts | School controls, session SDK, curriculum mapping, teaching loops, personalization, mastery loops, elementary scope, and learning evidence (every evidence-critical game reports the child's answer; no game shows a child a standards code) |
 | Production build | A clean Next.js production compilation after generated assets and static contracts pass |
 | Playwright matrix | Full browser regression coverage with traces, screenshots, video, and HTML reports retained on failure |
 | CodeQL | JavaScript and TypeScript security analysis on pull requests, main, and a weekly schedule |

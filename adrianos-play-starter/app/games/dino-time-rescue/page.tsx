@@ -500,7 +500,7 @@ export default function DinoTimeRescuePage() {
           <div style={missionTop}>
             <div>
               <span style={{ ...subjectChip, background: subjectColor(mission.subject) }}>{mission.subject}</span>
-              <span style={standardChip}>{mission.standard}</span>
+              
             </div>
             {mission.boss && <span style={bossBadge}>BOSS GATE</span>}
           </div>
@@ -591,7 +591,6 @@ const activeDot: React.CSSProperties = { color: "#7fdcff", transform: "scale(1.2
 const missionCard: React.CSSProperties = { padding: "clamp(22px,6vw,52px)", borderRadius: 32, background: "linear-gradient(155deg,#181d28,#10131b)", border: "1px solid rgba(255,255,255,.12)", textAlign: "center" };
 const missionTop: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" };
 const subjectChip: React.CSSProperties = { display: "inline-block", padding: "7px 10px", borderRadius: 999, color: "#10131b", fontWeight: 950, fontSize: 11 };
-const standardChip: React.CSSProperties = { display: "inline-block", marginLeft: 7, padding: "7px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,.14)", color: "#fff", fontWeight: 900, fontSize: 11 };
 const bossBadge: React.CSSProperties = { padding: "8px 11px", borderRadius: 999, background: "#ffb5bf", color: "#10131b", fontWeight: 950, fontSize: 11, letterSpacing: ".1em" };
 const locationVisual: React.CSSProperties = { margin: "22px auto 4px", fontSize: "clamp(5rem,18vw,9rem)" };
 const locationLabel: React.CSSProperties = { color: "#7fdcff", fontSize: 12, fontWeight: 950, letterSpacing: ".14em" };

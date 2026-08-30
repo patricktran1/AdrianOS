@@ -89,7 +89,7 @@ export default function AdaptiveBossArenaPage() {
   function choose(choice: string) {
     if (!mission || feedback === "result") return;
     const correct = choice === mission.answer;
-    recordLearningAttempt({ gameSlug: GAME_SLUG, subject: mission.skillId.startsWith("math") ? "Math" : mission.skillId.startsWith("reading") ? "Reading" : "Science", skillId: mission.skillId, skillLabel: mission.skillLabel, prompt: mission.prompt, correctAnswer: mission.answer, correct, data: { standardCode: mission.standard, adaptiveLevel: level, bossRound: round + 1 } }, activeProfile.id);
+    recordLearningAttempt({ gameSlug: GAME_SLUG, subject: mission.skillId.startsWith("math") ? "Math" : mission.skillId.startsWith("reading") ? "Reading" : "Science", skillId: mission.skillId, skillLabel: mission.skillLabel, prompt: mission.prompt, correctAnswer: mission.answer, correct, givenAnswer: choice, wrongAttempts: misses, data: { standardCode: mission.standard, adaptiveLevel: level, bossRound: round + 1 } }, activeProfile.id);
     sound(soundOn && correct);
     if (!correct) { setMisses((v) => v + 1); setHearts((v) => Math.max(0, v - 1)); setCombo(0); setFeedback("hint"); return; }
     const nextCombo = misses === 0 ? combo + 1 : 0;
@@ -126,7 +126,7 @@ const eyebrow = { letterSpacing: 2, fontSize: 13, fontWeight: 900 };
 const visual = { fontSize: 32, padding: 18, margin: "16px 0", borderRadius: 18, background: "#ffffff12" };
 const hud = { display: "flex", gap: 14, flexWrap: "wrap" as const, justifyContent: "center", alignItems: "center", fontWeight: 800 };
 const choices = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, marginTop: 18 };
-const choiceButton = { minHeight: 76, borderRadius: 18, border: "1px solid #ffffff30", background: "#ffffff14", color: "white", fontSize: 20, fontWeight: 850, padding: 14, cursor: "pointer" };
+const choiceButton = { minHeight: 80, borderRadius: 18, border: "1px solid #ffffff30", background: "#ffffff14", color: "white", fontSize: 20, fontWeight: 850, padding: 14, cursor: "pointer" };
 const primary = { marginTop: 18, minHeight: 58, border: 0, borderRadius: 18, padding: "14px 22px", fontSize: 18, fontWeight: 900, cursor: "pointer", color: "#10131b" };
 const hint = { marginTop: 16, padding: 16, borderRadius: 16, background: "#fbbf2430", border: "1px solid #fbbf2466" };
 const result = { marginTop: 18, padding: 18, borderRadius: 18, background: "#22c55e22", border: "1px solid #22c55e66" };

@@ -465,7 +465,7 @@ export default function DinoDashVolcanoEscapePage() {
 
           <div className={styles.questionCard}>
             <div className={styles.questionMeta}>
-              <span className={styles.eyebrow}>{gradeLabel(grade)} · {current.standard}</span>
+              <span className={styles.eyebrow}>{gradeLabel(grade)}</span>
               <span>{current.skillLabel}</span>
             </div>
             <h1>{current.prompt}</h1>

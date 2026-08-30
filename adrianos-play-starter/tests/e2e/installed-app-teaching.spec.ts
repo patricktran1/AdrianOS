@@ -2,19 +2,32 @@ import { expect, test } from "@playwright/test";
 import { seedQaFamily } from "./helpers/seed-family";
 
 test.describe("installed app reachability", () => {
-  test("keeps Arcade and feedback actions reachable on an iPhone viewport", async ({ page }) => {
+  test("gets a child home from a game in one tap on an iPhone viewport", async ({ page }) => {
     await seedQaFamily(page, { clear: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/games/math-blast", { waitUntil: "domcontentloaded" });
 
-    const dock = page.getByRole("navigation", { name: "AdrianOS navigation" });
-    await expect(dock).toBeVisible();
-    const arcade = dock.getByRole("link", { name: "Arcade" });
-    await expect(arcade).toBeVisible();
+    // Gameplay owns the screen: no dock, no feedback launcher floating over it.
+    await expect(page.getByRole("navigation", { name: "AdrianOS navigation" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Parent feedback" })).toHaveCount(0);
 
-    const arcadeBox = await arcade.boundingBox();
-    expect(arcadeBox).not.toBeNull();
-    expect((arcadeBox?.y ?? 0) + (arcadeBox?.height ?? 0)).toBeLessThanOrEqual(844);
+    const home = page.getByRole("link", { name: "Back to game library" });
+    await expect(home).toBeVisible();
+    const homeBox = await home.boundingBox();
+    expect(homeBox).not.toBeNull();
+    expect((homeBox?.y ?? 0) + (homeBox?.height ?? 0)).toBeLessThanOrEqual(844);
+    expect(Math.min(homeBox?.width ?? 0, homeBox?.height ?? 0)).toBeGreaterThanOrEqual(36);
+
+    await home.click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator('[data-world-stage="active"]')).toBeVisible();
+    await expect(page.locator('[data-world-landmark][data-beacon="true"]')).toBeVisible();
+  });
+
+  test("keeps parent feedback reachable on an adult surface", async ({ page }) => {
+    await seedQaFamily(page, { clear: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/parent", { waitUntil: "domcontentloaded" });
 
     await page.getByRole("button", { name: "Parent feedback" }).click();
     const dialog = page.getByRole("dialog", { name: "Parent beta feedback" });
@@ -30,9 +43,7 @@ test.describe("installed app reachability", () => {
     expect((actionBox?.y ?? 0) + (actionBox?.height ?? 0)).toBeLessThanOrEqual(844);
 
     await page.getByRole("button", { name: "Close feedback" }).click();
-    await arcade.click();
-    await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("region", { name: "Quick play launchpad" })).toBeVisible();
+    await expect(dialog).toHaveCount(0);
   });
 });
 

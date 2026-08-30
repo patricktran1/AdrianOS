@@ -11,12 +11,13 @@ test.describe("Weekly World Quest", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
-    const homeQuest = page.getByRole("region", { name: "Weekly world quest" });
-    await expect(homeQuest).toBeVisible();
-    await expect(homeQuest.getByRole("heading", { name: "Dino Isles Expedition" })).toBeVisible();
-    await expect(homeQuest.getByRole("link")).toHaveAttribute("href", "/world-quest");
-
-    await page.goto("/world-quest", { waitUntil: "domcontentloaded" });
+    // On the world map the quest is a pennant showing live progress, one tap
+    // from the full quest screen.
+    const questFlag = page.locator('[data-world-quest-flag="true"]');
+    await expect(questFlag).toBeVisible();
+    await expect(questFlag).toContainText("Dino Isles Expedition");
+    await questFlag.click();
+    await expect(page).toHaveURL(/\/world-quest/);
     const quest = page.locator('[data-world-quest="active"]');
     await expect(quest).toBeVisible();
     await expect(quest.getByRole("heading", { name: "Dino Isles Expedition" })).toBeVisible();

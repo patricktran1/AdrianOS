@@ -120,7 +120,7 @@ export default function ScienceQuestPage() {
     recordPlay("science-quest");
   }
 
-  function saveAttempt(question: ScienceQuestion, correct: boolean) {
+  function saveAttempt(question: ScienceQuestion, correct: boolean, chosen?: number) {
     recordLearningAttempt({
       gameSlug: "science-quest",
       subject: "Science",
@@ -130,6 +130,9 @@ export default function ScienceQuestPage() {
       correctAnswer: question.choices[question.answer],
       correct,
       review: reviewMode,
+      givenAnswer: chosen === undefined ? undefined : question.choices[chosen],
+      hintsUsed: usedHint ? 1 : 0,
+      wrongAttempts,
       data: {
         questionId: question.id,
         topic: question.topic,
@@ -158,7 +161,7 @@ export default function ScienceQuestPage() {
     const isCorrect = value === current.answer;
 
     if (!isCorrect && wrongAttempts === 0) {
-      saveAttempt(current, false);
+      saveAttempt(current, false, value);
       rememberMiss(current);
       setWrongAttempts(1);
       setUsedHint(true);
@@ -179,7 +182,7 @@ export default function ScienceQuestPage() {
       return;
     }
 
-    saveAttempt(current, true);
+    saveAttempt(current, true, value);
     const nextQuality = classifyResponse({ correct: true, wrongAttempts, usedHint });
     const nextStreak = nextQuality === "first-try" ? streak + 1 : 0;
     const points = responsePoints(8 + current.level * 3 + Math.min(10, nextStreak * 2), nextQuality);

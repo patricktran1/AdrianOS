@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import FamilyProfileBar from "@/components/FamilyProfileBar";
-import GameShelf from "@/components/GameShelf";
+import WorldStage from "@/components/WorldStage";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
 import type { Game } from "@/lib/games";
 
@@ -58,14 +57,9 @@ export default function HomeExperience({ games }: { games: Game[] }) {
     );
   }
 
-  return (
-    <>
-      <FamilyProfileBar />
-      <main className="shell">
-        <GameShelf games={games} />
-      </main>
-    </>
-  );
+  // The child's home is the world itself: one viewport, no scrolling, and a
+  // single tap from arriving to playing.
+  return <WorldStage games={games} />;
 }
 
 const loadingCard: React.CSSProperties = { minHeight: 420, display: "grid", alignContent: "center", padding: "clamp(30px,7vw,72px)", borderRadius: 34, border: "1px solid rgba(255,255,255,.11)", background: "#181d28" };

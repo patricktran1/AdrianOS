@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dragOnto } from "./helpers/drag";
 import { seedQaFamily } from "./helpers/seed-family";
 
 const PROGRESS_KEY = "adrianos-progress-v2:qa-learner";
@@ -27,7 +28,11 @@ test.describe("Dino Habitat Builder", () => {
 
     const correctPiece = page.locator('[data-piece-id="45"]');
     await expect(correctPiece).toHaveAttribute("draggable", "true");
-    await correctPiece.dragTo(page.getByRole("region", { name: "Dinosaur habitat construction zone" }));
+    await dragOnto(
+      page,
+      correctPiece,
+      page.getByRole("region", { name: "Dinosaur habitat construction zone" })
+    );
     await expect(page.getByRole("region", { name: "Dinosaur habitat construction zone" })).toHaveAttribute("data-habitat-parts", "1");
     await expect(page.getByRole("heading", { name: "Which plant belongs in a Triceratops feeding zone?" })).toBeVisible({ timeout: 5_000 });
 

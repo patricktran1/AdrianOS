@@ -293,6 +293,7 @@ export default function QuestionQuest() {
   const [lastWrong, setLastWrong] = useState<string | null>(null);
   const [gaugeValue, setGaugeValue] = useState(0);
   const timerRef = useRef<number | null>(null);
+  const advanceLockRef = useRef(false);
 
   const world = WORLDS[grade];
   const missions = useMemo(() => buildMissions(grade, runSeed), [grade, runSeed]);
@@ -343,7 +344,18 @@ export default function QuestionQuest() {
     }, activeProfile.id);
   }
 
+  /*
+   * Both the game's own timer and the shell's GameFlowDirector can call
+   * finishOrAdvance for the same solve: the director auto-clicks the manual
+   * advance button on its own delay, and under load React's batched commit
+   * leaves the stale button connected when that click fires. Without this
+   * lock the round advances twice and the child skips a question entirely.
+   * The lock opens when a solve schedules an advance and closes on the first
+   * advance that consumes it.
+   */
   function finishOrAdvance(finalIndependent: number) {
+    if (!advanceLockRef.current) return;
+    advanceLockRef.current = false;
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -379,6 +391,7 @@ export default function QuestionQuest() {
     setSolved(true);
     setLastWrong(null);
     setMessage(`${mission.pod.label} powered. ${mission.explanation}`);
+    advanceLockRef.current = true;
     schedule(() => finishOrAdvance(finalIndependent));
   }
 
@@ -400,6 +413,7 @@ export default function QuestionQuest() {
 
   function replay() {
     restartGame();
+    advanceLockRef.current = false;
     setRunSeed((value) => value + 1);
     setRoundIndex(0);
     setMisses(0);
@@ -484,7 +498,6 @@ export default function QuestionQuest() {
         <section className={styles.missionCard} data-solved={solved ? "true" : "false"} data-misses={misses}>
           <div className={styles.missionTop}>
             <span className={styles.mechanic}>{copy.eyebrow}</span>
-            <span className={styles.standard}>{mission.standard}</span>
           </div>
           <div className={styles.missionIcon} aria-hidden="true">{copy.icon}</div>
           <h1>{mission.prompt}</h1>

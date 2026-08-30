@@ -14,7 +14,9 @@ test.describe("TK-5 Story Expedition", () => {
     await page.getByRole("button", { name: /Story Dragon/ }).click();
     await page.getByRole("button", { name: /Enter with.*Story Dragon/ }).click();
 
-    await expect(page.getByText("RL.2.1", { exact: false })).toBeVisible();
+    // The child sees the learning goal in plain language, not its filing code.
+    await expect(page.getByText("Use exact story details to answer a question.")).toBeVisible();
+    await expect(page.getByText("RL.2.1", { exact: false })).toHaveCount(0);
     await page.getByRole("button", { name: "Start echo reading" }).click();
     for (let sentence = 0; sentence < 3; sentence += 1) {
       await page.getByRole("button", { name: "I read it too →" }).click();
@@ -75,7 +77,7 @@ test.describe("TK-5 Story Expedition", () => {
 
     await expect(page.getByRole("heading", { name: "Critter Story Trail" })).toBeVisible();
     await page.getByRole("button", { name: /Enter with.*Evidence Owl/ }).click();
-    await expect(page.getByText("TK.ELA.2", { exact: false })).toBeVisible();
+    await expect(page.getByText("TK.ELA.2", { exact: false })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "🔊 Listen to chapter" })).toBeVisible();
     await page.getByRole("button", { name: "Hunt for evidence →" }).click();
 
@@ -93,7 +95,7 @@ test.describe("TK-5 Story Expedition", () => {
     await page.goto("/games/story-expedition", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "Cipher Chronicle" })).toBeVisible();
     await page.getByRole("button", { name: /Enter with.*Evidence Owl/ }).click();
-    await expect(page.getByText("RI.5.8", { exact: false })).toBeVisible();
+    await expect(page.getByText("RI.5.8", { exact: false })).toHaveCount(0);
     await expect(page.getByText("The Viral Claim", { exact: true })).toBeVisible();
 
     await page.goto("/school", { waitUntil: "domcontentloaded" });
@@ -102,11 +104,15 @@ test.describe("TK-5 Story Expedition", () => {
     await expect(spotlight.getByRole("link", { name: "Enter the story portal →" })).toHaveAttribute("href", "/games/story-expedition");
   });
 
-  test("places Story Expedition inside the Story Worlds arcade portal", async ({ page }) => {
+  test("reaches Story Expedition from the world in two taps", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    const arcade = page.getByRole("region", { name: "Adventure Arcade" });
-    await arcade.getByRole("button", { name: "Story worlds" }).click();
-    await expect(arcade.getByRole("heading", { name: "Story Expedition" })).toBeVisible();
+
+    await page.getByRole("button", { name: /All places/ }).click();
+    const tile = page.locator('[data-world-sheet="places"] [data-game-slug="story-expedition"]');
+    await expect(tile).toBeVisible();
+    await expect(tile).toContainText("Story Expedition");
+    await tile.click();
+    await expect(page).toHaveURL(/\/games\/story-expedition/);
   });
 });

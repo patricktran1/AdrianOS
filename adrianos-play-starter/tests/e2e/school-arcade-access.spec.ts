@@ -33,8 +33,8 @@ test.describe("child Arcade access", () => {
 
     await modeSwitch.getByRole("link", { name: /Arcade/ }).click();
     await expect(page).toHaveURL(/\/?$/);
-    await expect(page.getByRole("region", { name: "Quick play launchpad" })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Choose child mode" }).getByRole("link", { name: /Arcade/ })).toHaveAttribute("aria-current", "page");
+    await expect(page.locator('[data-world-stage="active"]')).toBeVisible();
+    await expect(page.locator('[data-world-landmark][data-beacon="true"]')).toBeVisible();
     expect(await totalCompletions(page)).toBe(before);
   });
 
@@ -46,11 +46,12 @@ test.describe("child Arcade access", () => {
     const arcadeBreak = page.getByRole("region", { name: "Arcade break" });
     await arcadeBreak.scrollIntoViewIfNeeded();
     await arcadeBreak.getByRole("link", { name: "Open the full arcade →" }).click();
-    await expect(page).toHaveURL(/\/?from=school#quick-play$/);
-    await expect(page.locator("#quick-play")).toBeVisible();
+    await expect(page).toHaveURL(/\/?from=school/);
 
-    const dock = page.getByRole("navigation", { name: "AdrianOS navigation" });
-    await expect(dock.getByRole("link", { name: "Arcade" })).toBeVisible();
+    // The arcade is the world itself: every place is one sheet and one tap away.
+    await expect(page.locator('[data-world-stage="active"]')).toBeVisible();
+    await page.getByRole("button", { name: /All places/ }).click();
+    await expect(page.locator('[data-world-sheet="places"] [data-game-slug]').first()).toBeVisible();
     await expect.poll(async () => page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       scroll: document.documentElement.scrollWidth,
