@@ -117,7 +117,7 @@ export default function DailyAdventureRemixPage() {
   const powerInfo = POWERS.find((item) => item.id === power);
   const baseHearts = power === "shield" ? 4 : 3;
 
-  function saveAttempt(correct: boolean) {
+  function saveAttempt(correct: boolean, choice: string) {
     if (!mission) return;
     recordLearningAttempt({
       gameSlug: GAME_SLUG,
@@ -127,6 +127,9 @@ export default function DailyAdventureRemixPage() {
       prompt: mission.prompt,
       correctAnswer: mission.answer,
       correct,
+      givenAnswer: choice,
+      hintsUsed: usedHint ? 1 : 0,
+      wrongAttempts,
       data: {
         standardCode: mission.standard,
         dailyRemix: true,
@@ -143,7 +146,7 @@ export default function DailyAdventureRemixPage() {
     const correct = choice === mission.answer;
 
     if (!correct && wrongAttempts === 0) {
-      saveAttempt(false);
+      saveAttempt(false, choice);
       setWrongAttempts(1);
       setUsedHint(true);
       setFeedback("hint");
@@ -161,7 +164,7 @@ export default function DailyAdventureRemixPage() {
       return;
     }
 
-    saveAttempt(true);
+    saveAttempt(true, choice);
     const independent = wrongAttempts === 0 && !usedHint;
     const nextCombo = independent ? combo + 1 : 0;
     const baseTreasure = independent ? 2 : 1;

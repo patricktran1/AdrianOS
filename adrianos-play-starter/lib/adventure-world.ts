@@ -269,6 +269,7 @@ const PORTALS: PortalDefinition[] = [
     description: "Fast games with motion, timing, or a world in danger.",
     emoji: "⚡",
     slugs: [
+      "stepping-stones",
       "dino-dash-volcano-escape",
       "daily-adventure-remix",
       "rainbow-rocket-park",
@@ -284,6 +285,7 @@ const PORTALS: PortalDefinition[] = [
     description: "Create a habitat, word, rhythm, machine, or new design.",
     emoji: "🛠️",
     slugs: [
+      "maker-workshop",
       "dino-habitat-builder",
       "word-forge-studio",
       "music-maker",

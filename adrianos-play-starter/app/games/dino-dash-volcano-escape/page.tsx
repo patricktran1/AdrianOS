@@ -299,7 +299,7 @@ export default function DinoDashVolcanoEscapePage() {
     timerRef.current = window.setTimeout(callback, delay);
   }
 
-  function saveAttempt(correct: boolean) {
+  function saveAttempt(correct: boolean, choice: number) {
     recordLearningAttempt({
       gameSlug: GAME_SLUG,
       subject: "Math",
@@ -308,6 +308,8 @@ export default function DinoDashVolcanoEscapePage() {
       prompt: current.prompt,
       correctAnswer: String(current.answer),
       correct,
+      givenAnswer: String(choice),
+      wrongAttempts: wrongChoices.size,
       data: {
         answer: current.answer,
         grade,
@@ -335,7 +337,7 @@ export default function DinoDashVolcanoEscapePage() {
     setLane(choiceLane);
 
     if (choice !== current.answer) {
-      if (!wrongLogged) saveAttempt(false);
+      if (!wrongLogged) saveAttempt(false, choice);
       setWrongLogged(true);
       setWrongChoices((values) => new Set([...values, choice]));
       setCombo(0);
@@ -355,7 +357,7 @@ export default function DinoDashVolcanoEscapePage() {
       return;
     }
 
-    saveAttempt(true);
+    saveAttempt(true, choice);
     const nextCombo = wrongLogged ? 1 : combo + 1;
     const powerMove = nextCombo > 0 && nextCombo % 3 === 0;
     const gradePower = Math.max(0, grade) * 15;
