@@ -4,6 +4,7 @@ import {
   actionLabel,
   buildLearnerModel,
   confidenceLabel,
+  graspLabel,
   normalizeAnswer,
   normalizeEvidenceLog,
   recommendNextActivity,
@@ -361,4 +362,105 @@ test("a confident learner with only revisit-grade skills falls back to exploring
   ]);
   assert.equal(model.confident, true);
   assert.ok(model.focusSkill !== null);
+});
+
+/* ------------------------------------------------------------------ */
+/* Cross-mechanic evidence and transfer                                */
+/* ------------------------------------------------------------------ */
+
+test("reliable answers in a single mechanic never read as cross-context", () => {
+  // 30 perfect answers, every one of them chosen from options. However
+  // fluent this looks, it is evidence in exactly one interaction form.
+  const model = buildLearnerModel("kid", series(30, { correct: true, responseMs: 2500 }));
+  const skill = model.skills[0];
+  assert.deepEqual(skill.secureMechanics, ["choose"]);
+  assert.equal(skill.grasp, "single-context");
+  assert.equal(graspLabel(skill), "Reliable in one kind of activity so far");
+});
+
+test("secure evidence in a second mechanic flips grasp and retires the transfer offer", () => {
+  const model = buildLearnerModel("kid", [
+    ...series(12, { correct: true, responseMs: 2500 }),
+    ...series(4, {
+      correct: true,
+      gameSlug: "maker-workshop",
+      mechanic: "build",
+      prompt: "Build the number 47 with tens and ones.",
+      correctAnswer: "47",
+      givenAnswer: "47",
+    }, 12),
+  ]);
+  const skill = model.skills[0];
+  assert.deepEqual([...skill.secureMechanics].sort(), ["build", "choose"]);
+  assert.equal(skill.grasp, "cross-context");
+  assert.equal(graspLabel(skill), "Shown in 2 different kinds of activities");
+
+  const next = recommendNextActivity(model);
+  assert.notEqual(next.intent, "transfer", "a skill already shown two ways is not re-routed");
+});
+
+test("support-heavy success in the new mechanic does not count as secure yet", () => {
+  const model = buildLearnerModel("kid", [
+    ...series(12, { correct: true, responseMs: 2500 }),
+    ...series(4, {
+      correct: true,
+      gameSlug: "maker-workshop",
+      mechanic: "build",
+      hintsUsed: 1,
+      wrongAttempts: 1,
+    }, 12),
+  ]);
+  const skill = model.skills[0];
+  assert.deepEqual(skill.secureMechanics, ["choose"],
+    "wins that leaned on hints every time are not yet independent evidence");
+  assert.equal(skill.grasp, "single-context");
+});
+
+test("random guessing secures no mechanic at all", () => {
+  const model = buildLearnerModel("kid", series(14, (index) => ({
+    correct: index % 2 === 0,
+    givenAnswer: index % 2 === 0 ? "4" : String(index),
+    responseMs: 900,
+  })));
+  const skill = model.skills[0];
+  assert.deepEqual(skill.secureMechanics, []);
+  assert.equal(skill.grasp, "unknown");
+  assert.equal(graspLabel(skill), "Not enough evidence yet");
+});
+
+test("a cold start reports unknown rather than guessing at breadth", () => {
+  const model = buildLearnerModel("kid", series(2, { correct: true }));
+  assert.equal(model.skills[0].grasp, "unknown");
+});
+
+test("corrupted mechanic values fall back to the game's classification", () => {
+  const rows = normalizeEvidenceLog([
+    { ...JSON.parse(JSON.stringify(series(1)[0])), mechanic: "banana" },
+    { ...JSON.parse(JSON.stringify(series(1)[0])), mechanic: 42 },
+    { ...JSON.parse(JSON.stringify(series(1)[0])), gameSlug: "word-forge-studio" },
+  ]);
+  assert.equal(rows[0].mechanic, "choose");
+  assert.equal(rows[1].mechanic, "choose");
+  assert.equal(rows[2].mechanic, "build", "legacy rows inherit their game's verb");
+});
+
+test("a repeating misconception blocks the transfer offer", () => {
+  const model = buildLearnerModel("kid", [
+    ...series(16, { correct: true, responseMs: 2500 }),
+    ...series(3, { correct: false, givenAnswer: "7" }, 16),
+  ]);
+  assert.ok(model.skills[0].misconceptions.length > 0);
+  const next = recommendNextActivity(model);
+  assert.notEqual(next.intent, "transfer",
+    "a skill with an unresolved misconception is not certified into a new form");
+});
+
+test("the transfer offer speaks plainly to both audiences", () => {
+  const model = buildLearnerModel("kid", series(16, { correct: true, responseMs: 2500 }));
+  const next = recommendNextActivity(model);
+  assert.equal(next.intent, "transfer");
+  assert.doesNotMatch(next.childReason, /transfer|mechanic|evidence|context|skill/i);
+  assert.match(next.adultReason, /picking answers/);
+  assert.match(next.adultReason, /building it/);
+  assert.doesNotMatch(next.adultReason, /transfer index|0\.\d\d|grasp/i);
 });

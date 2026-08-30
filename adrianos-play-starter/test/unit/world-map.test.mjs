@@ -181,6 +181,44 @@ test("a stretch goes to a place teaching the same subject", () => {
   assert.equal(map.beacon.portal.game.subject, "Reading");
 });
 
+test("a transfer beacon carries the skill-parameterised kernel route", () => {
+  // Fluent place value shown only by choosing answers: the model wants the
+  // same skill built by hand, and Maker Bay happens to host Maker Workshop.
+  const model = buildLearnerModel("kid", evidenceRun(16, { responseMs: 2600 }));
+  const next = recommendNextActivity(model);
+  assert.equal(next.intent, "transfer");
+
+  const portals = TRAIL_ORDER.map((id) =>
+    id === "build"
+      ? portal(id, {
+          game: {
+            slug: "maker-workshop", title: "Maker Workshop", subject: "Math", emoji: "🧱",
+            description: "", age: "Ages 4–11", status: "playable",
+          },
+          href: "/games/maker-workshop?from=adventure-world&portal=build",
+        })
+      : portal(id)
+  );
+  const map = buildWorldMap(world({ portals, heroPortal: portals[0] }), model, next);
+  assert.equal(map.intent, "transfer");
+  assert.equal(map.beacon.portal.game.slug, "maker-workshop");
+  assert.equal(map.beacon.href, "/games/maker-workshop?skill=math-place-value&from=transfer");
+  // Guide language stays a child's invitation, not an assessment.
+  assert.doesNotMatch(map.guideLine, /transfer|mechanic|evidence|context|assess/i);
+
+  // A pending mission still outranks the model's transfer routing.
+  const priority = {
+    slug: "number-quest",
+    title: "Find the right starting point",
+    emoji: "🧭",
+    href: "/games/number-quest?guided=1",
+    guideLine: "Your quest is ready.",
+    rationale: "A planned session mission is pending.",
+  };
+  const guided = buildWorldMap(world({ portals, heroPortal: portals[0] }), model, next, [], priority);
+  assert.equal(guided.beacon.href, "/games/number-quest?guided=1");
+});
+
 test("a stretch with no subject match falls through to the boss peak", () => {
   const model = buildLearnerModel("kid", evidenceRun(16, {
     gameSlug: "music-lab",

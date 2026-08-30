@@ -39,6 +39,13 @@ const passes = [
     functions: 92,
     branches: 86,
   },
+  {
+    label: "Interaction kernels",
+    include: ["lib/kernels/kernel-tasks.ts", "lib/kernels/kernel-registry.ts"],
+    lines: 97,
+    functions: 92,
+    branches: 86,
+  },
 ];
 
 async function runPass(pass) {
