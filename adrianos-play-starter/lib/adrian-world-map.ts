@@ -270,6 +270,13 @@ export function buildWorldMap(
     const beacon = portal.id === beaconId;
     const position = LANDMARK_POSITIONS[portal.id];
     const overridden = beacon && priority !== null;
+    // A model decision that names a specific destination (a kernel run for a
+    // particular skill) carries it through the beacon; the landmark still
+    // shows the place and the hosted game, only the door leads deeper.
+    const modelHref =
+      beacon && !priority && next.preferredHref && next.preferredSlugs[0] === portal.game.slug
+        ? next.preferredHref
+        : null;
     return {
       portal,
       wide: position.wide,
@@ -277,7 +284,7 @@ export function buildWorldMap(
       beacon,
       cleared: portal.completions > 0,
       status: overridden ? priority.title : portal.game.title,
-      href: overridden ? priority.href : portal.href,
+      href: overridden ? priority.href : modelHref ?? portal.href,
       label: placeName(portal),
       emoji: portal.emoji,
     };

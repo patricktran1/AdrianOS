@@ -122,15 +122,40 @@ test("a repeating misconception is reteaught rather than practised harder", () =
   assert.doesNotMatch(next.childReason, /wrong|behind|score|%|assess/i);
 });
 
-test("independent fluent work raises the challenge instead of repeating it", () => {
+test("fluency shown in only one interaction form routes to a new form before harder work", () => {
+  // 16 fluent answers, all of them chosen from options in number-quest: the
+  // skill is reliable in one mechanic, so the model asks for the same skill
+  // through a different verb instead of simply raising the difficulty.
   const model = buildLearnerModel("kid", series(16, { correct: true, responseMs: 2600 }));
   assert.equal(model.readiness, "stretch");
   assert.equal(model.stretchSkill?.skillId, "math-place-value");
 
   const next = recommendNextActivity(model);
+  assert.equal(next.intent, "transfer");
+  assert.equal(next.skillId, "math-place-value");
+  assert.ok(next.preferredHref?.includes("skill=math-place-value"), "the route must carry the skill");
+  assert.doesNotMatch(next.childReason, /transfer|mechanic|evidence|context/i);
+});
+
+test("independent fluent work raises the challenge when no new interaction form exists", () => {
+  const model = buildLearnerModel("kid", series(16, {
+    correct: true,
+    responseMs: 2600,
+    gameSlug: "word-forge-studio",
+    subject: "Reading",
+    skillId: "spelling-grade-2",
+    skillLabel: "Word construction",
+    prompt: "Build the word.",
+    correctAnswer: "train",
+    givenAnswer: "train",
+  }));
+  assert.equal(model.readiness, "stretch");
+
+  const next = recommendNextActivity(model);
   assert.equal(next.intent, "stretch");
   assert.equal(next.difficultyShift, 1);
   assert.equal(next.hintStrategy, "on-request");
+  assert.equal(next.preferredHref, null);
 });
 
 test("hint and retry reliance lowers fluency even when answers are correct", () => {

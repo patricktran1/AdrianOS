@@ -13,10 +13,17 @@
  * 2. Thresholds are explicit. When there is not enough evidence the model
  *    reports `unknown` instead of guessing, and callers fall back to interest.
  * 3. It is pure and synchronous so it can be unit tested without a browser.
- *    Only `import type` is used so the module runs under node type stripping.
+ *    Runtime imports stay relative with extensions so the module runs under
+ *    node type stripping.
  */
 
 import type { Game } from "@/lib/games";
+import {
+  alternateMechanicRoute,
+  mechanicForGame,
+  normalizeMechanic,
+  type InteractionMechanic,
+} from "./kernels/kernel-registry.ts";
 
 export type EvidenceSubject = Game["subject"];
 
@@ -39,6 +46,13 @@ export type LearningEvidence = {
   /** Wrong tries on this same question before this record. */
   wrongAttempts: number;
   standardCode: string | null;
+  /**
+   * The cognitive action that produced this answer — chose an option, built
+   * a composition, placed things in order, recalled from memory. Attempts
+   * that do not report one inherit their game's registry classification, so
+   * historical evidence stays usable.
+   */
+  mechanic: InteractionMechanic;
 };
 
 export type ConfidenceRead =
@@ -65,6 +79,24 @@ export type Misconception = {
   lastSeenAt: string;
 };
 
+/** Evidence for one skill inside one interaction mechanic. */
+export type MechanicSignal = {
+  mechanic: InteractionMechanic;
+  attempts: number;
+  correct: number;
+  accuracy: number;
+  /** Share of attempts that needed a hint or retry. */
+  supportRate: number;
+};
+
+/**
+ * How broadly a skill's success generalises across interaction forms.
+ *
+ * This is deliberately about *evidence diversity*, not cognition: it says
+ * what the child has demonstrated, never what is happening in their head.
+ */
+export type SkillGrasp = "unknown" | "single-context" | "cross-context";
+
 export type SkillSignal = {
   skillId: string;
   skillLabel: string;
@@ -86,6 +118,15 @@ export type SkillSignal = {
   misconceptions: Misconception[];
   lastSeenAt: string;
   action: SkillAction;
+  /** Per-mechanic evidence, most-practised first. */
+  mechanics: MechanicSignal[];
+  /**
+   * Mechanics where success is demonstrated on its own strength: at least
+   * MIN_MECHANIC_ATTEMPTS attempts, accuracy at or above
+   * SECURE_MECHANIC_ACCURACY, and support on fewer than half of them.
+   */
+  secureMechanics: InteractionMechanic[];
+  grasp: SkillGrasp;
 };
 
 export type SubjectSignal = {
@@ -130,6 +171,12 @@ const MIN_TIMED_SAMPLES = 3;
 const MIN_MISCONCEPTION_COUNT = 2;
 /** Below this much total evidence the model defers to interest and novelty. */
 const MIN_CONFIDENT_SAMPLE = 12;
+/** A mechanic needs this many attempts before its evidence counts alone. */
+const MIN_MECHANIC_ATTEMPTS = 3;
+/** …and this accuracy before the mechanic reads as secure. */
+const SECURE_MECHANIC_ACCURACY = 0.7;
+/** A skill this fluent but shown in only one mechanic is a transfer candidate. */
+const TRANSFER_FLUENCY = 0.75;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -205,6 +252,9 @@ export function normalizeEvidence(value: unknown): LearningEvidence | null {
       typeof raw.standardCode === "string" && raw.standardCode.trim()
         ? raw.standardCode.trim().slice(0, 24)
         : null,
+    // Attempts written before mechanics existed inherit their game's
+    // classification, so a legacy log still yields a per-mechanic picture.
+    mechanic: normalizeMechanic(raw.mechanic) ?? mechanicForGame(gameSlug),
   };
 }
 
@@ -325,6 +375,16 @@ function buildSkillSignal(
 
   const misconceptions = collectMisconceptions(rows);
   const lastSeenAt = rows[rows.length - 1].at;
+  const mechanics = collectMechanics(rows);
+  const secureMechanics = mechanics
+    .filter((row) =>
+      row.attempts >= MIN_MECHANIC_ATTEMPTS
+      && row.accuracy >= SECURE_MECHANIC_ACCURACY
+      // Success that leaned on hints or retries most of the time is real
+      // progress, but it is not yet evidence the mechanic stands on its own.
+      && row.supportRate < 0.5
+    )
+    .map((row) => row.mechanic);
 
   return {
     skillId: first.skillId,
@@ -343,7 +403,38 @@ function buildSkillSignal(
     misconceptions,
     lastSeenAt,
     action: readAction(accuracy, fluency, attempts, misconceptions.length),
+    mechanics,
+    secureMechanics,
+    grasp: secureMechanics.length >= 2
+      ? "cross-context"
+      : secureMechanics.length === 1
+        ? "single-context"
+        : "unknown",
   };
+}
+
+function collectMechanics(rows: LearningEvidence[]): MechanicSignal[] {
+  const byMechanic = new Map<InteractionMechanic, LearningEvidence[]>();
+  for (const row of rows) {
+    const list = byMechanic.get(row.mechanic);
+    if (list) list.push(row);
+    else byMechanic.set(row.mechanic, [row]);
+  }
+  return [...byMechanic.entries()]
+    .map(([mechanic, list]) => {
+      const correct = list.filter((row) => row.correct).length;
+      const supported = list.filter(
+        (row) => row.hintsUsed > 0 || row.wrongAttempts > 0
+      ).length;
+      return {
+        mechanic,
+        attempts: list.length,
+        correct,
+        accuracy: correct / list.length,
+        supportRate: supported / list.length,
+      };
+    })
+    .sort((a, b) => b.attempts - a.attempts);
 }
 
 function readPace(
@@ -500,7 +591,7 @@ export const EMPTY_LEARNER_MODEL: LearnerModel = {
 /* Turning the model into something the world can say out loud          */
 /* ------------------------------------------------------------------ */
 
-export type WorldIntent = "stretch" | "practice" | "reteach" | "explore";
+export type WorldIntent = "stretch" | "practice" | "reteach" | "explore" | "transfer";
 
 export type NextActivity = {
   intent: WorldIntent;
@@ -509,6 +600,12 @@ export type NextActivity = {
   subject: EvidenceSubject | null;
   /** Preferred game slugs, most relevant first. May be empty. */
   preferredSlugs: string[];
+  /**
+   * A fully-parameterised destination for the first preferred slug, when the
+   * decision depends on more than the game (a kernel run for a specific
+   * skill, say). Null when the game's own route is the destination.
+   */
+  preferredHref: string | null;
   /**
    * Why this was chosen, phrased for a child who may not read fluently.
    * Never mentions scores, assessment, standards, or being behind.
@@ -528,6 +625,7 @@ const EXPLORE_ACTIVITY: NextActivity = {
   skillLabel: null,
   subject: null,
   preferredSlugs: [],
+  preferredHref: null,
   childReason: "Something new is waiting for you.",
   adultReason:
     "Not enough gameplay evidence yet. Leading with interest and novelty until the model has a real signal.",
@@ -553,6 +651,7 @@ export function recommendNextActivity(model: LearnerModel): NextActivity {
       skillLabel: focus.skillLabel,
       subject: focus.subject,
       preferredSlugs: focus.gameSlugs,
+      preferredHref: null,
       childReason: `Let's figure out ${focus.skillLabel.toLowerCase()} together.`,
       adultReason: focus.misconceptions.length > 0
         ? `Repeated answer "${focus.misconceptions[0].answer}" on ${focus.skillLabel} suggests a specific misunderstanding rather than careless slips. Reteaching before more practice.`
@@ -562,6 +661,13 @@ export function recommendNextActivity(model: LearnerModel): NextActivity {
     };
   }
 
+  // A skill that is fluent but demonstrated in only one interaction form is
+  // offered through a different verb BEFORE difficulty rises: showing the
+  // idea survives a change of representation is stronger evidence of
+  // understanding than another win in the familiar form.
+  const transfer = findTransferCandidate(model);
+  if (transfer) return transfer;
+
   if (model.readiness === "stretch" && model.stretchSkill) {
     const stretch = model.stretchSkill;
     return {
@@ -570,6 +676,7 @@ export function recommendNextActivity(model: LearnerModel): NextActivity {
       skillLabel: stretch.skillLabel,
       subject: stretch.subject,
       preferredSlugs: stretch.gameSlugs,
+      preferredHref: null,
       childReason: `You're strong at ${stretch.skillLabel.toLowerCase()}. Want a tougher one?`,
       adultReason: `${stretch.skillLabel} is solved independently (fluency ${Math.round(stretch.fluency * 100)}%). Raising challenge instead of repeating known material.`,
       difficultyShift: 1,
@@ -584,6 +691,7 @@ export function recommendNextActivity(model: LearnerModel): NextActivity {
       skillLabel: focus.skillLabel,
       subject: focus.subject,
       preferredSlugs: focus.gameSlugs,
+      preferredHref: null,
       childReason: `A bit more ${focus.skillLabel.toLowerCase()} and you've got it.`,
       adultReason: `${focus.skillLabel} is forming: ${Math.round(focus.accuracy * 100)}% accurate with ${Math.round(focus.supportReliance * 100)}% support reliance. Repeating in a new setting.`,
       difficultyShift: focus.confidence === "struggling" ? -1 : 0,
@@ -592,6 +700,52 @@ export function recommendNextActivity(model: LearnerModel): NextActivity {
   }
 
   return EXPLORE_ACTIVITY;
+}
+
+const MECHANIC_PHRASES: Record<string, string> = {
+  choose: "picking answers",
+  build: "building it",
+  place: "putting things in order",
+  recall: "memory play",
+};
+
+function findTransferCandidate(model: LearnerModel): NextActivity | null {
+  const candidates = model.skills
+    .filter((skill) =>
+      skill.attempts >= MIN_SKILL_ATTEMPTS
+      && skill.fluency >= TRANSFER_FLUENCY
+      && skill.grasp === "single-context"
+      && skill.misconceptions.length === 0
+    )
+    .sort((a, b) => b.fluency - a.fluency);
+
+  for (const skill of candidates) {
+    const route = alternateMechanicRoute(skill.skillId, skill.secureMechanics);
+    if (!route) continue;
+    const shownIn = MECHANIC_PHRASES[skill.secureMechanics[0]] ?? "one kind of activity";
+    return {
+      intent: "transfer",
+      skillId: skill.skillId,
+      skillLabel: skill.skillLabel,
+      subject: skill.subject,
+      preferredSlugs: [route.slug],
+      preferredHref: route.href,
+      childReason: `You're a star at ${skill.skillLabel.toLowerCase()}! Try it a brand-new way.`,
+      adultReason: `${skill.skillLabel} is reliable, but so far only by ${shownIn}. Offering the same skill through ${MECHANIC_PHRASES[route.verb]} to see whether the understanding carries across.`,
+      difficultyShift: 0,
+      hintStrategy: "on-request",
+    };
+  }
+  return null;
+}
+
+/** Plain-language label for how broadly a skill has been demonstrated. */
+export function graspLabel(skill: Pick<SkillSignal, "grasp" | "secureMechanics">): string {
+  if (skill.grasp === "cross-context") {
+    return `Shown in ${skill.secureMechanics.length} different kinds of activities`;
+  }
+  if (skill.grasp === "single-context") return "Reliable in one kind of activity so far";
+  return "Not enough evidence yet";
 }
 
 /** Plain-language label for a confidence read, for adult-facing surfaces. */

@@ -102,6 +102,15 @@ export const games: Game[] = [
     "status": "playable"
   },
   {
+    "slug": "maker-workshop",
+    "title": "Maker Workshop",
+    "description": "Build numbers with your own hands: compose counts, tens and ones, sums, fractions, and decimals from real pieces in an open workshop box.",
+    "emoji": "🧱",
+    "subject": "Math",
+    "age": "Ages 4–11",
+    "status": "playable"
+  },
+  {
     "slug": "math-blast",
     "title": "Math Blast",
     "description": "Build streaks with addition and subtraction missions.",
@@ -144,6 +153,15 @@ export const games: Game[] = [
     "emoji": "🚀",
     "subject": "Logic",
     "age": "Ages 5–6",
+    "status": "playable"
+  },
+  {
+    "slug": "stepping-stones",
+    "title": "Stepping Stones",
+    "description": "Cross the river by putting things in the right order: numbers, fractions, decimals, story steps, and life cycles become stepping stones.",
+    "emoji": "🪨",
+    "subject": "Math",
+    "age": "Ages 4–11",
     "status": "playable"
   },
   {

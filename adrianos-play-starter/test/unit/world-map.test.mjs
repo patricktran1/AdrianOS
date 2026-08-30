@@ -160,15 +160,25 @@ test("a misconception steers the beacon to the place that teaches that skill", (
 });
 
 test("a stretch goes to a place teaching the same subject", () => {
-  const model = buildLearnerModel("kid", evidenceRun(16, { gameSlug: "word-forge-studio" }));
+  // Spelling has no alternate kernel verb, so fluency here is a true stretch
+  // rather than a transfer opportunity.
+  const model = buildLearnerModel("kid", evidenceRun(16, {
+    gameSlug: "word-forge-studio",
+    subject: "Reading",
+    skillId: "spelling-grade-2",
+    skillLabel: "Word construction",
+    prompt: "Build the word.",
+    correctAnswer: "train",
+    givenAnswer: "train",
+  }));
   const next = recommendNextActivity(model);
   assert.equal(next.intent, "stretch");
 
-  // No place hosts word-forge-studio, so the subject match wins: Action Trail
-  // is currently running a Math game, which is the fluent subject.
+  // No place hosts word-forge-studio, so the subject match wins: Mystery
+  // Grove is currently running a Reading game, which is the fluent subject.
   const map = buildWorldMap(world(), model, next);
-  assert.equal(map.beacon.portal.id, "action");
-  assert.equal(map.beacon.portal.game.subject, "Math");
+  assert.equal(map.beacon.portal.id, "mystery");
+  assert.equal(map.beacon.portal.game.subject, "Reading");
 });
 
 test("a stretch with no subject match falls through to the boss peak", () => {

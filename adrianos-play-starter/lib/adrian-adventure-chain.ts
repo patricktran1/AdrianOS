@@ -120,7 +120,8 @@ export function buildAdventureChain(
     game: Game | undefined,
     kind: AdventureChainKind,
     eyebrow: string,
-    reason: string
+    reason: string,
+    hrefOverride: string | null = null
   ) => {
     if (!game || selected.has(game.slug)) return;
     selected.add(game.slug);
@@ -130,7 +131,7 @@ export function buildAdventureChain(
       title: game.title,
       eyebrow,
       reason,
-      href: hrefFor(game, kind),
+      href: hrefOverride ?? hrefFor(game, kind),
       emoji: game.emoji,
       subject: game.subject,
     });
@@ -142,16 +143,21 @@ export function buildAdventureChain(
     && !selected.has(game.slug)
   );
   const currentMastery = subjectMastery.get(currentGame.subject) ?? 0;
-  const modelStretch = nextActivity?.intent === "stretch"
+  const modelStretch = nextActivity?.intent === "stretch" || nextActivity?.intent === "transfer"
     ? gameForSkill(nextActivity.preferredSlugs, nextActivity.subject)
     : undefined;
+  const transferHref =
+    modelStretch && nextActivity?.intent === "transfer" && nextActivity.preferredHref
+      ? nextActivity.preferredHref
+      : null;
   add(
     modelStretch ?? leastPlayed(sameSubject, progress, subjectMastery),
     "stretch",
-    "KEEP THE POWER",
+    nextActivity?.intent === "transfer" && modelStretch ? "SHOW IT A NEW WAY" : "KEEP THE POWER",
     modelStretch && nextActivity
       ? nextActivity.childReason
-      : stretchReason(currentGame.subject, currentMastery)
+      : stretchReason(currentGame.subject, currentMastery),
+    transferHref
   );
 
   const modelFocus = nextActivity && (nextActivity.intent === "reteach" || nextActivity.intent === "practice")

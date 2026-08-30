@@ -9,6 +9,7 @@ import {
   markQuestionShown,
   takeResponseMs,
 } from "@/lib/adrian-evidence";
+import { mechanicForGame } from "@/lib/kernels/kernel-registry";
 
 export type LearningStage = "Learning" | "Practicing" | "Mastered";
 
@@ -80,6 +81,12 @@ export type LearningAttempt = {
   responseMs?: number;
   hintsUsed?: number;
   wrongAttempts?: number;
+  /**
+   * The interaction verb that produced this answer. Games that omit it are
+   * classified by the mechanic registry, so only routes that genuinely host
+   * a non-default verb need to say so.
+   */
+  mechanic?: "choose" | "build" | "place" | "recall";
 };
 
 export type SubjectMastery = {
@@ -271,6 +278,7 @@ function recordAttemptEvidence(
           ? 1
           : 0,
     standardCode,
+    mechanic: attempt.mechanic ?? mechanicForGame(attempt.gameSlug),
   });
 
   // Arm the clock for the next question in this game. These games advance
