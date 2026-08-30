@@ -671,10 +671,13 @@ export const KERNEL_RUN_LENGTH = 5;
  */
 export function buildKernelRun(input: KernelRunInput): KernelTask[] {
   const generators = input.verb === "build" ? BUILD_GENERATORS : PLACE_GENERATORS;
-  const requested = input.skillId && generators[input.skillId]
+  // skillId can arrive from a query parameter, so only own keys count: a
+  // plain `generators[skillId]` lookup would let "constructor" or
+  // "toString" dispatch to an inherited function instead of a generator.
+  const requested = input.skillId && Object.prototype.hasOwnProperty.call(generators, input.skillId)
     ? input.skillId
     : defaultKernelSkill(input.verb, input.grade);
-  const generator = generators[requested] ?? generators[defaultKernelSkill(input.verb, input.grade)];
+  const generator = generators[requested];
   const shift = input.difficultyShift ?? 0;
 
   const tasks: KernelTask[] = [];

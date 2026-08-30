@@ -225,6 +225,20 @@ test("an unknown skill falls back to the grade default instead of crashing", () 
   assert.equal(tasks[0].skillId, defaultKernelSkill("build", 0));
 });
 
+test("prototype key names in the skill parameter never dispatch off the generator map", () => {
+  // skillId arrives from a query parameter; "constructor" or "toString"
+  // resolve truthily on a plain object, so only own keys may count.
+  for (const hostile of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+    for (const verb of ["build", "place"]) {
+      const tasks = buildKernelRun({
+        verb, profileId: "kid", grade: 2, skillId: hostile, dayKey: "2026-08-30",
+      });
+      assert.equal(tasks.length, KERNEL_RUN_LENGTH, `${verb}/${hostile}`);
+      assert.equal(tasks[0].skillId, defaultKernelSkill(verb, 2), `${verb}/${hostile}`);
+    }
+  }
+});
+
 test("grade defaults follow the arc of the curriculum", () => {
   assert.equal(defaultKernelSkill("build", -1), "math-counting");
   assert.equal(defaultKernelSkill("build", 1), "math-place-value");
