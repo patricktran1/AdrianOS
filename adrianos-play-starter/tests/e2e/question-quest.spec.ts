@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dragOnto } from "./helpers/drag";
 import { seedQaFamily } from "./helpers/seed-family";
 
 const PROGRESS_KEY = "adrianos-progress-v2:qa-learner";
@@ -84,7 +85,7 @@ test.describe("Question Quest Wonder Lab", () => {
 
     const oxygen = page.getByRole("button", { name: "Oxygen", exact: true });
     await expect(oxygen).toHaveAttribute("draggable", "true");
-    await oxygen.dragTo(page.getByLabel("Wonder machine installation bay"));
+    await dragOnto(page, oxygen, page.getByLabel("Wonder machine installation bay"));
     await expect(page.locator('[data-wonder-lab="active"]')).toHaveAttribute("data-round", "6", { timeout: 5_000 });
 
     await runGauge(page, "Energy use experiment level", 0, "complete");

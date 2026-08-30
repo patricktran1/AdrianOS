@@ -121,6 +121,7 @@ export default function DinoHabitatBuilderGame() {
   const [done, setDone] = useState(false);
   const [message, setMessage] = useState("Drag or tap the best habitat piece.");
   const timerRef = useRef<number | null>(null);
+  const advanceLockRef = useRef(false);
   const world = WORLDS[grade];
   const challenges = useMemo(() => rotate(challengesForGrade(grade), runSeed), [grade, runSeed]);
   const challenge = challenges[roundIndex];
@@ -138,7 +139,18 @@ export default function DinoHabitatBuilderGame() {
     timerRef.current = window.setTimeout(callback, delay);
   }
 
+  /*
+   * Both the game's own timer and the shell's GameFlowDirector can call
+   * finishOrAdvance for the same solve: the director auto-clicks the manual
+   * advance button on its own delay, and under load React's batched commit
+   * leaves the stale button connected when that click fires. Without this
+   * lock the round advances twice and the child skips a question entirely.
+   * The lock opens when a solve schedules an advance and closes on the first
+   * advance that consumes it.
+   */
   function finishOrAdvance(finalIndependent: number) {
+    if (!advanceLockRef.current) return;
+    advanceLockRef.current = false;
     if (roundIndex === challenges.length - 1) {
       completeGame({ xp: 38 + finalIndependent * 4, coins: 10 + finalIndependent, score: 1320 + finalIndependent * 90 + designs.length * 75 });
       setDone(true);
@@ -172,6 +184,7 @@ export default function DinoHabitatBuilderGame() {
       setDesignPending(true);
       return;
     }
+    advanceLockRef.current = true;
     schedule(() => finishOrAdvance(finalIndependent), 720);
   }
 
@@ -180,11 +193,13 @@ export default function DinoHabitatBuilderGame() {
     setDesigns((items) => [...items, choice]);
     setDesignPending(false);
     setMessage(`${choice.label} added. Loading the next build order…`);
+    advanceLockRef.current = true;
     schedule(() => finishOrAdvance(independent), 520);
   }
 
   function replay() {
     restartGame();
+    advanceLockRef.current = false;
     setRunSeed((value) => value + 1);
     setRoundIndex(0);
     setMisses(0);

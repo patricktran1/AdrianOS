@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dragOnto } from "./helpers/drag";
 import { seedQaFamily } from "./helpers/seed-family";
 
 const PROGRESS_KEY = "adrianos-progress-v2:qa-learner";
@@ -66,7 +67,7 @@ test.describe("Human Body Rescue Lab", () => {
 
     const lungs = page.getByRole("button", { name: "Lungs", exact: true });
     await expect(lungs).toHaveAttribute("draggable", "true");
-    await lungs.dragTo(page.getByLabel("Body repair dock"));
+    await dragOnto(page, lungs, page.getByLabel("Body repair dock"));
     await expect(page.locator('[data-body-lab="active"]')).toHaveAttribute("data-round", "3", { timeout: 5_000 });
     await expect(page.locator('[data-body-lab="active"]')).toHaveAttribute("data-mechanic", "route");
 

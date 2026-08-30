@@ -211,6 +211,7 @@ export default function Page() {
   const [done, setDone] = useState(false);
   const [message, setMessage] = useState("Emergency scan active. The first body system needs help now.");
   const timerRef = useRef<number | null>(null);
+  const advanceLockRef = useRef(false);
   const world = WORLDS[grade];
   const missions = useMemo(() => buildMissions(grade, runSeed), [grade, runSeed]);
   const mission = missions[roundIndex];
@@ -231,7 +232,18 @@ export default function Page() {
     timerRef.current = window.setTimeout(callback, delay);
   }
 
+  /*
+   * Both the game's own timer and the shell's GameFlowDirector can call
+   * finishOrAdvance for the same solve: the director auto-clicks the manual
+   * advance button on its own delay, and under load React's batched commit
+   * leaves the stale button connected when that click fires. Without this
+   * lock the round advances twice and the child skips a question entirely.
+   * The lock opens when a solve schedules an advance and closes on the first
+   * advance that consumes it.
+   */
   function finishOrAdvance(finalIndependent: number) {
+    if (!advanceLockRef.current) return;
+    advanceLockRef.current = false;
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -282,11 +294,13 @@ export default function Page() {
     setIndependent(finalIndependent);
     setSolved(true);
     setMessage(`${mission.system.label} online. ${mission.explanation}`);
+    advanceLockRef.current = true;
     schedule(() => finishOrAdvance(finalIndependent), 950);
   }
 
   function replay() {
     restartGame();
+    advanceLockRef.current = false;
     setRunSeed((value) => value + 1);
     setRoundIndex(0);
     setMisses(0);
