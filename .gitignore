@@ -11,3 +11,6 @@ test-results/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Local Playwright launcher overrides (environment-specific browser paths)
+playwright.local.config.ts
