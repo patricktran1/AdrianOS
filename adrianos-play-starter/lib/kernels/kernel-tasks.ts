@@ -635,22 +635,39 @@ export function defaultKernelSkill(verb: KernelVerb, grade: ElementaryGrade): st
   return "math-decimals";
 }
 
-const BUILD_GENERATORS: Record<string, (input: TaskInput) => KernelTask> = {
-  "math-counting": buildCounting,
-  "math-place-value": buildPlaceValue,
-  "math-addition": buildAddition,
-  "math-fractions": buildFractions,
-  "math-decimals": buildDecimals,
-};
+type KernelGenerator = (input: TaskInput) => KernelTask;
 
-const PLACE_GENERATORS: Record<string, (input: TaskInput) => KernelTask> = {
-  "math-counting": placeCounting,
-  "math-place-value": placePlaceValue,
-  "math-fractions": placeFractions,
-  "math-decimals": placeDecimals,
-  "reading-sequencing": (input) => placeSequence(input, "reading-sequencing"),
-  "science-life-cycles": (input) => placeSequence(input, "science-life-cycles"),
-};
+/*
+ * Maps rather than plain objects: a Map has no prototype chain, so a skill id
+ * arriving from a query parameter can never resolve to an inherited function
+ * like `constructor`. `generatorFor` below adds the second guard.
+ */
+const BUILD_GENERATORS = new Map<string, KernelGenerator>([
+  ["math-counting", buildCounting],
+  ["math-place-value", buildPlaceValue],
+  ["math-addition", buildAddition],
+  ["math-fractions", buildFractions],
+  ["math-decimals", buildDecimals],
+]);
+
+const PLACE_GENERATORS = new Map<string, KernelGenerator>([
+  ["math-counting", placeCounting],
+  ["math-place-value", placePlaceValue],
+  ["math-fractions", placeFractions],
+  ["math-decimals", placeDecimals],
+  ["reading-sequencing", (input) => placeSequence(input, "reading-sequencing")],
+  ["science-life-cycles", (input) => placeSequence(input, "science-life-cycles")],
+]);
+
+/**
+ * The generator for a verb and skill. `KERNEL_SKILLS` is the authority on
+ * which skills a verb hosts, and counting is the floor every verb implements,
+ * so an id the map does not carry still produces a playable round.
+ */
+function generatorFor(verb: KernelVerb, skillId: string): KernelGenerator {
+  const generators = verb === "build" ? BUILD_GENERATORS : PLACE_GENERATORS;
+  return generators.get(skillId) ?? (verb === "build" ? buildCounting : placeCounting);
+}
 
 export type KernelRunInput = {
   verb: KernelVerb;
@@ -670,14 +687,12 @@ export const KERNEL_RUN_LENGTH = 5;
  * Same-day replays get the same run (a fair rematch); tomorrow differs.
  */
 export function buildKernelRun(input: KernelRunInput): KernelTask[] {
-  const generators = input.verb === "build" ? BUILD_GENERATORS : PLACE_GENERATORS;
-  // skillId can arrive from a query parameter, so only own keys count: a
-  // plain `generators[skillId]` lookup would let "constructor" or
-  // "toString" dispatch to an inherited function instead of a generator.
-  const requested = input.skillId && Object.prototype.hasOwnProperty.call(generators, input.skillId)
-    ? input.skillId
-    : defaultKernelSkill(input.verb, input.grade);
-  const generator = generators[requested];
+  // The skill id can arrive from a query parameter, so it is matched against
+  // the verb's own skill list rather than used directly: everything below
+  // flows from this module's constants, never from the request.
+  const requested = KERNEL_SKILLS[input.verb].find((skillId) => skillId === input.skillId)
+    ?? defaultKernelSkill(input.verb, input.grade);
+  const generator = generatorFor(input.verb, requested);
   const shift = input.difficultyShift ?? 0;
 
   const tasks: KernelTask[] = [];
