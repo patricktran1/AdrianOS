@@ -11,6 +11,7 @@ import { useLearnerModel } from "@/lib/adrian-evidence";
 import {
   actionLabel,
   confidenceLabel,
+  graspLabel,
   recommendNextActivity,
   type SkillSignal,
 } from "@/lib/adrian-learner-model";
@@ -154,6 +155,7 @@ export default function LearningEvidencePanel({ games }: { games: Game[] }) {
                       <th scope="col">Answer time</th>
                       <th scope="col">Support used</th>
                       <th scope="col">Reads as</th>
+                      <th scope="col">Seen across</th>
                       <th scope="col">Next step</th>
                     </tr>
                   </thead>
@@ -168,6 +170,7 @@ export default function LearningEvidencePanel({ games }: { games: Game[] }) {
                         <td>{seconds(skill.medianResponseMs)}</td>
                         <td>{percent(skill.supportReliance)}</td>
                         <td>{confidenceLabel(skill.confidence)}</td>
+                        <td data-skill-grasp={skill.grasp}>{graspLabel(skill)}</td>
                         <td data-skill-action={skill.action}>{actionLabel(skill.action)}</td>
                       </tr>
                     ))}

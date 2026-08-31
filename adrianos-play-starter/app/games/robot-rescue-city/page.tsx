@@ -177,7 +177,7 @@ export default function RobotRescueCityPage() {
     setStage("play");
   }
 
-  function saveAttempt(correct: boolean) {
+  function saveAttempt(correct: boolean, choice: string) {
     recordLearningAttempt({
       gameSlug: GAME_SLUG,
       subject: mission.subject,
@@ -186,6 +186,8 @@ export default function RobotRescueCityPage() {
       prompt: `${mission.story} ${mission.prompt}`,
       correctAnswer: mission.answer,
       correct,
+      givenAnswer: choice,
+      wrongAttempts,
       data: { standardCode: mission.standard, zone: mission.zone, adaptiveSupport: wrongAttempts > 0 },
     }, activeProfile.id);
   }
@@ -204,7 +206,7 @@ export default function RobotRescueCityPage() {
     const correct = choice === mission.answer;
 
     if (!correct && wrongAttempts === 0) {
-      saveAttempt(false);
+      saveAttempt(false, choice);
       setWrongAttempts(1);
       setFeedback("hint");
       setCombo(0);
@@ -223,7 +225,7 @@ export default function RobotRescueCityPage() {
       return;
     }
 
-    saveAttempt(true);
+    saveAttempt(true, choice);
     const firstTry = wrongAttempts === 0;
     const nextCombo = firstTry ? combo + 1 : 0;
     const reward = firstTry ? 2 + (botId === "bolt" ? 1 : 0) : 1;

@@ -18,6 +18,24 @@ const EVIDENCE_GAMES = [
   "app/games/pattern-master/page.tsx",
   "app/games/adaptive-boss-arena/page.tsx",
   "app/mastery-lab/page.tsx",
+  // The world-portal story games: their answers feed misconception
+  // clustering, so they must report what the child actually chose.
+  "app/games/space-station-sigma/page.tsx",
+  "app/games/mystery-temple/page.tsx",
+  "app/games/cyber-city-five/page.tsx",
+  "app/games/dino-time-rescue/page.tsx",
+  "app/games/robot-rescue-city/page.tsx",
+  "app/games/dino-dash-volcano-escape/page.tsx",
+  "app/games/daily-adventure-remix/page.tsx",
+];
+
+/*
+ * The kernel routes exist to give the learner model evidence from a second
+ * interaction verb. That only works if every attempt they record carries the
+ * mechanic and the canonical form of what the child made.
+ */
+const KERNEL_SOURCES = [
+  "components/kernels/KernelPlayground.tsx",
 ];
 
 const root = process.cwd();
@@ -38,6 +56,16 @@ for (const file of EVIDENCE_GAMES) {
   }
 }
 
+for (const file of KERNEL_SOURCES) {
+  const source = await read(file);
+  if (!/mechanic: verb/.test(source)) {
+    failures.push(`${file}: kernel attempts must carry their interaction mechanic`);
+  }
+  if (!/givenAnswer: judgement.canonicalAnswer/.test(source)) {
+    failures.push(`${file}: kernel attempts must carry the canonical built answer`);
+  }
+}
+
 const model = await read("lib/adrian-learner-model.ts");
 const evidence = await read("lib/adrian-evidence.ts");
 const learning = await read("lib/adrian-learning.ts");
@@ -48,6 +76,9 @@ const modelContracts = [
   ["function buildLearnerModel", "the model builder"],
   ["function recommendNextActivity", "the next-activity decision"],
   ["collectMisconceptions", "misconception clustering"],
+  ["MIN_MECHANIC_ATTEMPTS", "a minimum sample before a mechanic counts as secure"],
+  ["collectMechanics", "cross-mechanic evidence collection"],
+  ["findTransferCandidate", "the transfer routing decision"],
 ];
 for (const [needle, description] of modelContracts) {
   if (!model.includes(needle)) failures.push(`learner model: missing ${description}`);

@@ -261,7 +261,7 @@ export default function DinoTimeRescuePage() {
     playTone(soundOn, "boss");
   }
 
-  function saveAttempt(correct: boolean) {
+  function saveAttempt(correct: boolean, choice: string) {
     recordLearningAttempt({
       gameSlug: GAME_SLUG,
       subject: mission.subject,
@@ -270,6 +270,9 @@ export default function DinoTimeRescuePage() {
       prompt: `${mission.story} ${mission.prompt}`,
       correctAnswer: mission.answer,
       correct,
+      givenAnswer: choice,
+      hintsUsed: usedHint ? 1 : 0,
+      wrongAttempts,
       data: {
         standardCode: mission.standard,
         chapter: mission.chapter,
@@ -294,7 +297,7 @@ export default function DinoTimeRescuePage() {
     const correct = choice === mission.answer;
 
     if (!correct && wrongAttempts === 0) {
-      saveAttempt(false);
+      saveAttempt(false, choice);
       setWrongAttempts(1);
       setUsedHint(true);
       setFeedback("hint");
@@ -314,7 +317,7 @@ export default function DinoTimeRescuePage() {
       return;
     }
 
-    saveAttempt(true);
+    saveAttempt(true, choice);
     const firstTry = wrongAttempts === 0 && !usedHint;
     const fossilReward = firstTry ? 2 + (sidekickId === "raptor" ? 1 : 0) : 1;
     const nextCombo = firstTry ? combo + 1 : 0;
