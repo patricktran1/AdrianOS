@@ -174,6 +174,15 @@ export const games: Game[] = [
     "status": "playable"
   },
   {
+    "slug": "clue-hollow",
+    "title": "Clue Hollow",
+    "description": "Work out who is hiding: read the clues, cross out who it cannot be, and claim the one that is left.",
+    "emoji": "🔦",
+    "subject": "Logic",
+    "age": "Ages 4–11",
+    "status": "playable"
+  },
+  {
     "slug": "reading-lab",
     "title": "Reading Lab",
     "description": "Read original stories, uncover clues, and explain what the passage shows.",
