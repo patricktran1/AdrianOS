@@ -413,8 +413,28 @@ test("secure evidence in a second mechanic flips grasp and retires the transfer 
   assert.equal(skill.grasp, "cross-context");
   assert.equal(graspLabel(skill), "Shown in 2 different kinds of activities");
 
+  // Two kinds of demand are covered, but positioning and inference have
+  // never been asked for, so the offer continues into the next genuinely
+  // different form rather than retiring.
   const next = recommendNextActivity(model);
-  assert.notEqual(next.intent, "transfer", "a skill already shown two ways is not re-routed");
+  assert.equal(next.intent, "transfer");
+  assert.ok(next.preferredHref?.includes("stepping-stones"), "position is the untried form");
+});
+
+test("the transfer offer retires once every kind of demand has been shown", () => {
+  const model = buildLearnerModel("kid", [
+    ...series(6, { correct: true, responseMs: 2500 }),
+    ...series(5, { correct: true, gameSlug: "maker-workshop", mechanic: "build" }, 6),
+    ...series(5, { correct: true, gameSlug: "stepping-stones", mechanic: "place" }, 11),
+    ...series(5, { correct: true, gameSlug: "clue-hollow", mechanic: "deduce", reasoned: true }, 16),
+  ]);
+  const skill = model.skills[0];
+  assert.equal(skill.secureCategories.length, 4);
+  assert.notEqual(
+    recommendNextActivity(model).intent,
+    "transfer",
+    "there is nowhere genuinely new left to route"
+  );
 });
 
 test("support-heavy success in the new mechanic does not count as secure yet", () => {

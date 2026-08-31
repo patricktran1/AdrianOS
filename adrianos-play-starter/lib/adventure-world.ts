@@ -301,6 +301,7 @@ const PORTALS: PortalDefinition[] = [
     description: "Investigate stories, memories, patterns, and hidden answers.",
     emoji: "🔎",
     slugs: [
+      "clue-hollow",
       "dinosaur-detective",
       "story-expedition",
       "memory-match",

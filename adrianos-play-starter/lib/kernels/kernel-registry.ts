@@ -26,9 +26,10 @@ import {
   KERNEL_SKILLS,
   type KernelVerb,
 } from "./kernel-tasks.ts";
+import { DEDUCE_SKILLS } from "./deduce-tasks.ts";
 
 /** Every interaction verb AdrianOS can currently distinguish. */
-export type InteractionMechanic = KernelVerb | "choose" | "recall";
+export type InteractionMechanic = KernelVerb | "deduce" | "choose" | "recall";
 
 export const KERNEL_GAMES: Record<KernelVerb, {
   slug: string;
@@ -39,6 +40,13 @@ export const KERNEL_GAMES: Record<KernelVerb, {
   place: { slug: "stepping-stones", title: "Stepping Stones", emoji: "🪨" },
 };
 
+/** Where DEDUCE lives. Not a KernelVerb: it has its own task engine. */
+export const DEDUCE_GAME = {
+  slug: "clue-hollow",
+  title: "Clue Hollow",
+  emoji: "🔦",
+} as const;
+
 /**
  * Games whose primary interaction is not tap-the-right-option.
  * Everything absent from this map defaults to "choose".
@@ -46,6 +54,7 @@ export const KERNEL_GAMES: Record<KernelVerb, {
 const MECHANIC_BY_GAME: Record<string, InteractionMechanic> = {
   [KERNEL_GAMES.build.slug]: "build",
   [KERNEL_GAMES.place.slug]: "place",
+  [DEDUCE_GAME.slug]: "deduce",
   // Compose a word letter by letter: genuine construction.
   "word-forge-studio": "build",
   // Move a runner to a position on a number line: genuine positioning.
@@ -59,7 +68,8 @@ export function mechanicForGame(gameSlug: string): InteractionMechanic {
 }
 
 export function normalizeMechanic(value: unknown): InteractionMechanic | null {
-  return value === "build" || value === "place" || value === "choose" || value === "recall"
+  return value === "build" || value === "place" || value === "deduce"
+    || value === "choose" || value === "recall"
     ? value
     : null;
 }
@@ -73,6 +83,53 @@ export function kernelVerbsForSkill(skillId: string): KernelVerb[] {
 }
 
 /**
+ * The kind of thinking a mechanic asks for.
+ *
+ * Not all mechanic variety is equally informative. Four visually different
+ * games that all ask a child to pick the right option are still one kind of
+ * demand; recognising, constructing, positioning and inferring are four.
+ * Breadth is counted in these categories so a themed reskin can never look
+ * like a new way of knowing something.
+ */
+export type MechanicCategory = "recognition" | "construction" | "position" | "inference";
+
+const MECHANIC_CATEGORIES = new Map<InteractionMechanic, MechanicCategory>([
+  ["choose", "recognition"],
+  ["recall", "recognition"],
+  ["build", "construction"],
+  ["place", "position"],
+  ["deduce", "inference"],
+]);
+
+export function mechanicCategory(mechanic: InteractionMechanic): MechanicCategory {
+  return MECHANIC_CATEGORIES.get(mechanic) ?? "recognition";
+}
+
+/** Distinct kinds of thinking represented in a set of mechanics. */
+export function distinctCategories(
+  mechanics: readonly InteractionMechanic[]
+): MechanicCategory[] {
+  return [...new Set(mechanics.map(mechanicCategory))];
+}
+
+/** True when DEDUCE can express this skill. */
+export function deduceSupportsSkill(skillId: string): boolean {
+  return DEDUCE_SKILLS.includes(skillId);
+}
+
+/** The Clue Hollow route for a skill, parameterised for the teaching engine. */
+export function deduceRouteForSkill(
+  skillId: string,
+  from: string
+): { slug: string; title: string; emoji: string; href: string } | null {
+  if (!deduceSupportsSkill(skillId)) return null;
+  return {
+    ...DEDUCE_GAME,
+    href: `/games/${DEDUCE_GAME.slug}?${new URLSearchParams({ skill: skillId, from })}`,
+  };
+}
+
+/**
  * A route that expresses `skillId` through a mechanic the learner has not
  * yet shown it in, or null when no such route exists. `usedMechanics` is
  * whatever the learner model has observed for the skill so far.
@@ -80,7 +137,7 @@ export function kernelVerbsForSkill(skillId: string): KernelVerb[] {
 export function alternateMechanicRoute(
   skillId: string,
   usedMechanics: readonly string[]
-): { verb: KernelVerb; slug: string; title: string; emoji: string; href: string } | null {
+): { verb: KernelVerb | "deduce"; slug: string; title: string; emoji: string; href: string } | null {
   for (const verb of kernelVerbsForSkill(skillId)) {
     if (usedMechanics.includes(verb)) continue;
     const game = KERNEL_GAMES[verb];
@@ -89,6 +146,13 @@ export function alternateMechanicRoute(
       ...game,
       href: `/games/${game.slug}?${new URLSearchParams({ skill: skillId, from: "transfer" })}`,
     };
+  }
+  // Inference is offered last: a child meeting an idea in a new form is
+  // usually better served by handling it or placing it before being asked
+  // to work it out from relationships.
+  if (!usedMechanics.includes("deduce")) {
+    const route = deduceRouteForSkill(skillId, "transfer");
+    if (route) return { verb: "deduce", ...route };
   }
   return null;
 }

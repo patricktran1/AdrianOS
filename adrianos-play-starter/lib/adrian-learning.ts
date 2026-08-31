@@ -86,7 +86,7 @@ export type LearningAttempt = {
    * classified by the mechanic registry, so only routes that genuinely host
    * a non-default verb need to say so.
    */
-  mechanic?: "choose" | "build" | "place" | "recall";
+  mechanic?: "choose" | "build" | "place" | "deduce" | "recall";
   /**
    * Identifies the specific task, so retrying one task is not mistaken for
    * independent evidence of a habit.
@@ -97,6 +97,8 @@ export type LearningAttempt = {
    * computed by the game where the task structure is known.
    */
   errorSignature?: string | null;
+  /** Deduction only: whether the clues were actually used to get there. */
+  reasoned?: boolean;
 };
 
 export type SubjectMastery = {
@@ -292,6 +294,7 @@ function recordAttemptEvidence(
     taskId: typeof attempt.taskId === "string" ? attempt.taskId : null,
     errorSignature:
       typeof attempt.errorSignature === "string" ? attempt.errorSignature : null,
+    reasoned: typeof attempt.reasoned === "boolean" ? attempt.reasoned : null,
   });
 
   // Arm the clock for the next question in this game. These games advance

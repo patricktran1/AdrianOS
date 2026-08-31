@@ -52,7 +52,15 @@ export type ErrorSignature =
   | "sequence.cyclic-shift"
   | "sequence.incomplete"
   // Comparisons
-  | "comparison.reversed";
+  | "comparison.reversed"
+  // Deduction: relationships between the clues on screen and the cards
+  // ruled in or out. Never a claim about why.
+  | "deduce.comparison-ignored"
+  | "deduce.order-relation-ignored"
+  | "deduce.fraction-part-confused"
+  | "deduce.contradicted-card-kept"
+  | "deduce.decided-before-enough-clues"
+  | "deduce.ruled-out-without-a-reason";
 
 /**
  * Parent-facing wording. Observation only: what was seen, never why.
@@ -81,6 +89,12 @@ const SIGNATURE_PHRASES = new Map<ErrorSignature, string>(Object.entries({
   "sequence.cyclic-shift": "started the order in the wrong place",
   "sequence.incomplete": "left the order unfinished",
   "comparison.reversed": "compared the two the wrong way round",
+  "deduce.comparison-ignored": "kept a card that the more-than or less-than clue rules out",
+  "deduce.order-relation-ignored": "kept a card that the before or after clue rules out",
+  "deduce.fraction-part-confused": "mixed up how many pieces with how big the pieces are",
+  "deduce.contradicted-card-kept": "kept a card that one of the shown clues rules out",
+  "deduce.decided-before-enough-clues": "settled on an answer before enough clues were shown",
+  "deduce.ruled-out-without-a-reason": "crossed out a card that no shown clue ruled out",
 }) as [ErrorSignature, string][]);
 
 export function describeSignature(signature: string): string | null {
@@ -104,6 +118,11 @@ export function signatureFavoursVerb(signature: string): "build" | "place" | nul
   if (signature === "number.magnitude-displaced") return "place";
   if (signature.startsWith("fraction.")) return "build";
   if (signature === "comparison.reversed") return "place";
+  // A child who is not yet using the clue relationships is helped more by
+  // seeing the idea concretely than by another mystery.
+  if (signature === "deduce.comparison-ignored") return "place";
+  if (signature === "deduce.order-relation-ignored") return "place";
+  if (signature === "deduce.fraction-part-confused") return "build";
   return null;
 }
 

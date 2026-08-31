@@ -52,10 +52,17 @@ test("alternate routes avoid mechanics the skill is already shown in", () => {
   assert.equal(afterBuild?.verb, "place");
   assert.equal(afterBuild?.slug, "stepping-stones");
 
+  // Once construction and position are both shown, inference is the next
+  // genuinely different demand — offered last, after the concrete forms.
+  const afterBoth = alternateMechanicRoute("math-place-value", ["choose", "build", "place"]);
+  assert.equal(afterBoth?.verb, "deduce");
+  assert.equal(afterBoth?.slug, "clue-hollow");
+  assert.ok(afterBoth?.href.includes("skill=math-place-value"));
+
   assert.equal(
-    alternateMechanicRoute("math-place-value", ["choose", "build", "place"]),
+    alternateMechanicRoute("math-place-value", ["choose", "build", "place", "deduce"]),
     null,
-    "a skill shown through every kernel verb has nowhere new to route"
+    "a skill shown in every form has nowhere new to route"
   );
   assert.equal(alternateMechanicRoute("spelling-grade-2", ["build"]), null);
 });

@@ -20,11 +20,15 @@
 import type { Game } from "@/lib/games";
 import {
   alternateMechanicRoute,
+  deduceRouteForSkill,
+  deduceSupportsSkill,
+  distinctCategories,
   KERNEL_GAMES,
   kernelVerbsForSkill,
   mechanicForGame,
   normalizeMechanic,
   type InteractionMechanic,
+  type MechanicCategory,
 } from "./kernels/kernel-registry.ts";
 import {
   describeSignature,
@@ -77,6 +81,15 @@ export type LearningEvidence = {
    * common case and an entirely acceptable one.
    */
   errorSignature: string | null;
+  /**
+   * Deduction only: whether the answer was reached by working the clues —
+   * enough of them read, and every card ruled out for a stated reason.
+   *
+   * A correct answer with this false is still correct; it is simply not yet
+   * evidence that the reasoning happened, which is the whole reason DEDUCE
+   * exists. Null for mechanics where the question does not apply.
+   */
+  reasoned: boolean | null;
 };
 
 export type ConfidenceRead =
@@ -153,6 +166,12 @@ export type MechanicSignal = {
   accuracy: number;
   /** Share of attempts that needed a hint or retry. */
   supportRate: number;
+  /**
+   * Share of the *correct* attempts that were reached by reasoning, where
+   * the mechanic reports it. 1 when the question does not apply, so
+   * mechanics that cannot answer it are unaffected.
+   */
+  reasonedRate: number;
 };
 
 /**
@@ -192,6 +211,12 @@ export type SkillSignal = {
    * SECURE_MECHANIC_ACCURACY, and support on fewer than half of them.
    */
   secureMechanics: InteractionMechanic[];
+  /**
+   * The distinct *kinds* of thinking those mechanics represent. Breadth is
+   * counted here rather than in raw mechanics, so several games that all ask
+   * a child to recognise an answer count once.
+   */
+  secureCategories: MechanicCategory[];
   /** Mechanics with enough attempts to say they are not working yet. */
   weakMechanics: InteractionMechanic[];
   grasp: SkillGrasp;
@@ -282,6 +307,8 @@ const RANDOM_RESPONSE_SHARE = 0.6;
 const RANDOM_RESPONSE_ACCURACY = 0.55;
 /** Support on more than this share of attempts means success is not yet independent. */
 const SUPPORT_DEPENDENT_RATE = 0.5;
+/** Most correct answers in a reasoning mechanic must be reasoned to count. */
+const REASONED_SOLVE_RATE = 0.6;
 /** A mechanic needs this many attempts before weakness in it is credible. */
 const MIN_WEAK_MECHANIC_ATTEMPTS = 3;
 /** At or below this accuracy a mechanic reads as not yet working. */
@@ -371,6 +398,7 @@ export function normalizeEvidence(value: unknown): LearningEvidence | null {
     // Only signatures this build knows how to act on survive. An unknown or
     // corrupted value becomes null rather than an invented classification.
     errorSignature: isKnownSignature(raw.errorSignature) ? raw.errorSignature : null,
+    reasoned: typeof raw.reasoned === "boolean" ? raw.reasoned : null,
   };
 }
 
@@ -607,6 +635,9 @@ function buildSkillSignal(
       // Success that leaned on hints or retries most of the time is real
       // progress, but it is not yet evidence the mechanic stands on its own.
       && row.supportRate < 0.5
+      // Right answers reached without using the clues are not evidence that
+      // the child can reason their way there.
+      && row.reasonedRate >= REASONED_SOLVE_RATE
     )
     .map((row) => row.mechanic);
   // A mechanic only reads as "not working yet" once it has had a fair run;
@@ -618,6 +649,7 @@ function buildSkillSignal(
     )
     .map((row) => row.mechanic);
 
+  const secureCategories = distinctCategories(secureMechanics);
   const rapidResponses = readRapidResponses(rows, accuracy);
   const errorPatterns = collectErrorPatterns(rows, accuracy, rapidResponses);
   const state = readSkillState({
@@ -650,13 +682,15 @@ function buildSkillSignal(
     action: readAction(accuracy, fluency, attempts, misconceptions.length),
     mechanics,
     secureMechanics,
+    secureCategories,
     weakMechanics,
     errorPatterns,
     state,
     rapidResponses,
-    grasp: secureMechanics.length >= 2
+    // Cross-context means two different *kinds* of demand, not two skins.
+    grasp: secureCategories.length >= 2
       ? "cross-context"
-      : secureMechanics.length === 1
+      : secureCategories.length === 1
         ? "single-context"
         : "unknown",
   };
@@ -675,12 +709,20 @@ function collectMechanics(rows: LearningEvidence[]): MechanicSignal[] {
       const supported = list.filter(
         (row) => row.hintsUsed > 0 || row.wrongAttempts > 0
       ).length;
+      // Only rows that actually answer the question count, so a mechanic
+      // that never reports reasoning is neither rewarded nor penalised.
+      const judged = list.filter((row) => row.correct && row.reasoned !== null);
+      const reasonedRate =
+        judged.length > 0
+          ? judged.filter((row) => row.reasoned === true).length / judged.length
+          : 1;
       return {
         mechanic,
         attempts: list.length,
         correct,
         accuracy: correct / list.length,
         supportRate: supported / list.length,
+        reasonedRate,
       };
     })
     .sort((a, b) => b.attempts - a.attempts);
@@ -1109,13 +1151,20 @@ function reteachActivity(skill: SkillSignal): NextActivity {
   const pattern = skill.errorPatterns[0];
   const verb = signatureFavoursVerb(pattern.signature);
   const route = verb ? kernelRouteForSkill(skill.skillId, verb) : null;
+  // Deduction is a reteach destination only when the errors are themselves
+  // about reading relationships and no concrete form is indicated. It is
+  // never chosen merely for being the newest thing available.
+  const inferenceRoute =
+    !route && pattern.signature.startsWith("deduce.")
+      ? null
+      : route;
   return {
     intent: "reteach",
     skillId: skill.skillId,
     skillLabel: skill.skillLabel,
     subject: skill.subject,
-    preferredSlugs: route ? [route.slug] : skill.gameSlugs,
-    preferredHref: route?.href ?? null,
+    preferredSlugs: inferenceRoute ? [inferenceRoute.slug] : skill.gameSlugs,
+    preferredHref: inferenceRoute?.href ?? null,
     childReason: `Let's build ${skill.skillLabel.toLowerCase()} a different way.`,
     adultReason: `Across ${pattern.taskCount} different ${skill.skillLabel.toLowerCase()} tasks, ${describePatternForAdult(pattern)}. Offering a hands-on version of the same idea rather than more of the same questions.`,
     difficultyShift: -1,
@@ -1197,16 +1246,26 @@ const MECHANIC_PHRASES = new Map<string, string>([
   ["build", "building it"],
   ["place", "putting things in order"],
   ["recall", "memory play"],
+  ["deduce", "working it out from clues"],
 ]);
 
 function findTransferCandidate(model: LearnerModel): NextActivity | null {
   const candidates = model.skills
-    .filter((skill) =>
-      skill.attempts >= MIN_SKILL_ATTEMPTS
-      && skill.fluency >= TRANSFER_FLUENCY
-      && skill.grasp === "single-context"
-      && skill.misconceptions.length === 0
-    )
+    .filter((skill) => {
+      if (skill.attempts < MIN_SKILL_ATTEMPTS) return false;
+      if (skill.fluency < TRANSFER_FLUENCY) return false;
+      if (skill.misconceptions.length > 0) return false;
+      if (skill.grasp === "single-context") return true;
+      // Inference is not just a third skin. A child who can construct and
+      // position an idea has still never been asked to work it out from
+      // relationships, so that gap is worth closing even once the evidence
+      // already spans two kinds of demand.
+      return (
+        skill.grasp === "cross-context"
+        && !skill.secureCategories.includes("inference")
+        && deduceSupportsSkill(skill.skillId)
+      );
+    })
     .sort((a, b) => b.fluency - a.fluency);
 
   for (const skill of candidates) {
@@ -1266,9 +1325,11 @@ export function explainSkillForAdult(skill: SkillSignal, childName: string): str
 }
 
 /** Plain-language label for how broadly a skill has been demonstrated. */
-export function graspLabel(skill: Pick<SkillSignal, "grasp" | "secureMechanics">): string {
+export function graspLabel(
+  skill: Pick<SkillSignal, "grasp" | "secureMechanics" | "secureCategories">
+): string {
   if (skill.grasp === "cross-context") {
-    return `Shown in ${skill.secureMechanics.length} different kinds of activities`;
+    return `Shown in ${skill.secureCategories.length} different kinds of activities`;
   }
   if (skill.grasp === "single-context") return "Reliable in one kind of activity so far";
   return "Not enough evidence yet";

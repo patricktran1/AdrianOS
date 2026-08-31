@@ -108,6 +108,34 @@ if (!model.includes("entry.tasks.size >= MIN_SIGNATURE_TASKS")) {
   failures.push("learner model: error patterns no longer require distinct tasks");
 }
 
+/*
+ * DEDUCE only means anything if a lucky answer cannot pass for reasoning,
+ * and if puzzles are verified before a child sees them. These checks fail
+ * loudly if either guarantee is quietly removed.
+ */
+const deduceUi = await read("components/kernels/DeducePlayground.tsx");
+if (!/reasoned: isCleanDeduction\(/.test(deduceUi)) {
+  failures.push("deduce: attempts no longer report whether the clues were used");
+}
+if (!deduceUi.includes("standing.length === 1")) {
+  failures.push("deduce: claiming no longer requires the child to narrow the field to one");
+}
+if (!deduceUi.includes('mechanic: "deduce"')) {
+  failures.push("deduce: attempts no longer carry the inference mechanic");
+}
+
+const deduceTasks = await read("lib/kernels/deduce-tasks.ts");
+if (!deduceTasks.includes("if (!report.usable) continue;")) {
+  failures.push("deduce: puzzles are no longer validated before reaching a child");
+}
+
+if (!model.includes("row.reasonedRate >= REASONED_SOLVE_RATE")) {
+  failures.push("learner model: unreasoned right answers can now count as secure evidence");
+}
+if (!model.includes("secureCategories.length >= 2")) {
+  failures.push("learner model: breadth is no longer counted in kinds of thinking");
+}
+
 const signatures = await read("lib/learning/error-signatures.ts");
 // Signatures come from stored evidence, so the lookup must not expose the
 // prototype chain: "constructor" would otherwise validate as a signature.
