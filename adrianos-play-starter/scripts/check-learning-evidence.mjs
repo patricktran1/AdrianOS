@@ -79,7 +79,44 @@ const modelContracts = [
   ["MIN_MECHANIC_ATTEMPTS", "a minimum sample before a mechanic counts as secure"],
   ["collectMechanics", "cross-mechanic evidence collection"],
   ["findTransferCandidate", "the transfer routing decision"],
+  ["MIN_SIGNATURE_TASKS", "a minimum of independent tasks before an error pattern is actionable"],
+  ["SIGNATURE_RECENCY_WINDOW", "a recency window on error patterns"],
+  ["SLIP_TOLERANCE_ACCURACY", "a slip tolerance so lone mistakes do not reroute a child"],
+  ["collectErrorPatterns", "structural error pattern accumulation"],
+  ["readSkillState", "the derived evidence state for a skill"],
+  ["chooseLearningIntent", "the single teaching decision source"],
+  ["findUnsteadyPrerequisite", "prerequisite routing gated on the prerequisite's own evidence"],
 ];
+
+/*
+ * The decision engine must stay the only source of routing truth, and the
+ * accumulation rules must stay conservative. These string checks are crude
+ * but they fail loudly if someone quietly removes a guard.
+ */
+if (!model.includes("export function chooseLearningIntent")) {
+  failures.push("learner model: the teaching decision engine is no longer exported");
+}
+if (!model.includes("return chooseLearningIntent(model)")) {
+  failures.push("learner model: recommendNextActivity no longer delegates to the one engine");
+}
+// A lone odd answer must never be able to reroute a child.
+if (!model.includes("if (accuracy >= SLIP_TOLERANCE_ACCURACY) return [];")) {
+  failures.push("learner model: a mostly-correct skill no longer suppresses error patterns");
+}
+// Retrying one task must not look like independent evidence.
+if (!model.includes("entry.tasks.size >= MIN_SIGNATURE_TASKS")) {
+  failures.push("learner model: error patterns no longer require distinct tasks");
+}
+
+const signatures = await read("lib/learning/error-signatures.ts");
+// Signatures come from stored evidence, so the lookup must not expose the
+// prototype chain: "constructor" would otherwise validate as a signature.
+if (!signatures.includes("new Map<ErrorSignature, string>")) {
+  failures.push("error signatures: the phrase table must be a Map, not a prototype-bearing object");
+}
+if (/does not understand|cognitive|deficit|disorder/i.test(signatures)) {
+  failures.push("error signatures: wording claims knowledge of the child rather than describing a response");
+}
 for (const [needle, description] of modelContracts) {
   if (!model.includes(needle)) failures.push(`learner model: missing ${description}`);
 }

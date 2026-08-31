@@ -11,6 +11,7 @@ import { useLearnerModel } from "@/lib/adrian-evidence";
 import {
   actionLabel,
   confidenceLabel,
+  explainSkillForAdult,
   graspLabel,
   recommendNextActivity,
   type SkillSignal,
@@ -140,6 +141,29 @@ export default function LearningEvidencePanel({ games }: { games: Game[] }) {
                 correct. More practice on its own tends to reinforce it, so AdrianOS
                 reteaches these before adding difficulty.
               </p>
+            </>
+          ) : null}
+
+          {ranked.some((skill) => skill.state !== "unknown") ? (
+            <>
+              <p className={styles.sectionLabel}>What AdrianOS is doing, and why</p>
+              <ul className={styles.misconceptionList} data-teaching-notes="present">
+                {ranked
+                  .filter((skill) => skill.state !== "unknown")
+                  .slice(0, 4)
+                  .map((skill) => (
+                    <li
+                      key={`note-${skill.skillId}`}
+                      className={styles.misconception}
+                      data-skill-state={skill.state}
+                    >
+                      <span className={styles.misconceptionSkill}>{skill.skillLabel}</span>
+                      <p className={styles.misconceptionAnswer}>
+                        {explainSkillForAdult(skill, activeProfile.name)}
+                      </p>
+                    </li>
+                  ))}
+              </ul>
             </>
           ) : null}
 

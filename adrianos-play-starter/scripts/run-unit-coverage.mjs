@@ -41,7 +41,12 @@ const passes = [
   },
   {
     label: "Interaction kernels",
-    include: ["lib/kernels/kernel-tasks.ts", "lib/kernels/kernel-registry.ts"],
+    include: [
+      "lib/kernels/kernel-tasks.ts",
+      "lib/kernels/kernel-registry.ts",
+      "lib/kernels/kernel-adaptation.ts",
+      "lib/learning/error-signatures.ts",
+    ],
     lines: 97,
     functions: 92,
     branches: 86,

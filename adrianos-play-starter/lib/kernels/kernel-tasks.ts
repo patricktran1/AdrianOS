@@ -31,6 +31,12 @@ import type { ElementaryGrade } from "@/lib/adrian-elementary-scope";
 // Relative with extension so the module loads under node type stripping
 // (unit tests) as well as the bundler.
 import { createSeededRandom, seededShuffle } from "../deterministic-random.ts";
+import {
+  fractionSignature,
+  integerSignature,
+  sequenceSignature,
+  type ErrorSignature,
+} from "../learning/error-signatures.ts";
 
 export type KernelVerb = "build" | "place";
 
@@ -84,6 +90,13 @@ export type KernelJudgement = {
    * made twice clusters as the same misconception.
    */
   canonicalAnswer: string;
+  /**
+   * The observable relationship between what was expected and what was made,
+   * when there is one worth naming. Computed here because this is where the
+   * task's structure is still known; a string comparison later could not
+   * recover it. Null for correct answers and for unremarkable misses.
+   */
+  errorSignature: ErrorSignature | null;
 };
 
 export const KERNEL_VERB_LABELS: Record<KernelVerb, string> = {
@@ -107,9 +120,11 @@ export function judgeKernelAnswer(
 ): KernelJudgement {
   if (task.verb === "build") {
     const total = chosen.reduce((sum, part) => sum + part.value, 0);
+    const correct = chosen.length > 0 && nearlyEqual(total, task.targetValue);
     return {
-      correct: chosen.length > 0 && nearlyEqual(total, task.targetValue),
+      correct,
       canonicalAnswer: formatBuildTotal(task, total),
+      errorSignature: correct ? null : buildErrorSignature(task, total),
     };
   }
   const sequence = chosen.map((part) => part.id);
@@ -119,11 +134,29 @@ export function judgeKernelAnswer(
   return {
     correct,
     canonicalAnswer: chosen.map((part) => part.label).join(", "),
+    errorSignature: correct ? null : sequenceSignature(task.targetIds, sequence),
   };
 }
 
 function nearlyEqual(a: number, b: number): boolean {
   return Math.abs(a - b) < 0.0001;
+}
+
+/**
+ * Names the relationship between the target and what the box actually holds.
+ *
+ * Fractions compare piece-for-piece; decimals and whole numbers compare as
+ * integers in their own smallest unit, so "0.47 built as 0.07" reads as the
+ * same tens-omitted relationship that "47 built as 7" does.
+ */
+function buildErrorSignature(task: KernelTask, total: number): ErrorSignature | null {
+  if (task.format === "fraction") {
+    return fractionSignature(
+      { numerator: task.targetValue, denominator: task.denominator },
+      { numerator: Math.round(total), denominator: task.denominator }
+    );
+  }
+  return integerSignature(task.targetValue, Math.round(total), { composed: true });
 }
 
 export function formatBuildTotal(task: KernelTask, total: number): string {
@@ -686,12 +719,26 @@ export const KERNEL_RUN_LENGTH = 5;
  * A run of tasks for one visit: same verb, same skill, varied content.
  * Same-day replays get the same run (a fair rematch); tomorrow differs.
  */
+/**
+ * The skill a run will actually teach.
+ *
+ * The requested id can arrive from a query parameter, so it is matched
+ * against the verb's own skill list rather than used directly: the result
+ * always comes from this module's constants, never from the request.
+ */
+export function resolveKernelSkill(
+  verb: KernelVerb,
+  grade: ElementaryGrade,
+  skillId?: string | null
+): string {
+  return (
+    KERNEL_SKILLS[verb].find((candidate) => candidate === skillId)
+    ?? defaultKernelSkill(verb, grade)
+  );
+}
+
 export function buildKernelRun(input: KernelRunInput): KernelTask[] {
-  // The skill id can arrive from a query parameter, so it is matched against
-  // the verb's own skill list rather than used directly: everything below
-  // flows from this module's constants, never from the request.
-  const requested = KERNEL_SKILLS[input.verb].find((skillId) => skillId === input.skillId)
-    ?? defaultKernelSkill(input.verb, input.grade);
+  const requested = resolveKernelSkill(input.verb, input.grade, input.skillId);
   const generator = generatorFor(input.verb, requested);
   const shift = input.difficultyShift ?? 0;
 

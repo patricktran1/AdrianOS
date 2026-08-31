@@ -36,9 +36,13 @@ import {
   KERNEL_RUN_LENGTH,
   type KernelPart,
   type KernelTask,
+  resolveKernelSkill,
   type KernelVerb,
 } from "@/lib/kernels/kernel-tasks";
 import { KERNEL_GAMES } from "@/lib/kernels/kernel-registry";
+import { adaptKernelRun, DEFAULT_ADAPTATION } from "@/lib/kernels/kernel-adaptation";
+import { useLearnerModel } from "@/lib/adrian-evidence";
+import { chooseLearningIntent } from "@/lib/adrian-learner-model";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type VerbTheme = {
@@ -94,6 +98,11 @@ export default function KernelPlayground({ verb }: { verb: KernelVerb }) {
   const theme = THEMES[verb];
   const { activeProfile, hydrated } = useFamilyProfiles();
   const { completeGame, restartGame } = useGameSession(game.slug);
+  // The learner model is read once when the run is built. Reading it live
+  // would let a task change under the child's hands mid-round.
+  const { model: learnerModel, hydrated: modelReady } = useLearnerModel(
+    hydrated ? activeProfile.id : ""
+  );
 
   const [grade, setGrade] = useState<ElementaryGrade | null>(null);
   const [route, setRoute] = useState<{ skillId: string | null; from: string | null } | null>(null);
@@ -117,6 +126,7 @@ export default function KernelPlayground({ verb }: { verb: KernelVerb }) {
     checkGuard.current = false;
   }, [chosen, round, started]);
 
+
   useEffect(() => {
     if (!hydrated) return;
     setGrade(readProfileGrade(activeProfile));
@@ -124,31 +134,62 @@ export default function KernelPlayground({ verb }: { verb: KernelVerb }) {
     setRoute({ skillId: params.get("skill"), from: params.get("from") });
   }, [activeProfile, hydrated]);
 
-  const run = useMemo(() => {
+  // Which skill this run will teach, decided before the run is built so the
+  // teaching decision can be matched against it.
+  const runSkillId = useMemo(() => {
     if (grade === null || route === null) return null;
+    return resolveKernelSkill(verb, grade, route.skillId);
+  }, [grade, route, verb]);
+
+  const adaptation = useMemo(() => {
+    if (!modelReady || !runSkillId) return DEFAULT_ADAPTATION;
+    return adaptKernelRun(chooseLearningIntent(learnerModel), runSkillId);
+  }, [learnerModel, modelReady, runSkillId]);
+
+  const run = useMemo(() => {
+    if (grade === null || route === null || !modelReady) return null;
     return buildKernelRun({
       verb,
       profileId: activeProfile.id,
       grade,
       skillId: route.skillId,
+      difficultyShift: adaptation.difficultyShift,
       dayKey: localDateKey(),
     });
-  }, [activeProfile.id, grade, route, verb]);
+  }, [activeProfile.id, adaptation.difficultyShift, grade, modelReady, route, verb]);
+
+  // When answers have been arriving faster than the question can be read,
+  // Check waits a beat after the last tap. Nothing is blocked and nothing is
+  // said about it: rapid tapping simply stops being the quickest route.
+  const [settled, setSettled] = useState(true);
+  useEffect(() => {
+    if (adaptation.settleMs <= 0) {
+      setSettled(true);
+      return;
+    }
+    setSettled(false);
+    const timer = window.setTimeout(() => setSettled(true), adaptation.settleMs);
+    return () => window.clearTimeout(timer);
+  }, [adaptation.settleMs, chosen, round]);
 
   const task: KernelTask | null = run?.[round] ?? null;
 
   useEffect(() => {
     if (started && !finished && task) {
       markQuestionShown(game.slug);
-      setMessage(task.prompt);
+      // A visible scaffold puts the strategy on screen from the start rather
+      // than holding it back until something goes wrong.
+      setMessage(adaptation.scaffold === "visible" ? task.hint : task.prompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [started, finished, round, task?.id]);
+  }, [adaptation.scaffold, started, finished, round, task?.id]);
 
   const chosenIds = useMemo(() => new Set(chosen.map((part) => part.id)), [chosen]);
   const done = solved || revealed;
   const canCheck = task
-    ? !done && (task.verb === "build" ? chosen.length > 0 : chosen.length === task.slots)
+    ? !done
+      && settled
+      && (task.verb === "build" ? chosen.length > 0 : chosen.length === task.slots)
     : false;
 
   function tap(part: KernelPart) {
@@ -178,6 +219,10 @@ export default function KernelPlayground({ verb }: { verb: KernelVerb }) {
         hintsUsed: Math.min(misses, 2),
         wrongAttempts: misses,
         mechanic: verb,
+        // The run strips the "#index" suffix so the same target met on a
+        // later day is the same task, while retries within a run collapse.
+        taskId: task.id.split("#")[0],
+        errorSignature: judgement.errorSignature,
         data: {
           standardCode: task.standardCode ?? "",
           kernelVerb: verb,

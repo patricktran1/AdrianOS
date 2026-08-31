@@ -22,6 +22,7 @@ import type {
   AdventureWorldPortalId,
 } from "@/lib/adventure-world";
 import type { LearnerModel, NextActivity, WorldIntent } from "@/lib/adrian-learner-model";
+import { KERNEL_GAMES } from "./kernels/kernel-registry.ts";
 
 export type WorldPoint = { x: number; y: number };
 
@@ -237,6 +238,21 @@ function chooseBeaconId(
   return heroId;
 }
 
+/**
+ * What the beacon should say it leads to when the model routed past the
+ * portal's own game. Falls back to the hosted game rather than inventing a
+ * name for a destination this module does not recognise.
+ */
+function destinationTitle(
+  next: NextActivity,
+  portal: AdventureWorldPortal
+): string | null {
+  const slug = next.preferredSlugs[0];
+  if (!slug || slug === portal.game.slug) return null;
+  const kernel = Object.values(KERNEL_GAMES).find((game) => game.slug === slug);
+  return kernel ? kernel.title : null;
+}
+
 function guideLineFor(
   next: NextActivity,
   beacon: AdventureWorldPortal,
@@ -272,18 +288,21 @@ export function buildWorldMap(
     const overridden = beacon && priority !== null;
     // A model decision that names a specific destination (a kernel run for a
     // particular skill) carries it through the beacon; the landmark still
-    // shows the place and the hosted game, only the door leads deeper.
-    const modelHref =
-      beacon && !priority && next.preferredHref && next.preferredSlugs[0] === portal.game.slug
-        ? next.preferredHref
-        : null;
+    // shows the place, only the door leads deeper.
+    //
+    // The destination applies even when the portal is currently rotating a
+    // different game. A place hosts whatever the child needs today, and a
+    // teaching decision that could only be honoured when the right game
+    // happened to be on the map would be silently dropped most of the time.
+    const modelHref = beacon && !priority ? next.preferredHref : null;
+    const modelTitle = modelHref ? destinationTitle(next, portal) : null;
     return {
       portal,
       wide: position.wide,
       tall: position.tall,
       beacon,
       cleared: portal.completions > 0,
-      status: overridden ? priority.title : portal.game.title,
+      status: overridden ? priority.title : modelTitle ?? portal.game.title,
       href: overridden ? priority.href : modelHref ?? portal.href,
       label: placeName(portal),
       emoji: portal.emoji,

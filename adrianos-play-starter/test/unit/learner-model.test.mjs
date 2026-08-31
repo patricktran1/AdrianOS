@@ -309,11 +309,11 @@ test("confidence labels stay readable for an adult surface", () => {
   assert.equal(confidenceLabel("unknown"), "Not enough attempts yet");
 });
 
-test("a forming skill is practised rather than reteaught or stretched", () => {
-  // Mostly right, but leaning on support: not a misconception, not fluent.
+test("a forming skill worked independently is practised, not reteaught or stretched", () => {
+  // Mostly right and unaided: not a misconception, not yet fluent.
   const model = buildLearnerModel("kid", [
-    ...series(11, { correct: true, hintsUsed: 1, wrongAttempts: 1 }),
-    // Each slip is a different answer, so nothing clusters into a misconception.
+    ...series(11, { correct: true }),
+    // Each slip is a different answer, so nothing clusters into a pattern.
     ...["9", "3", "0", "8"].map((answer, index) =>
       evidence({ correct: false, givenAnswer: answer }, 11 + index)
     ),
@@ -322,8 +322,26 @@ test("a forming skill is practised rather than reteaught or stretched", () => {
   const next = recommendNextActivity(model);
   assert.equal(next.intent, "practice");
   assert.equal(next.skillId, "math-place-value");
-  assert.equal(next.hintStrategy, "early");
   assert.ok(next.preferredSlugs.includes("number-quest"));
+});
+
+test("success that leans on help keeps the help instead of being called practice", () => {
+  // The same accuracy as above, but a hint and a retry on nearly every win.
+  const model = buildLearnerModel("kid", [
+    ...series(11, { correct: true, hintsUsed: 1, wrongAttempts: 1 }),
+    ...["9", "3", "0", "8"].map((answer, index) =>
+      evidence({ correct: false, givenAnswer: answer }, 11 + index)
+    ),
+  ]);
+  const skill = model.skills[0];
+  assert.equal(skill.state, "support-dependent");
+  assert.ok(!skill.secureMechanics.includes("choose"), "leaning on help is not secure");
+
+  const next = recommendNextActivity(model);
+  assert.equal(next.intent, "scaffold");
+  assert.equal(next.hintStrategy, "immediate");
+  assert.equal(next.difficultyShift, -1);
+  assert.doesNotMatch(next.childReason, /struggl|behind|wrong|hard for you/i);
 });
 
 test("a struggling forming skill drops the difficulty while practising", () => {

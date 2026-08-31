@@ -87,6 +87,16 @@ export type LearningAttempt = {
    * a non-default verb need to say so.
    */
   mechanic?: "choose" | "build" | "place" | "recall";
+  /**
+   * Identifies the specific task, so retrying one task is not mistaken for
+   * independent evidence of a habit.
+   */
+  taskId?: string;
+  /**
+   * The observable relationship between expected and submitted responses,
+   * computed by the game where the task structure is known.
+   */
+  errorSignature?: string | null;
 };
 
 export type SubjectMastery = {
@@ -279,6 +289,9 @@ function recordAttemptEvidence(
           : 0,
     standardCode,
     mechanic: attempt.mechanic ?? mechanicForGame(attempt.gameSlug),
+    taskId: typeof attempt.taskId === "string" ? attempt.taskId : null,
+    errorSignature:
+      typeof attempt.errorSignature === "string" ? attempt.errorSignature : null,
   });
 
   // Arm the clock for the next question in this game. These games advance
