@@ -17,6 +17,8 @@ import {
   type SkillSignal,
 } from "@/lib/adrian-learner-model";
 import { buildWorldMap, describeWorldDecision } from "@/lib/adrian-world-map";
+import { readSession } from "@/lib/adrian-session-runtime";
+import { summariseSession } from "@/lib/session/session-summary";
 import type { Game } from "@/lib/games";
 import styles from "./LearningEvidencePanel.module.css";
 
@@ -69,6 +71,19 @@ export default function LearningEvidencePanel({ games }: { games: Game[] }) {
     return describeWorldDecision(buildWorldMap(world, model, next), model);
   }, [activeProfile, games, model, next, profilesReady, progress, progressReady]);
 
+  /**
+   * Today's session in four sentences.
+   *
+   * Read from the plan and the model, never from raw answers, so there is
+   * nothing here a parent could not have seen by watching. No scores, no
+   * percentages, no words about what the child understands.
+   */
+  const session = useMemo(() => {
+    if (!profilesReady || !modelReady) return null;
+    const state = readSession(activeProfile.id, readProfileGrade(activeProfile), activeProfile.age);
+    return summariseSession(state.plan, model, activeProfile.name);
+  }, [activeProfile, model, modelReady, profilesReady]);
+
   if (!profilesReady || !modelReady) return null;
 
   const ranked: SkillSignal[] = [...model.skills]
@@ -88,6 +103,30 @@ export default function LearningEvidencePanel({ games }: { games: Game[] }) {
           </p>
         </div>
       </header>
+
+      {session && (
+        <section className={styles.session} data-session-summary="active">
+          <span className={styles.eyebrow}>TODAY&apos;S SESSION</span>
+          <dl className={styles.sessionList}>
+            <div className={styles.sessionRow}>
+              <dt>What was worked on</dt>
+              <dd data-session-field="workedOn">{session.workedOn}</dd>
+            </div>
+            <div className={styles.sessionRow}>
+              <dt>What AdrianOS observed</dt>
+              <dd data-session-field="observed">{session.observed}</dd>
+            </div>
+            <div className={styles.sessionRow}>
+              <dt>How it responded</dt>
+              <dd data-session-field="responded">{session.responded}</dd>
+            </div>
+            <div className={styles.sessionRow}>
+              <dt>What happens next</dt>
+              <dd data-session-field="next">{session.next}</dd>
+            </div>
+          </dl>
+        </section>
+      )}
 
       {model.sampleSize === 0 ? (
         <p className={styles.empty} data-evidence-empty="true">

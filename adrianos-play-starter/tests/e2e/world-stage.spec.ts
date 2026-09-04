@@ -233,7 +233,7 @@ test.describe("the AdrianOS world", () => {
     );
   });
 
-  test("a planned session mission becomes the beacon and starts in one tap", async ({ page }) => {
+  test("the session's next step becomes the beacon and starts in one tap", async ({ page }) => {
     await seedWorld(page);
     await page.setViewportSize(DESKTOP);
     await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -242,9 +242,11 @@ test.describe("the AdrianOS world", () => {
     await expect(beacon).toBeVisible();
     await beacon.click();
 
-    // Straight into guided play: no school screen, no mission list, no confirm.
-    await expect(page).toHaveURL(/guided=1/);
-    await expect(page).toHaveURL(/school=1/);
+    // Straight into the activity: no school screen, no mission list, no
+    // confirm. School Mode changes how long a session is, not who plans it,
+    // so there is no second route into gameplay to keep in step.
+    await expect(page).toHaveURL(/\/games\//);
+    await expect(page).not.toHaveURL(/guided=1/);
   });
 
   test("a world with no verified clears is built of nothing", async ({ page }) => {

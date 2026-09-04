@@ -39,7 +39,7 @@ export default function SchoolPage() {
   useEffect(() => {
     if (!profilesReady || !progressReady) return;
     const refresh = () => {
-      setSession(ensureDailySession(activeProfile, games, progress));
+      setSession(ensureDailySession(activeProfile));
       setRevision((value) => value + 1);
     };
     refresh();

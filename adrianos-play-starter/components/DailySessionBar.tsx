@@ -1,20 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { readProgressForProfile } from "@/lib/adrian-progress";
+import { useEffect, useState } from "react";
 import {
-  completeDailySessionMission,
-  DAILY_SESSION_EVENT,
-  readDailySession,
-  type DailySession,
-} from "@/lib/adrian-daily-session";
+  readSessionGlance,
+  type SessionGlance,
+} from "@/lib/session/session-glance";
 
+/**
+ * The guided-mode ribbon.
+ *
+ * It reports where the session has got to; it decides nothing. A mission used
+ * to complete here by watching the play counter, which meant a game opened
+ * and abandoned could advance the route. The session now advances from the
+ * evidence an activity actually produced, so this only has to notice.
+ *
+ * It reads the stored plan directly rather than through the planner: this
+ * component is mounted on every game screen, and the planner is not something
+ * fifty routes should each be carrying.
+ */
 export default function DailySessionBar() {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [missionIndex, setMissionIndex] = useState<number | null>(null);
-  const [session, setSession] = useState<DailySession | null>(null);
+  const [glance, setGlance] = useState<SessionGlance | null>(null);
   const [message, setMessage] = useState("");
-  const completing = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -25,80 +33,47 @@ export default function DailySessionBar() {
     document.documentElement.dataset.schoolMissionActive = "true";
     setProfileId(profile);
     setMissionIndex(index);
-    const refresh = () => setSession(readDailySession(profile));
+    const refresh = () => setGlance(readSessionGlance(profile));
     refresh();
-    window.addEventListener(DAILY_SESSION_EVENT, refresh);
+    window.addEventListener("adrianos-session-updated", refresh);
     window.addEventListener("adrianos-learning-updated", refresh);
+    window.addEventListener("adrianos-evidence-updated", refresh);
     return () => {
       delete document.documentElement.dataset.schoolMissionActive;
-      window.removeEventListener(DAILY_SESSION_EVENT, refresh);
+      window.removeEventListener("adrianos-session-updated", refresh);
       window.removeEventListener("adrianos-learning-updated", refresh);
+      window.removeEventListener("adrianos-evidence-updated", refresh);
     };
   }, []);
 
-  const mission = profileId && missionIndex !== null && session
-    ? session.missions[missionIndex]
-    : null;
-
+  // The planner has moved past this activity, so the only thing left here is
+  // to go back to the route.
+  const finished = glance !== null && missionIndex !== null && glance.currentIndex > missionIndex;
   useEffect(() => {
-    if (!profileId || missionIndex === null || !mission || mission.status === "complete") return;
+    if (!finished) return;
+    setMessage("Mission complete! Returning to today’s route…");
+    const timer = window.setTimeout(() => {
+      window.location.href = "/daily-session?school=1";
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [finished]);
 
-    const completeVerifiedMission = () => {
-      if (completing.current) return;
-      completing.current = true;
-      const updated = completeDailySessionMission(profileId, missionIndex);
-      if (!updated) {
-        completing.current = false;
-        return;
-      }
-      setSession(updated);
-      setMessage("Mission complete! Returning to today’s route…");
-      window.setTimeout(() => {
-        window.location.href = "/daily-session?school=1";
-      }, 1200);
-    };
+  if (!profileId || missionIndex === null || !glance || glance.total === 0) return null;
 
-    const checkProgress = () => {
-      const progress = readProgressForProfile(profileId);
-      const game = progress.games[mission.gameSlug];
-      if (!game) return;
-
-      if (game.completions > mission.baselineCompletions) {
-        completeVerifiedMission();
-        return;
-      }
-
-      if (mission.kind === "explore" && mission.startedAt && game.plays > mission.baselinePlays) {
-        const exploredFor = Date.now() - new Date(mission.startedAt).getTime();
-        if (exploredFor >= 60_000) completeVerifiedMission();
-      }
-    };
-
-    checkProgress();
-    window.addEventListener("adrianos-progress-updated", checkProgress);
-    const timer = window.setInterval(checkProgress, 1000);
-    return () => {
-      window.removeEventListener("adrianos-progress-updated", checkProgress);
-      window.clearInterval(timer);
-    };
-  }, [profileId, missionIndex, mission?.id, mission?.status, mission?.startedAt, mission?.baselineCompletions, mission?.baselinePlays]);
-
-  if (!profileId || missionIndex === null || !session || !mission) return null;
-
-  const instruction = message || (mission.kind === "explore"
-    ? "Explore for one minute. AdrianOS will unlock the next step automatically."
-    : "Complete the game or review round to unlock the next step automatically.");
+  // The game's own title sits directly above this ribbon, so repeating it
+  // here only crowded a small bar on a phone.
+  const instruction = message
+    || "Finish the round. AdrianOS unlocks the next step from what you answer.";
 
   return (
     <aside className="daily-session-bar" style={shell} aria-label="Daily session controls" role="status" aria-live="polite">
       <div style={progressTrack}>
-        <div style={{ ...progressFill, width: `${((missionIndex + 1) / session.missions.length) * 100}%` }} />
+        <div style={{ ...progressFill, width: `${((missionIndex + 1) / glance.total) * 100}%` }} />
       </div>
       <div className="daily-session-bar-body" style={body}>
         <div style={stepBubble}>{message ? "✓" : missionIndex + 1}</div>
         <div style={{ minWidth: 0 }}>
-          <small style={eyebrow}>SCHOOL MODE · MISSION {missionIndex + 1} OF {session.missions.length}</small>
-          <strong style={title}>{mission.title}</strong>
+          <small style={eyebrow}>SCHOOL MODE · MISSION {missionIndex + 1} OF {glance.total}</small>
           <span className="daily-session-bar-status" style={status}>{instruction}</span>
         </div>
         <button className="daily-session-bar-pause" onClick={() => { window.location.href = "/daily-session?school=1"; }} style={pauseButton} type="button" aria-label="Pause School Mode and return to today’s route">
@@ -115,6 +90,5 @@ const progressFill: React.CSSProperties = { height: "100%", borderRadius: 999, b
 const body: React.CSSProperties = { display: "grid", gridTemplateColumns: "42px minmax(0,1fr) auto", gap: 12, alignItems: "center", padding: 13 };
 const stepBubble: React.CSSProperties = { width: 40, height: 40, borderRadius: 999, display: "grid", placeItems: "center", background: "#7fdcff", color: "#10131b", fontWeight: 950 };
 const eyebrow: React.CSSProperties = { display: "block", color: "#7fdcff", fontSize: 9, fontWeight: 950, letterSpacing: ".12em" };
-const title: React.CSSProperties = { display: "block", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const status: React.CSSProperties = { display: "block", marginTop: 3, color: "#aab1bf", fontSize: 11, lineHeight: 1.35 };
 const pauseButton: React.CSSProperties = { padding: "10px 14px", borderRadius: 999, border: "1px solid rgba(255,255,255,.15)", background: "#222936", color: "#fff", fontWeight: 900, cursor: "pointer" };

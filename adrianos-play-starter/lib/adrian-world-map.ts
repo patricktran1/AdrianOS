@@ -26,23 +26,6 @@ import { KERNEL_GAMES } from "./kernels/kernel-registry.ts";
 
 export type WorldPoint = { x: number; y: number };
 
-/**
- * A destination that outranks the model's own choice for the beacon.
- *
- * Used when the child has a planned session waiting: the world points
- * straight at the next mission instead of asking them to walk through a
- * separate school screen to reach it.
- */
-export type WorldPriority = {
-  slug: string;
-  title: string;
-  emoji: string;
-  href: string;
-  /** Child-language line the guide says instead of the model's. */
-  guideLine: string;
-  /** Adult-facing explanation, appended to the rationale. */
-  rationale: string;
-};
 
 export type WorldLandmark = {
   portal: AdventureWorldPortal;
@@ -245,20 +228,42 @@ function chooseBeaconId(
  */
 function destinationTitle(
   next: NextActivity,
-  portal: AdventureWorldPortal
+  portal: AdventureWorldPortal,
+  resolve: TitleResolver
 ): string | null {
   const slug = next.preferredSlugs[0];
   if (!slug || slug === portal.game.slug) return null;
   const kernel = Object.values(KERNEL_GAMES).find((game) => game.slug === slug);
-  return kernel ? kernel.title : null;
+  return kernel ? kernel.title : resolve(slug);
 }
 
+/**
+ * Names a destination the map does not host itself.
+ *
+ * This module knows the kernel games because it routes to them; it does not
+ * know the catalogue, and importing it here would put every game's content
+ * behind the world screen. The caller, which already has the catalogue,
+ * supplies the lookup — without it a child taps a landmark labelled with the
+ * game the place happens to be hosting and lands somewhere else.
+ */
+export type TitleResolver = (slug: string) => string | null;
+
+/**
+ * What the guide says.
+ *
+ * A decision that names a destination brought its own reason with it, and
+ * that reason is the honest thing to say — including when the intent is
+ * exploring, because "find your starting point" is a specific invitation
+ * even though the model has nothing to go on yet. Only a decision with
+ * nowhere particular in mind falls back to novelty.
+ */
 function guideLineFor(
   next: NextActivity,
   beacon: AdventureWorldPortal,
   clears: number
 ): string {
-  if (next.intent === "explore") {
+  const undirected = next.preferredSlugs.length === 0 && next.preferredHref === null;
+  if (next.intent === "explore" && undirected) {
     return clears === 0
       ? "Tap the glowing one. I'll come with you!"
       : `${beacon.title} is open. Want to go?`;
@@ -271,21 +276,21 @@ export function buildWorldMap(
   learner: LearnerModel,
   next: NextActivity,
   foundGlints: number[] = [],
-  priority: WorldPriority | null = null,
-  now = new Date()
+  now = new Date(),
+  resolveTitle: TitleResolver = () => null
 ): WorldMap {
   // A landmark is a place, not a fixed game: the game behind each portal
-  // already rotates. So a planned mission can take over the beacon's
-  // destination without moving the map or confusing the geography.
-  const beaconId = priority
-    ? world.portals.find((portal) => portal.game.slug === priority.slug)?.id
-      ?? chooseBeaconId(world.portals, next, world.heroPortal.id)
-    : chooseBeaconId(world.portals, next, world.heroPortal.id);
+  // already rotates, so a place can host whatever the session needs today
+  // without the geography moving.
+  //
+  // There used to be a second input here — a stored playlist that could take
+  // the beacon over. There is now one planner, and `next` is its current
+  // step, so the world has nothing to arbitrate between.
+  const beaconId = chooseBeaconId(world.portals, next, world.heroPortal.id);
 
   const landmarks: WorldLandmark[] = world.portals.map((portal) => {
     const beacon = portal.id === beaconId;
     const position = LANDMARK_POSITIONS[portal.id];
-    const overridden = beacon && priority !== null;
     // A model decision that names a specific destination (a kernel run for a
     // particular skill) carries it through the beacon; the landmark still
     // shows the place, only the door leads deeper.
@@ -294,16 +299,16 @@ export function buildWorldMap(
     // different game. A place hosts whatever the child needs today, and a
     // teaching decision that could only be honoured when the right game
     // happened to be on the map would be silently dropped most of the time.
-    const modelHref = beacon && !priority ? next.preferredHref : null;
-    const modelTitle = modelHref ? destinationTitle(next, portal) : null;
+    const modelHref = beacon ? next.preferredHref : null;
+    const modelTitle = modelHref ? destinationTitle(next, portal, resolveTitle) : null;
     return {
       portal,
       wide: position.wide,
       tall: position.tall,
       beacon,
       cleared: portal.completions > 0,
-      status: overridden ? priority.title : modelTitle ?? portal.game.title,
-      href: overridden ? priority.href : modelHref ?? portal.href,
+      status: modelTitle ?? portal.game.title,
+      href: modelHref ?? portal.href,
       label: placeName(portal),
       emoji: portal.emoji,
     };
@@ -348,9 +353,9 @@ export function buildWorldMap(
     landmarks,
     beacon,
     structures,
-    guideLine: priority ? priority.guideLine : guideLineFor(next, beacon.portal, world.clears),
+    guideLine: guideLineFor(next, beacon.portal, world.clears),
     intent: next.intent,
-    rationale: priority ? `${priority.rationale} ${next.adultReason}` : next.adultReason,
+    rationale: next.adultReason,
     glints,
   };
 }

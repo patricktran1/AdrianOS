@@ -246,7 +246,12 @@ test.describe("interaction kernels", () => {
 
     // The invitation is a game, not an assessment.
     await expect(page.getByText(/brand-new way/i)).toBeVisible();
-    await page.getByRole("button", { name: /Start building/ }).click();
+    // A planner destination starts itself; the click races that and either
+    // outcome leaves the tray on screen.
+    await page.getByRole("button", { name: /Start building/ })
+      .click({ timeout: 3_000 })
+      .catch(() => {});
+    await page.locator("[data-part-id]").first().waitFor({ timeout: 15_000 });
 
     const run = buildKernelRun({
       verb: "build",

@@ -282,11 +282,12 @@ test.describe("gameplay produces real learning evidence", () => {
     const chain = page.locator('[data-adventure-chain="active"]');
     await expect(chain).toBeVisible({ timeout: 15_000 });
 
-    // The rescue slot repeats the world's line rather than inventing its own.
-    const rescue = chain.locator('[data-chain-kind="rescue"]');
-    await expect(rescue).toHaveCount(1);
-    await expect(rescue).toContainText("place value");
-    expect(await rescue.innerText()).not.toMatch(/score|%|wrong|behind/i);
+    // One next destination, and it repeats the world's line rather than
+    // inventing its own. There is no second opinion to contradict the first.
+    const cards = chain.locator(".adventure-chain-card");
+    await expect(cards).toHaveCount(1);
+    await expect(cards).toContainText("place value");
+    expect(await cards.innerText()).not.toMatch(/score|%|wrong|behind/i);
   });
 
   test("the parent panel refuses to summarize when there is no evidence", async ({ page }) => {

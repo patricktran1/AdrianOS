@@ -67,7 +67,7 @@ export default function DailySessionPage() {
   useEffect(() => {
     if (!profilesReady || !progressReady) return;
     const refresh = () => {
-      setSession(ensureDailySession(activeProfile, games, progress));
+      setSession(ensureDailySession(activeProfile));
     };
     refresh();
     const events = [

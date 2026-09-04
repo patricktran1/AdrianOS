@@ -34,8 +34,8 @@ export type MasteryIntervention = {
 
 const INTERVENTION_GAME_SLUG = "adrianos-mastery-intervention";
 const MASTERY_LAB_SLUG = "mastery-lab";
+/** Legacy stored-session rows: never learning evidence, so never a trigger. */
 const DAILY_SESSION_GAME_SLUG = "adrianos-daily-session";
-const DAILY_SESSION_PREFIX = "daily-session:";
 const EVIDENCE_THRESHOLD = 2;
 const RETENTION_DELAY_MS = 24 * 60 * 60 * 1000;
 export const MASTERY_LOOP_EVENT = "adrianos-mastery-loop-updated";
@@ -178,16 +178,16 @@ function masteryMission(intervention: MasteryIntervention, profileId: string): A
   };
 }
 
-function parseSession(item: ReviewItem): Record<string, unknown> | null {
-  if (item.gameSlug !== DAILY_SESSION_GAME_SLUG || typeof item.data?.sessionJson !== "string") return null;
-  try {
-    const parsed = JSON.parse(item.data.sessionJson) as Record<string, unknown>;
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch {
-    return null;
-  }
-}
 
+/**
+ * Keeps the change-of-explanation at the front of the daily adventure list.
+ *
+ * The session itself is no longer written here. A session used to be a stored
+ * playlist that this function reached into and edited; it is now planned from
+ * evidence, and the planner reads the due interventions directly, so a
+ * mission injected into storage would be a second, stale copy of a decision
+ * the planner has already made.
+ */
 function injectMasteryMission(
   state: LearningState,
   profileId: string,
@@ -196,55 +196,14 @@ function injectMasteryMission(
   if (!intervention) return state;
   const today = localDateKey();
   const mission = masteryMission(intervention, profileId);
-  const sessionIndex = state.reviewQueue.findIndex((item) => item.id === `${DAILY_SESSION_PREFIX}${today}`);
-  const sessionItem = sessionIndex >= 0 ? state.reviewQueue[sessionIndex] : null;
-  const session = sessionItem ? parseSession(sessionItem) : null;
-  const sessionMissions = Array.isArray(session?.missions) ? session?.missions as Array<Record<string, unknown>> : [];
-  const sessionStarted = typeof session?.startedAt === "string" || sessionMissions.some((row) => row.status === "complete");
-  let nextState = state;
-
-  if (!sessionStarted) {
-    const existingItems = state.dailyAdventure?.date === today ? state.dailyAdventure.items : [];
-    const nextItems = [mission, ...existingItems.filter((item) => item.gameSlug !== MASTERY_LAB_SLUG)].slice(0, 3);
-    const sameAdventure = state.dailyAdventure?.date === today
-      && JSON.stringify(state.dailyAdventure.items) === JSON.stringify(nextItems);
-    if (!sameAdventure) {
-      nextState = { ...nextState, dailyAdventure: { date: today, items: nextItems } };
-    }
-  }
-
-  if (sessionItem && session && !sessionStarted) {
-    const progress = readProgressForProfile(profileId);
-    const sessionMission = {
-      ...mission,
-      baselineCompletions: progress.games[MASTERY_LAB_SLUG]?.completions ?? 0,
-      status: "pending",
-      startedAt: null,
-      completedAt: null,
-    };
-    const nextMissions = [
-      sessionMission,
-      ...sessionMissions.filter((row) => row.gameSlug !== MASTERY_LAB_SLUG),
-    ].slice(0, 3);
-    if (JSON.stringify(sessionMissions) !== JSON.stringify(nextMissions)) {
-      const now = new Date().toISOString();
-      const nextSession = {
-        ...session,
-        currentIndex: 0,
-        missions: nextMissions,
-        updatedAt: now,
-      };
-      const nextQueue = [...nextState.reviewQueue];
-      nextQueue[sessionIndex] = {
-        ...sessionItem,
-        updatedAt: now,
-        data: { ...sessionItem.data, sessionJson: JSON.stringify(nextSession) },
-      };
-      nextState = { ...nextState, reviewQueue: nextQueue };
-    }
-  }
-
-  return nextState;
+  const existingItems = state.dailyAdventure?.date === today ? state.dailyAdventure.items : [];
+  const nextItems = [mission, ...existingItems.filter((item) => item.gameSlug !== MASTERY_LAB_SLUG)]
+    .slice(0, 3);
+  const sameAdventure = state.dailyAdventure?.date === today
+    && JSON.stringify(state.dailyAdventure.items) === JSON.stringify(nextItems);
+  return sameAdventure
+    ? state
+    : { ...state, dailyAdventure: { date: today, items: nextItems } };
 }
 
 function dueIntervention(interventions: MasteryIntervention[], now: string): MasteryIntervention | null {

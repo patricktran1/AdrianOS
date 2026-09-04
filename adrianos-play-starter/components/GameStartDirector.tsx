@@ -9,6 +9,14 @@ const INSTANT_SOURCES = new Set([
   "adventure-chain",
   "world-quest",
   "weekly-world-quest",
+  // Session-planner steps. A child who tapped the one destination the world
+  // offered has already chosen; making them tap Start again is a second
+  // decision about something they just decided.
+  "session",
+  "warmup",
+  "closure",
+  "transfer",
+  "teaching",
 ]);
 
 const BLOCKED_LABEL = /\b(play again|replay|next|continue|results?|finish|home|back|exit|quit|end session|hints?|clues?|reveal|answers?|options?|settings?|sound|haptics?|auto-next|save|remove|collect|rewards?)\b/i;

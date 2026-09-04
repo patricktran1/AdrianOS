@@ -220,7 +220,14 @@ test.describe("teaching decisions in the world", () => {
     await page.goto("/games/maker-workshop?skill=math-place-value&from=teaching", {
       waitUntil: "domcontentloaded",
     });
-    await page.getByRole("button", { name: /Start building/ }).click();
+    // A planner destination starts itself, so the button may already be gone.
+    const tray = page.locator("[data-part-id]").first();
+    // The click races the director's own auto-start; either way the tray is
+    // what the test is waiting for.
+    await page.getByRole("button", { name: /Start building/ })
+      .click({ timeout: 3_000 })
+      .catch(() => {});
+    await tray.waitFor({ timeout: 15_000 });
 
     // The coaching line is on screen before anything has gone wrong, which
     // is what "reteach" means for the child: help first, not help after.

@@ -187,3 +187,39 @@
   font-weight: 700;
   line-height: 1.6;
 }
+
+/*
+ * Today's session, in the four questions a parent actually asks. Laid out as
+ * a definition list because that is what it is: a question and its answer,
+ * not a metric and a number.
+ */
+.session {
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(127, 220, 255, .28);
+  background: rgba(10, 14, 22, .5);
+}
+
+.sessionList {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 0;
+}
+
+.sessionRow > dt {
+  margin: 0;
+  color: #7fdcff;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.sessionRow > dd {
+  margin: 4px 0 0;
+  color: #cdd3dc;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+}

@@ -1098,6 +1098,58 @@ export function recommendNextActivity(model: LearnerModel): NextActivity {
 }
 
 /**
+ * The same decision, asked about one skill instead of the whole learner.
+ *
+ * The session planner needs to know "what is the right move for place value
+ * right now?" while it sequences a session, and the honest way to answer
+ * that is to ask the engine that already knows — not to grow a second copy
+ * of the rules next door. So the question is narrowed rather than the policy
+ * duplicated: the model is restricted to this skill (plus the prerequisite
+ * it may legitimately route to) and handed straight back to
+ * chooseLearningIntent.
+ *
+ * Consequences that are deliberate:
+ * - Precedence inside a skill is identical to precedence across the learner.
+ * - A skill that is not the learner's stretch skill cannot be stretched by
+ *   asking about it in isolation.
+ * - Thin evidence still falls through to exploring.
+ */
+export function chooseSkillIntent(
+  model: LearnerModel,
+  skillId: string
+): NextActivity {
+  const skill = model.skills.find((row) => row.skillId === skillId);
+  if (!skill) return chooseLearningIntent(model);
+  const prerequisiteId = SKILL_PREREQUISITES.get(skillId);
+  const ask = (skills: SkillSignal[]) =>
+    chooseLearningIntent({
+      ...model,
+      skills,
+      focusSkill: skill,
+      stretchSkill:
+        model.stretchSkill && model.stretchSkill.skillId === skillId
+          ? model.stretchSkill
+          : null,
+    });
+
+  // The prerequisite is present so the engine can route down to it when the
+  // evidence warrants that. It must not be able to *answer* in its place:
+  // a rule that scans every skill would happily return a transfer for the
+  // prerequisite, and the caller would be told a decision about place value
+  // when it asked about addition.
+  const withPrerequisite = prerequisiteId
+    ? ask(model.skills.filter((row) => row.skillId === skillId || row.skillId === prerequisiteId))
+    : null;
+  if (
+    withPrerequisite
+    && (withPrerequisite.skillId === skillId || withPrerequisite.intent === "prerequisite")
+  ) {
+    return withPrerequisite;
+  }
+  return ask([skill]);
+}
+
+/**
  * A repeated structural error justifies revisiting the idea underneath only
  * when that idea is *itself* unsteady in the evidence. A child who misses
  * multi-digit addition while place value is solid does not need to go back
