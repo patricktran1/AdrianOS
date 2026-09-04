@@ -15,7 +15,7 @@
  * two views cannot drift apart.
  */
 
-import type { ChildProfile } from "@/lib/adrian-profiles";
+import { readFamilyState, type ChildProfile } from "@/lib/adrian-profiles";
 import { readProfileGrade } from "@/lib/adrian-profile-grade";
 import { learningPlanForDate, type LearningDayMode } from "@/lib/adrian-learning-schedule";
 import {
@@ -139,7 +139,9 @@ function kindFor(step: SessionStep): DailySessionMission["kind"] {
   return "skill";
 }
 
-function project(profile: ChildProfile, grade: number, ensure: boolean): DailySession {
+type ProfileRef = Pick<ChildProfile, "id" | "age">;
+
+function project(profile: ProfileRef, grade: number, ensure: boolean): DailySession {
   const state = ensure
     ? ensureSession(profile.id, grade, profile.age)
     : readSession(profile.id, grade, profile.age);
@@ -177,7 +179,8 @@ function project(profile: ChildProfile, grade: number, ensure: boolean): DailySe
 export function readDailySession(profileId: string, _date?: string): DailySession | null {
   void _date;
   if (typeof window === "undefined" || !profileId) return null;
-  return project({ id: profileId, age: 7 } as ChildProfile, gradeFor(profileId), false);
+  const profile = profileRef(profileId);
+  return project(profile, readProfileGrade(profile), false);
 }
 
 export function ensureDailySession(profile: ChildProfile): DailySession {
@@ -185,14 +188,16 @@ export function ensureDailySession(profile: ChildProfile): DailySession {
 }
 
 /**
- * Grade for a profile id alone.
+ * The learner behind an id.
  *
  * The school screens hold a full profile; the parent surfaces sometimes only
- * have an id. Reading the stored grade directly keeps both callers on the
- * same session rather than one of them planning at a default grade.
+ * have an id. Looking the real one up keeps both callers on the same session:
+ * a made-up age would put a TK learner on a nine-year-old's session length
+ * whenever no grade had been stored yet.
  */
-function gradeFor(profileId: string): number {
-  return readProfileGrade({ id: profileId, age: 7 });
+function profileRef(profileId: string): ProfileRef {
+  const found = readFamilyState().profiles.find((row) => row.id === profileId);
+  return found ?? { id: profileId, age: 7 };
 }
 
 /**
@@ -220,7 +225,8 @@ export function completeDailySessionMission(
 }
 
 export function claimDailySessionReward(profileId: string): DailySession | null {
-  claimSessionReward(profileId, gradeFor(profileId));
+  const profile = profileRef(profileId);
+  claimSessionReward(profileId, readProfileGrade(profile));
   return readDailySession(profileId);
 }
 
@@ -242,5 +248,8 @@ export function guidedMissionHref(
 
 export function dailySessionStreak(profileId: string): number {
   if (typeof window === "undefined" || !profileId) return 0;
-  return sessionStreak(readSession(profileId, gradeFor(profileId)).history.days);
+  const profile = profileRef(profileId);
+  return sessionStreak(
+    readSession(profileId, readProfileGrade(profile), profile.age).history.days
+  );
 }
