@@ -62,6 +62,12 @@ export type ErrorSignature =
   | "operation.subtracted-instead-of-divided"
   // Growing patterns
   | "pattern.previous-term-repeated"
+  // Reading: the relationship between the answer given and the part of the
+  // passage the child marked as telling them. Never a claim about why.
+  | "reading.answered-without-evidence"
+  | "reading.evidence-found-but-misread"
+  | "reading.looked-in-another-part"
+  | "reading.marked-the-whole-passage"
   // Deduction: relationships between the clues on screen and the cards
   // ruled in or out. Never a claim about why.
   | "deduce.comparison-ignored"
@@ -103,6 +109,10 @@ const SIGNATURE_PHRASES = new Map<ErrorSignature, string>(Object.entries({
   "operation.added-instead-of-multiplied": "added the two numbers instead of making groups of them",
   "operation.subtracted-instead-of-divided": "took one number away instead of sharing into groups",
   "pattern.previous-term-repeated": "repeated the last step instead of continuing the pattern",
+  "reading.answered-without-evidence": "answered without marking the part of the story that tells you",
+  "reading.evidence-found-but-misread": "found the sentence that tells you, and read it a different way",
+  "reading.looked-in-another-part": "marked a different part of the story from the one that tells you",
+  "reading.marked-the-whole-passage": "marked the whole story rather than the part that tells you",
   "deduce.comparison-ignored": "kept a card that the more-than or less-than clue rules out",
   "deduce.order-relation-ignored": "kept a card that the before or after clue rules out",
   "deduce.fraction-part-confused": "mixed up how many pieces with how big the pieces are",
@@ -126,7 +136,9 @@ export function isKnownSignature(value: unknown): value is ErrorSignature {
  * easier to see on a track, and a composition error is easier to see with
  * parts in your hands.
  */
-export function signatureFavoursVerb(signature: string): "build" | "place" | null {
+export function signatureFavoursVerb(
+  signature: string
+): "build" | "place" | "locate" | null {
   if (signature.startsWith("place-value.") || signature.startsWith("count.")) return "build";
   if (signature.startsWith("sequence.")) return "place";
   if (signature === "number.magnitude-displaced") return "place";
@@ -141,6 +153,13 @@ export function signatureFavoursVerb(signature: string): "build" | "place" | nul
   // which is what having the parts in your hands shows.
   if (signature.startsWith("operation.")) return "build";
   if (signature === "pattern.previous-term-repeated") return "build";
+  // Answering without going back to the text is helped by the verb that
+  // makes going back to the text the move. Having found the sentence and
+  // read it differently is not: that child is already using the passage,
+  // and needs the sentence itself, not another hunt for it.
+  if (signature === "reading.answered-without-evidence") return "locate";
+  if (signature === "reading.looked-in-another-part") return "locate";
+  if (signature === "reading.marked-the-whole-passage") return "locate";
   return null;
 }
 

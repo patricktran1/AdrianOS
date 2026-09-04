@@ -36,6 +36,7 @@ import {
   distinctCategories,
   kernelVerbsForSkill,
   mechanicCategory,
+  mechanicForGame,
   type InteractionMechanic,
   type MechanicCategory,
 } from "../kernels/kernel-registry.ts";
@@ -379,16 +380,26 @@ function seededPick<T>(items: readonly T[], seed: string): T | null {
  * ---------------------------------------------------------------------------
  */
 
-/** The interaction form a route implies, when it names one. */
+/**
+ * The interaction form a route implies, when it names one.
+ *
+ * Asked of the registry rather than matched against a list of slugs kept
+ * here: a second copy of that list is a copy that goes stale, and a step
+ * whose mechanic reads null is invisible to both the breadth count and the
+ * same-kind-twice cap.
+ */
 function mechanicForActivity(activity: NextActivity): InteractionMechanic | null {
   const href = activity.preferredHref ?? "";
-  if (href.includes("/games/maker-workshop")) return "build";
-  if (href.includes("/games/stepping-stones")) return "place";
-  if (href.includes("/games/clue-hollow")) return "deduce";
-  const slug = activity.preferredSlugs[0];
-  if (slug === "maker-workshop") return "build";
-  if (slug === "stepping-stones") return "place";
-  if (slug === "clue-hollow") return "deduce";
+  const fromHref = href.startsWith("/games/")
+    ? href.slice("/games/".length).split(/[?#]/)[0]
+    : "";
+  for (const slug of [fromHref, activity.preferredSlugs[0] ?? ""]) {
+    if (slug === "") continue;
+    const mechanic = mechanicForGame(slug);
+    // "choose" is the registry's default for anything it does not carry, so
+    // it cannot distinguish a genuine choose route from an unknown slug.
+    if (mechanic !== "choose") return mechanic;
+  }
   return null;
 }
 

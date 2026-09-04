@@ -25,6 +25,7 @@ import {
   distinctCategories,
   KERNEL_GAMES,
   kernelVerbsForSkill,
+  locateRouteForSkill,
   mechanicForGame,
   normalizeMechanic,
   type InteractionMechanic,
@@ -1228,8 +1229,16 @@ function reteachActivity(skill: SkillSignal): NextActivity {
     subject: skill.subject,
     preferredSlugs: inferenceRoute ? [inferenceRoute.slug] : skill.gameSlugs,
     preferredHref: inferenceRoute?.href ?? null,
-    childReason: `Let's build ${skill.skillLabel.toLowerCase()} a different way.`,
-    adultReason: `Across ${pattern.taskCount} different ${skill.skillLabel.toLowerCase()} tasks, ${describePatternForAdult(pattern)}. Offering a hands-on version of the same idea rather than more of the same questions.`,
+    // Reading skill labels are already phrases ("Finding story details"), so
+    // this one is written without the label rather than around it.
+    childReason: verb === "locate"
+      ? "Let's find the answer in the story together."
+      : `Let's build ${skill.skillLabel.toLowerCase()} a different way.`,
+    adultReason: `Across ${pattern.taskCount} different ${skill.skillLabel.toLowerCase()} tasks, ${describePatternForAdult(pattern)}. ${
+      verb === "locate"
+        ? "Offering the same questions with the passage in front of them, where the answer can be pointed to rather than picked."
+        : "Offering a hands-on version of the same idea rather than more of the same questions."
+    }`,
     difficultyShift: -1,
     hintStrategy: "early",
   };
@@ -1293,8 +1302,14 @@ function describePatternForAdult(pattern: ErrorPattern): string {
 /** The kernel route that expresses a skill through a verb, when one exists. */
 function kernelRouteForSkill(
   skillId: string,
-  verb: "build" | "place"
+  verb: "build" | "place" | "locate"
 ): { slug: string; href: string } | null {
+  // LOCATE has its own engine and its own skill list, so it is asked
+  // separately rather than through the kernel verb map.
+  if (verb === "locate") {
+    const route = locateRouteForSkill(skillId, "teaching");
+    return route ? { slug: route.slug, href: route.href } : null;
+  }
   if (!kernelVerbsForSkill(skillId).includes(verb)) return null;
   const game = KERNEL_GAMES[verb];
   return {
@@ -1310,6 +1325,7 @@ const MECHANIC_PHRASES = new Map<string, string>([
   ["place", "putting things in order"],
   ["recall", "memory play"],
   ["deduce", "working it out from clues"],
+  ["locate", "showing where the story says it"],
 ]);
 
 function findTransferCandidate(model: LearnerModel): NextActivity | null {

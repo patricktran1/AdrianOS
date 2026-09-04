@@ -1,0 +1,10 @@
+{
+  "slug": "spyglass-bay",
+  "title": "Spyglass Bay",
+  "description": "Read a short story, tap the part that tells you the answer, then say what it is.",
+  "emoji": "🔭",
+  "subject": "Reading",
+  "age": "Ages 5–11",
+  "status": "playable",
+  "order": 5
+}
