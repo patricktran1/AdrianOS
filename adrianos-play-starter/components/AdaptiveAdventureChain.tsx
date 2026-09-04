@@ -8,6 +8,18 @@ import { games } from "@/lib/generated-games";
 
 const SESSION_STEP_EVENT = "adrianos-session-step";
 
+/** How long a win is left on screen before the next stop is offered. */
+const REVEAL_PAUSE_MS = 3800;
+
+/**
+ * How much longer the panel waits for the session to say where it goes.
+ *
+ * Only reached when the device is still working out the next step after the
+ * pause. Bounded, because a child staring at a finished game is worse than a
+ * slightly less specific card.
+ */
+const LATE_STEP_GRACE_MS = 5000;
+
 /** What the session runtime announces after an activity finishes. */
 type StepSummary = {
   slug: string;
@@ -75,10 +87,13 @@ export default function AdaptiveAdventureChain() {
   const firstChoiceRef = useRef<HTMLAnchorElement | null>(null);
   /** The most recent step the session announced. */
   const stepRef = useRef<StepSummary | null>(null);
+  /** Set while a finished activity is waiting for its next step to arrive. */
+  const awaitingRef = useRef(false);
 
   const clearChain = useCallback(() => {
     setOpen(false);
     setContinuation(null);
+    awaitingRef.current = false;
     if (revealTimerRef.current !== null) {
       window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = null;
@@ -90,13 +105,30 @@ export default function AdaptiveAdventureChain() {
     clearChain();
   }, [slug, clearChain]);
 
+  const reveal = useCallback(() => {
+    awaitingRef.current = false;
+    if (revealTimerRef.current !== null) {
+      window.clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+    setContinuation(continuationFor(stepRef.current, activeProfile.name));
+    setOpen(true);
+  }, [activeProfile.name]);
+
   useEffect(() => {
     const onStep = (event: Event) => {
-      stepRef.current = asSummary((event as CustomEvent).detail);
+      const summary = asSummary((event as CustomEvent).detail);
+      if (!summary) return;
+      stepRef.current = summary;
+      // The pause is over and this is what it was waiting for. Revealing on
+      // a timer alone would show "adventure complete" to a child whose
+      // session has a next step, on any device slow enough to still be
+      // working it out.
+      if (awaitingRef.current && revealTimerRef.current === null) reveal();
     };
     window.addEventListener(SESSION_STEP_EVENT, onStep);
     return () => window.removeEventListener(SESSION_STEP_EVENT, onStep);
-  }, []);
+  }, [reveal]);
 
   useEffect(() => {
     if (!currentGame) return;
@@ -112,15 +144,21 @@ export default function AdaptiveAdventureChain() {
 
       if (completionGain > 0) {
         setOpen(false);
+        stepRef.current = null;
+        awaitingRef.current = true;
         if (revealTimerRef.current !== null) window.clearTimeout(revealTimerRef.current);
-        // The session advances elsewhere, from the evidence this run produced.
-        // Reading it at reveal time rather than now means this panel always
-        // shows the step the world is already pointing at.
+        // A pause first, so the win has room to land. The session advances
+        // elsewhere, from the evidence this run produced; if its answer has
+        // not arrived by the end of the pause, wait a little longer for it
+        // rather than telling the child something that is about to be wrong.
         revealTimerRef.current = window.setTimeout(() => {
           revealTimerRef.current = null;
-          setContinuation(continuationFor(stepRef.current, activeProfile.name));
-          setOpen(true);
-        }, 3800);
+          if (stepRef.current) { reveal(); return; }
+          revealTimerRef.current = window.setTimeout(() => {
+            revealTimerRef.current = null;
+            reveal();
+          }, LATE_STEP_GRACE_MS);
+        }, REVEAL_PAUSE_MS);
       } else if (playGain > 0) {
         clearChain();
       }
@@ -130,6 +168,7 @@ export default function AdaptiveAdventureChain() {
 
     const reset = () => {
       previous = readAdrianProgress();
+      awaitingRef.current = false;
       clearChain();
     };
 
@@ -140,7 +179,7 @@ export default function AdaptiveAdventureChain() {
       window.removeEventListener("adrianos-progress-updated", refresh);
       window.removeEventListener("adrianos-family-updated", reset);
     };
-  }, [activeProfile, clearChain, currentGame]);
+  }, [activeProfile, clearChain, currentGame, reveal]);
 
   useEffect(() => () => {
     if (revealTimerRef.current !== null) window.clearTimeout(revealTimerRef.current);

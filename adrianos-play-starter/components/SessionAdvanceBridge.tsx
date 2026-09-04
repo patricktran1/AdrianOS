@@ -30,6 +30,14 @@ export default function SessionAdvanceBridge() {
   /** Evidence rows present before the current activity started. */
   const watermark = useRef<number | null>(null);
 
+  // Warmed after first paint rather than imported at the top. The cost of the
+  // planner is kept out of the initial bundle, and a child who finishes an
+  // activity never waits for it to download before the world knows where they
+  // are going next.
+  useEffect(() => {
+    void import("@/lib/adrian-session-runtime");
+  }, []);
+
   useEffect(() => {
     if (!hydrated || !activeProfile.id) return;
     let previous = readAdrianProgress();

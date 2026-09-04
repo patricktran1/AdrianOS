@@ -165,7 +165,15 @@ export function ensureSessionPlan(input: EnsureSessionInput): EnsureSessionResul
     reward: parsed?.reward ?? null,
   };
 
-  if (parsed && parsed.day === dayKey) {
+  // A plan made before there was anything to go on is a placeholder, not a
+  // plan. Once the evidence log can lead, it is replaced rather than carried
+  // for the rest of the day: a child who opened the app before their first
+  // answer should not be stuck exploring after their twelfth.
+  const placeholder = parsed !== null
+    && parsed.goals.every((goal) => goal.k === "sample" || goal.k === "placement")
+    && parsed.goals.every((goal) => goal.st === "planned");
+
+  if (parsed && parsed.day === dayKey && !(placeholder && model.confident)) {
     // An intervention raised after the plan was made still belongs in it.
     return {
       plan: withIntervention(

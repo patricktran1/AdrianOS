@@ -538,3 +538,35 @@ test("the cheap progress read agrees with the validated one", () => {
     );
   }
 });
+
+test("a plan made before there was any evidence is replaced, not carried all day", () => {
+  // A child who opens the app before their first answer gets a placeholder.
+  const cold = buildLearnerModel("learner", []);
+  const placeholder = ensureSessionPlan({
+    stored: null, model: cold, profileId: "learner", dayKey: "2026-08-01", grade: 2,
+    needsPlacement: true,
+  });
+  assert.equal(placeholder.plan.steps[0].goal.kind, "placement");
+
+  const stored = serializeSession(placeholder.plan, null);
+  // Twelve answers later, the same day: the placeholder is not still leading.
+  const upgraded = ensureSessionPlan({
+    stored, model: MODEL, profileId: "learner", dayKey: "2026-08-01", grade: 2,
+  });
+  assert.equal(upgraded.source, "planned");
+  assert.ok(upgraded.plan.steps.some((step) => step.goal.skillId !== null));
+  assert.ok(upgraded.plan.steps.every((step) => step.goal.kind !== "placement"));
+
+  // A placeholder the child has already started is left alone: replacing a
+  // session under way would drop what they just did.
+  const started = serializeSession(
+    replanSession(placeholder.plan, cold, { ...outcome, skillId: null, mechanic: null }),
+    null
+  );
+  assert.equal(
+    ensureSessionPlan({
+      stored: started, model: MODEL, profileId: "learner", dayKey: "2026-08-01", grade: 2,
+    }).source,
+    "restored"
+  );
+});

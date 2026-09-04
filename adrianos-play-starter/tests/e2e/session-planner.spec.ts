@@ -74,6 +74,18 @@ async function storedPlan(page: Page) {
   return page.evaluate((key) => JSON.parse(window.localStorage.getItem(key) ?? "null"), SESSION_KEY);
 }
 
+/**
+ * The plan is written by an effect, so a visible beacon does not guarantee it
+ * has landed in storage yet. Reading it too early gave a runner-speed-
+ * dependent failure rather than a real one.
+ */
+async function waitForPlan(page: Page) {
+  await expect
+    .poll(async () => (await storedPlan(page))?.goals?.length ?? 0, { timeout: 15_000 })
+    .toBeGreaterThan(0);
+  return storedPlan(page);
+}
+
 async function openWorld(page: Page) {
   await page.goto("/", { waitUntil: "domcontentloaded" });
   const beacon = page.locator('[data-world-landmark][data-beacon="true"]');
@@ -125,6 +137,14 @@ async function playKernelRun(page: Page, grade = 2) {
 }
 
 test.describe("session planner", () => {
+  /*
+   * These play a whole activity and then wait out the pause the product puts
+   * between a win and the next stop — 3.8s, plus a grace period if the
+   * session is still working out where to go. Two of those plus a five-round
+   * kernel run does not fit the suite's 30s default, on any runner.
+   */
+  test.describe.configure({ timeout: 90_000 });
+
   test("the world opens on something the child can already do", async ({ page }) => {
     await seedQaFamily(page, { grade: 2 });
     await seedEvidence(page, SECURE_BUILD_AND_PLACE);
@@ -132,7 +152,7 @@ test.describe("session planner", () => {
 
     await expect(page.locator('[data-world-guide="true"]')).toContainText(/you've got this one/i);
     await expect(beacon).toContainText("Maker Bay");
-    const plan = await storedPlan(page);
+    const plan = await waitForPlan(page);
     expect(plan.goals[0].k).toBe("warm-start");
     expect(plan.status).toBe("active");
   });
@@ -148,9 +168,10 @@ test.describe("session planner", () => {
     await playKernelRun(page);
 
     // One destination, not a menu, and it is somewhere the child has not
-    // just been.
+    // just been. The panel waits for the session to say where it goes, so
+    // the window allows for a slow runner working that out.
     const chain = page.locator('[data-adventure-chain="active"]');
-    await expect(chain).toBeVisible({ timeout: 15_000 });
+    await expect(chain).toBeVisible({ timeout: 20_000 });
     const card = chain.locator(".adventure-chain-card");
     await expect(card).toHaveCount(1);
     const nextSlug = await card.getAttribute("data-chain-game");
@@ -160,7 +181,7 @@ test.describe("session planner", () => {
     const beaconAfter = await openWorld(page);
     const label = await beaconAfter.innerText();
     expect(label).not.toContain("Maker Bay");
-    const plan = await storedPlan(page);
+    const plan = await waitForPlan(page);
     expect(plan.goals[0].st).toBe("done");
     expect(plan.visited).toContain("maker-workshop:math-place-value");
   });
@@ -179,7 +200,7 @@ test.describe("session planner", () => {
     await beacon.click();
     await page.waitForURL(/\/games\//);
     await playKernelRun(page);
-    const after = await page.locator('[data-adventure-chain="active"]').innerText({ timeout: 15_000 });
+    const after = await page.locator('[data-adventure-chain="active"]').innerText({ timeout: 20_000 });
     for (const jargon of ["goal", "intent", "planner", "evidence", "mastery", "%"]) {
       expect(after.toLowerCase()).not.toContain(jargon.toLowerCase());
     }
@@ -189,10 +210,10 @@ test.describe("session planner", () => {
     await seedQaFamily(page, { grade: 2 });
     await seedEvidence(page, SECURE_BUILD_AND_PLACE);
     await openWorld(page);
-    const before = await storedPlan(page);
+    const before = await waitForPlan(page);
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator('[data-world-landmark][data-beacon="true"]')).toBeVisible();
-    const after = await storedPlan(page);
+    const after = await waitForPlan(page);
     expect(after.goals.map((g: { k: string }) => g.k)).toEqual(before.goals.map((g: { k: string }) => g.k));
     expect(after.day).toBe(before.day);
   });
@@ -204,7 +225,7 @@ test.describe("session planner", () => {
       window.localStorage.setItem(key, '{"v":1,"day":"nope","goals":[{"k":"constructor"}]}');
     }, SESSION_KEY);
     await openWorld(page);
-    const plan = await storedPlan(page);
+    const plan = await waitForPlan(page);
     expect(plan.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(plan.goals.length).toBeGreaterThan(0);
     expect(plan.goals.every((g: { k: string }) => g.k !== "constructor")).toBe(true);
@@ -216,10 +237,12 @@ test.describe("session planner", () => {
     await seedQaFamily(first, { grade: 2 });
     await seedEvidence(first, SECURE_BUILD_AND_PLACE);
     await openWorld(first);
+    await waitForPlan(first);
 
     const second = await context.newPage();
     await second.goto("/", { waitUntil: "domcontentloaded" });
     await expect(second.locator('[data-world-landmark][data-beacon="true"]')).toBeVisible();
+    await waitForPlan(second);
 
     // The same activity is completed twice, once from each tab's point of view.
     for (const page of [first, second]) {
@@ -232,11 +255,18 @@ test.describe("session planner", () => {
     }
     await first.goto("/games/maker-workshop?skill=math-place-value", { waitUntil: "domcontentloaded" });
     await playKernelRun(first);
-    await first.waitForTimeout(4_500);
 
+    await expect
+      .poll(async () => {
+        const plan = await storedPlan(first);
+        return plan.goals.filter((g: { st: string }) => g.st === "done").length;
+      }, { timeout: 15_000 })
+      .toBe(1);
+    // ...and it stays at one: the second tab's completion is refused, not
+    // merely late.
+    await first.waitForTimeout(3_000);
     const plan = await storedPlan(first);
-    const done = plan.goals.filter((g: { st: string }) => g.st === "done").length;
-    expect(done).toBe(1);
+    expect(plan.goals.filter((g: { st: string }) => g.st === "done").length).toBe(1);
     await context.close();
   });
 

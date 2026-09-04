@@ -248,12 +248,22 @@ function destinationTitle(
  */
 export type TitleResolver = (slug: string) => string | null;
 
+/**
+ * What the guide says.
+ *
+ * A decision that names a destination brought its own reason with it, and
+ * that reason is the honest thing to say — including when the intent is
+ * exploring, because "find your starting point" is a specific invitation
+ * even though the model has nothing to go on yet. Only a decision with
+ * nowhere particular in mind falls back to novelty.
+ */
 function guideLineFor(
   next: NextActivity,
   beacon: AdventureWorldPortal,
   clears: number
 ): string {
-  if (next.intent === "explore") {
+  const undirected = next.preferredSlugs.length === 0 && next.preferredHref === null;
+  if (next.intent === "explore" && undirected) {
     return clears === 0
       ? "Tap the glowing one. I'll come with you!"
       : `${beacon.title} is open. Want to go?`;
