@@ -62,6 +62,8 @@ const passes = [
       "lib/kernels/deduce-constraints.ts",
       "lib/kernels/deduce-tasks.ts",
       "lib/learning/deduce-evidence.ts",
+      "lib/kernels/locate-tasks.ts",
+      "lib/learning/locate-evidence.ts",
     ],
     lines: 97,
     functions: 92,

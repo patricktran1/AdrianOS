@@ -210,6 +210,15 @@ export const games: Game[] = [
     "status": "playable"
   },
   {
+    "slug": "spyglass-bay",
+    "title": "Spyglass Bay",
+    "description": "Read a short story, tap the part that tells you the answer, then say what it is.",
+    "emoji": "🔭",
+    "subject": "Reading",
+    "age": "Ages 5–11",
+    "status": "playable"
+  },
+  {
     "slug": "mystery-temple",
     "title": "Mystery Temple",
     "description": "A Grade 4 clue-hunting adventure with branching chambers, relic powers, adaptive support, standards-linked puzzles, and replayable routes.",
