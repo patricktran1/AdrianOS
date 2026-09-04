@@ -34,7 +34,9 @@ import { createSeededRandom, seededShuffle } from "../deterministic-random.ts";
 import {
   fractionSignature,
   integerSignature,
+  operationSignature,
   sequenceSignature,
+  type ArithmeticOperation,
   type ErrorSignature,
 } from "../learning/error-signatures.ts";
 
@@ -80,6 +82,20 @@ export type KernelTask = {
   denominator: number;
   /** Human-readable form of the correct answer, for evidence and coaching. */
   targetLabel: string;
+  /**
+   * The arithmetic the task asks for, and the two numbers it asks it of.
+   *
+   * Carried on the task rather than parsed back out of the prompt, because
+   * this is the only place the structure is still known: "17" tells you
+   * nothing, but "17 on a task whose operands were 12 and 5" says the child
+   * added. Null for tasks that are not arithmetic on two numbers — counting,
+   * place value, ordering — where there is no wrong operation to work.
+   */
+  operation: {
+    kind: ArithmeticOperation | "pattern";
+    left: number;
+    right: number;
+  } | null;
 };
 
 export type KernelJudgement = {
@@ -156,7 +172,27 @@ function buildErrorSignature(task: KernelTask, total: number): ErrorSignature | 
       { numerator: Math.round(total), denominator: task.denominator }
     );
   }
-  return integerSignature(task.targetValue, Math.round(total), { composed: true });
+  const built = Math.round(total);
+  // Asked before the numeric comparison: a box holding 17 for "12 take away
+  // 5" is a whole operation worked correctly on the wrong instruction, which
+  // is a different thing to teach than a box holding 6.
+  const worked = operationErrorSignature(task, built);
+  if (worked) return worked;
+  return integerSignature(task.targetValue, built, { composed: true });
+}
+
+/** The wrong-operation reading of a build, when the task has operands. */
+function operationErrorSignature(
+  task: KernelTask,
+  built: number
+): ErrorSignature | null {
+  const operation = task.operation;
+  if (!operation) return null;
+  if (operation.kind === "pattern") {
+    // The pattern's previous term stands in `right`.
+    return built === operation.right ? "pattern.previous-term-repeated" : null;
+  }
+  return operationSignature(operation.kind, operation.left, operation.right, built);
 }
 
 export function formatBuildTotal(task: KernelTask, total: number): string {
@@ -215,6 +251,7 @@ function buildCounting({ seed, grade, difficultyShift }: TaskInput): KernelTask 
     format: "integer",
     denominator: 0,
     targetLabel: String(target),
+    operation: null,
   };
 }
 
@@ -244,6 +281,7 @@ function buildPlaceValue({ seed, difficultyShift }: TaskInput): KernelTask {
     format: "integer",
     denominator: 0,
     targetLabel: String(target),
+    operation: null,
   };
 }
 
@@ -273,6 +311,135 @@ function buildAddition({ seed, grade, difficultyShift }: TaskInput): KernelTask 
     format: "integer",
     denominator: 0,
     targetLabel: String(target),
+    operation: null,
+  };
+}
+
+function buildSubtraction({ seed, grade, difficultyShift }: TaskInput): KernelTask {
+  const random = createSeededRandom(`${seed}:build-subtraction`);
+  const small = grade <= 1 || difficultyShift < 0;
+  // The minuend leads so the difference is never negative, and `right` stays
+  // clear of `left` so "take them all away" is not accidentally the answer.
+  const left = small ? 5 + Math.floor(random() * 5) : 11 + Math.floor(random() * 9);
+  const right = 1 + Math.floor(random() * (Math.min(left - 1, small ? 4 : 9)));
+  const target = left - right;
+  return {
+    id: `build-subtraction-${left}-${right}`,
+    verb: "build",
+    skillId: "math-subtraction",
+    skillLabel: "Subtraction",
+    subject: "Math",
+    standardCode: small ? "K.OA.A.2" : "1.OA.C.6",
+    prompt: `Build what is left when you take ${right} away from ${left}.`,
+    hint: `Put in ${left} blocks, then take ${right} of them back out. Count what stays.`,
+    explanation: `${left} take away ${right} is ${target}. Starting at ${left} and counting back ${right} lands on ${target}.`,
+    tray: left > 10
+      ? [...repeatPart(TEN_ROD, 2), ...repeatPart(BLOCK, 12)]
+      : repeatPart(BLOCK, Math.min(12, left + 2)),
+    slots: 0,
+    targetIds: [],
+    targetValue: target,
+    format: "integer",
+    denominator: 0,
+    targetLabel: String(target),
+    operation: { kind: "subtract", left, right },
+  };
+}
+
+function buildMultiplication({ seed, grade, difficultyShift }: TaskInput): KernelTask {
+  const random = createSeededRandom(`${seed}:build-multiplication`);
+  const small = grade <= 2 || difficultyShift < 0;
+  // Both factors stay above one: "1 group of 6" is answerable without
+  // grouping at all, so it would not be evidence of multiplying.
+  const groups = 2 + Math.floor(random() * (small ? 3 : 5));
+  const each = 2 + Math.floor(random() * (small ? 4 : 6));
+  const target = groups * each;
+  return {
+    id: `build-multiplication-${groups}-${each}`,
+    verb: "build",
+    skillId: "math-multiplication",
+    skillLabel: "Multiplication",
+    subject: "Math",
+    standardCode: small ? "2.OA.C.4" : "3.OA.A.1",
+    prompt: `Build ${groups} groups of ${each}.`,
+    hint: `Count out ${each} blocks. Then do that ${groups} times in total.`,
+    explanation: `${groups} groups of ${each} is ${target}. Counting by ${each}s: ${Array.from({ length: groups }, (_, i) => each * (i + 1)).join(", ")}.`,
+    // Rods scale with the target so the tray always holds more than the
+    // answer. A tray totalling exactly the target could be solved by tipping
+    // all of it in, without ever making a group.
+    tray: target > 10
+      ? [...repeatPart(TEN_ROD, Math.floor(target / 10) + 1), ...repeatPart(BLOCK, 12)]
+      : repeatPart(BLOCK, Math.min(12, target + 3)),
+    slots: 0,
+    targetIds: [],
+    targetValue: target,
+    format: "integer",
+    denominator: 0,
+    targetLabel: String(target),
+    operation: { kind: "multiply", left: groups, right: each },
+  };
+}
+
+function buildDivision({ seed, grade, difficultyShift }: TaskInput): KernelTask {
+  const random = createSeededRandom(`${seed}:build-division`);
+  const small = grade <= 2 || difficultyShift < 0;
+  // Generated from the quotient outwards, so the share is always exact and
+  // the child never meets a remainder this task has no way to express.
+  const groups = 2 + Math.floor(random() * (small ? 2 : 4));
+  const each = 2 + Math.floor(random() * (small ? 4 : 5));
+  const total = groups * each;
+  return {
+    id: `build-division-${total}-${groups}`,
+    verb: "build",
+    skillId: "math-division",
+    skillLabel: "Division",
+    subject: "Math",
+    standardCode: "3.OA.A.2",
+    prompt: `Share ${total} between ${groups} boxes. Build what one box gets.`,
+    hint: `Try a number for one box. If all ${groups} boxes hold that many, do they make ${total}?`,
+    explanation: `${total} shared between ${groups} is ${each} each, because ${groups} groups of ${each} make ${total}.`,
+    tray: repeatPart(BLOCK, Math.min(12, each + 4)),
+    slots: 0,
+    targetIds: [],
+    targetValue: each,
+    format: "integer",
+    denominator: 0,
+    targetLabel: String(each),
+    operation: { kind: "divide", left: total, right: groups },
+  };
+}
+
+function buildPatterns({ seed, grade, difficultyShift }: TaskInput): KernelTask {
+  const random = createSeededRandom(`${seed}:build-patterns`);
+  const small = grade <= 1 || difficultyShift < 0;
+  const step = small ? 1 + Math.floor(random() * 2) : 2 + Math.floor(random() * 4);
+  const start = 1 + Math.floor(random() * (small ? 3 : 6));
+  // Four terms shown: three can be read as almost any rule, four settle it.
+  const shown = Array.from({ length: 4 }, (_, index) => start + index * step);
+  const previous = shown[shown.length - 1];
+  const target = previous + step;
+  return {
+    id: `build-patterns-${start}-${step}`,
+    verb: "build",
+    skillId: "logic-patterns",
+    skillLabel: "Patterns",
+    subject: "Logic",
+    standardCode: small ? "1.OA.C.5" : "4.OA.C.5",
+    prompt: `The pattern goes ${shown.join(", ")}. Build what comes next.`,
+    hint: "Look at how much the pattern jumps each time. Then jump once more.",
+    explanation: `The pattern adds ${step} each time, so after ${previous} comes ${target}.`,
+    tray: target > 10
+      ? [...repeatPart(TEN_ROD, 2), ...repeatPart(BLOCK, 12)]
+      : repeatPart(BLOCK, Math.min(12, target + 3)),
+    slots: 0,
+    targetIds: [],
+    targetValue: target,
+    format: "integer",
+    denominator: 0,
+    targetLabel: String(target),
+    // `right` carries the last term shown, so repeating it rather than
+    // continuing the rule is a nameable observation.
+    operation: { kind: "pattern", left: step, right: previous },
   };
 }
 
@@ -304,6 +471,7 @@ function buildFractions({ seed, difficultyShift }: TaskInput): KernelTask {
     format: "fraction",
     denominator,
     targetLabel: `${numerator}/${denominator}`,
+    operation: null,
   };
 }
 
@@ -333,6 +501,7 @@ function buildDecimals({ seed, difficultyShift }: TaskInput): KernelTask {
     format: "decimal",
     denominator: 0,
     targetLabel: label,
+    operation: null,
   };
 }
 
@@ -366,8 +535,154 @@ function orderedNumberTask(
     format: "integer",
     denominator: 0,
     targetLabel: sorted.map((part) => part.label).join(", "),
+    operation: null,
     ...meta,
   };
+}
+
+/**
+ * Ordering tasks whose stones are arithmetic expressions rather than numbers.
+ *
+ * The positioning is the same as any other PLACE task; what makes it a
+ * genuine second representation of the operation is that nothing can be
+ * ordered until each expression has been worked out. A child who can pick
+ * "17" from four options but cannot say whether 12 - 5 sits before or after
+ * 9 - 2 is telling you something the multiple-choice question could not.
+ */
+function orderedExpressionTask(
+  input: TaskInput,
+  expressions: Array<{ label: string; value: number }>,
+  meta: Pick<KernelTask, "skillId" | "skillLabel" | "standardCode" | "hint" | "subject">
+): KernelTask {
+  const parts = expressions.map((expression, index) => ({
+    id: `e-${index}-${expression.value}`,
+    label: expression.label,
+    emoji: "🪨",
+    value: expression.value,
+  }));
+  const sorted = [...parts].sort((a, b) => a.value - b.value);
+  return {
+    id: `place-${meta.skillId}-${expressions.map((e) => e.label).join("_")}`,
+    verb: "place",
+    prompt: "Work out each stone, then put them in order, smallest first.",
+    explanation: `Smallest to largest: ${sorted.map((part) => `${part.label} = ${part.value}`).join(", ")}.`,
+    tray: seededShuffle(parts, `${input.seed}:tray`),
+    slots: parts.length,
+    targetIds: sorted.map((part) => part.id),
+    targetValue: 0,
+    format: "integer",
+    denominator: 0,
+    targetLabel: sorted.map((part) => part.label).join(", "),
+    operation: null,
+    ...meta,
+  };
+}
+
+type Expression = { label: string; value: number };
+
+/**
+ * Distinct results, so the ordering has exactly one right answer.
+ *
+ * Returns fewer expressions than asked for rather than looping forever if a
+ * narrow range cannot supply them; every caller can order what it gets.
+ */
+function distinctResults(
+  make: () => Expression,
+  count: number,
+  attempts = 40
+): Expression[] {
+  const chosen: Expression[] = [];
+  const seen = new Set<number>();
+  for (let attempt = 0; attempt < attempts && chosen.length < count; attempt += 1) {
+    const candidate = make();
+    if (seen.has(candidate.value)) continue;
+    seen.add(candidate.value);
+    chosen.push(candidate);
+  }
+  return chosen;
+}
+
+/** The number a child reads first on a stone: the 12 in "12 - 5". */
+function leadingNumber(expression: Expression): number {
+  return Number(expression.label.match(/\d+/)?.[0] ?? 0);
+}
+
+/**
+ * A set of expressions the leading number cannot order.
+ *
+ * Without this, "12 - 5, 9 - 2, 7 - 1" sorts correctly by first number alone,
+ * and the task rewards reading rather than subtracting. Redraws until the two
+ * orderings disagree, and falls back to the last usable set so a task is
+ * always produced.
+ */
+function orderableExpressions(
+  make: () => Expression,
+  count: number,
+  attempts = 12
+): Expression[] {
+  let fallback: Expression[] = [];
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const drawn = distinctResults(make, count);
+    if (drawn.length < count) continue;
+    fallback = drawn;
+    const byValue = [...drawn].sort((a, b) => a.value - b.value);
+    const byLeading = [...drawn].sort((a, b) => leadingNumber(a) - leadingNumber(b));
+    if (byValue.some((expression, index) => expression !== byLeading[index])) return drawn;
+  }
+  return fallback;
+}
+
+function placeSubtraction(input: TaskInput): KernelTask {
+  const random = createSeededRandom(`${input.seed}:place-subtraction`);
+  const small = input.grade <= 1 || input.difficultyShift < 0;
+  const ceiling = small ? 10 : 20;
+  const expressions = orderableExpressions(() => {
+    const left = 4 + Math.floor(random() * (ceiling - 4));
+    const right = 1 + Math.floor(random() * Math.min(left - 1, small ? 4 : 9));
+    return { label: `${left} - ${right}`, value: left - right };
+  }, small ? 3 : 4);
+  return orderedExpressionTask(input, expressions, {
+    skillId: "math-subtraction",
+    skillLabel: "Subtraction",
+    subject: "Math",
+    standardCode: small ? "K.OA.A.2" : "2.OA.B.2",
+    hint: "Take each one away first. Compare the answers, not the first numbers.",
+  });
+}
+
+function placeMultiplication(input: TaskInput): KernelTask {
+  const random = createSeededRandom(`${input.seed}:place-multiplication`);
+  const small = input.grade <= 2 || input.difficultyShift < 0;
+  const expressions = orderableExpressions(() => {
+    const left = 2 + Math.floor(random() * (small ? 3 : 5));
+    const right = 2 + Math.floor(random() * (small ? 4 : 6));
+    return { label: `${left} x ${right}`, value: left * right };
+  }, small ? 3 : 4);
+  return orderedExpressionTask(input, expressions, {
+    skillId: "math-multiplication",
+    skillLabel: "Multiplication",
+    subject: "Math",
+    standardCode: small ? "2.OA.C.4" : "3.OA.A.1",
+    hint: "Count in groups to work each one out. A bigger first number does not always win.",
+  });
+}
+
+function placeDivision(input: TaskInput): KernelTask {
+  const random = createSeededRandom(`${input.seed}:place-division`);
+  const small = input.grade <= 2 || input.difficultyShift < 0;
+  const expressions = orderableExpressions(() => {
+    // Built from the answer outwards so every stone divides exactly.
+    const groups = 2 + Math.floor(random() * (small ? 2 : 4));
+    const each = 2 + Math.floor(random() * (small ? 4 : 6));
+    return { label: `${groups * each} / ${groups}`, value: each };
+  }, small ? 3 : 4);
+  return orderedExpressionTask(input, expressions, {
+    skillId: "math-division",
+    skillLabel: "Division",
+    subject: "Math",
+    standardCode: "3.OA.A.2",
+    hint: "Share each one out first. The biggest total does not always share into the most.",
+  });
 }
 
 function distinctRandomValues(
@@ -437,6 +752,7 @@ function placeFractions(input: TaskInput): KernelTask {
     format: "integer",
     denominator: 0,
     targetLabel: sorted.map((part) => part.label).join(", "),
+    operation: null,
   };
 }
 
@@ -634,6 +950,7 @@ function placeSequence(
     format: "integer",
     denominator: 0,
     targetLabel: parts.map((part) => part.label).join(" → "),
+    operation: null,
   };
 }
 
@@ -647,12 +964,19 @@ export const KERNEL_SKILLS: Record<KernelVerb, string[]> = {
     "math-counting",
     "math-place-value",
     "math-addition",
+    "math-subtraction",
+    "math-multiplication",
+    "math-division",
+    "logic-patterns",
     "math-fractions",
     "math-decimals",
   ],
   place: [
     "math-counting",
     "math-place-value",
+    "math-subtraction",
+    "math-multiplication",
+    "math-division",
     "math-fractions",
     "math-decimals",
     "reading-sequencing",
@@ -679,6 +1003,10 @@ const BUILD_GENERATORS = new Map<string, KernelGenerator>([
   ["math-counting", buildCounting],
   ["math-place-value", buildPlaceValue],
   ["math-addition", buildAddition],
+  ["math-subtraction", buildSubtraction],
+  ["math-multiplication", buildMultiplication],
+  ["math-division", buildDivision],
+  ["logic-patterns", buildPatterns],
   ["math-fractions", buildFractions],
   ["math-decimals", buildDecimals],
 ]);
@@ -688,6 +1016,9 @@ const PLACE_GENERATORS = new Map<string, KernelGenerator>([
   ["math-place-value", placePlaceValue],
   ["math-fractions", placeFractions],
   ["math-decimals", placeDecimals],
+  ["math-subtraction", placeSubtraction],
+  ["math-multiplication", placeMultiplication],
+  ["math-division", placeDivision],
   ["reading-sequencing", (input) => placeSequence(input, "reading-sequencing")],
   ["science-life-cycles", (input) => placeSequence(input, "science-life-cycles")],
 ]);

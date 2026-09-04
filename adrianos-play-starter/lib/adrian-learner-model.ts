@@ -911,15 +911,26 @@ export type WorldIntent =
  *
  * The repository's larger skill graph indexes a different id namespace and
  * does not describe these skills, and inventing a full curriculum ontology
- * to route four skills would be a liability rather than an asset. An entry
- * here means: when this skill shows a repeated structural error AND the
+ * to route a handful of skills would be a liability rather than an asset. An
+ * entry here means: when this skill shows a repeated structural error AND the
  * listed skill is itself unsteady, the underlying idea is worth revisiting.
+ *
+ * One step back only. Division points at multiplication rather than all the
+ * way down to counting, because sending a child who is stuck on sharing to a
+ * counting task is a longer detour than the evidence justifies.
  */
 const SKILL_PREREQUISITES = new Map<string, string>([
   ["math-place-value", "math-counting"],
   ["math-addition", "math-place-value"],
+  ["math-subtraction", "math-addition"],
+  ["math-multiplication", "math-addition"],
+  ["math-division", "math-multiplication"],
   ["math-decimals", "math-place-value"],
   ["math-fractions", "math-counting"],
+  // Continuing a rule rests on being able to count on from a number, not on
+  // any of the operations; a child can extend 2, 4, 6 long before they would
+  // call it multiplying.
+  ["logic-patterns", "math-counting"],
 ]);
 
 export type NextActivity = {

@@ -188,7 +188,7 @@ export default function DeducePlayground() {
       }
       setMessage("Hmm — no clue says it can't be that one yet.");
     } else {
-      setMessage(`Good spot. ${describeClue(ruling, task.candidates)}`);
+      setMessage(`Good spot. ${describeClue(ruling, task.candidates, task.voice)}`);
     }
     setRuledOut((value) => [...value, candidate.id]);
   }
@@ -366,7 +366,7 @@ export default function DeducePlayground() {
 
           <ul style={clueList} data-testid="clue-list" aria-label="Clues so far">
             {revealedClues.map((clue, index) => {
-              const text = describeClue(clue, task.candidates);
+              const text = describeClue(clue, task.candidates, task.voice);
               return (
                 <li key={`${clue.kind}-${index}`} style={clueRow} data-clue-index={index}>
                   <span aria-hidden="true" style={{ fontSize: 20 }}>🔦</span>

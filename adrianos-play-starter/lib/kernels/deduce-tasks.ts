@@ -51,7 +51,20 @@ export type DeduceTask = {
   cluesNeeded: number;
   /** Worked explanation, shown only after a second miss. */
   explanation: string;
+  /**
+   * Who "I" is in the clues.
+   *
+   * On a card reading "47" the clue "I am more than 35" is unambiguous. On a
+   * card reading "12 - 5" it is not: the child has to be told whether the
+   * clue is about the card or about what the card works out to. Carried on
+   * the task so the wording is decided where the cards are made, not guessed
+   * at from their labels.
+   */
+  voice: DeduceVoice;
 };
+
+/** How a clue refers to the card it describes. */
+export type DeduceVoice = "value" | "answer" | "next";
 
 /** Difficulty dials, so a harder task can always be explained. */
 export type DeduceShape = {
@@ -76,29 +89,37 @@ export function deduceShape(
 }
 
 /** Reads a clue aloud for a child. The words live here, not in the data. */
+const VOICE_SUBJECTS = new Map<DeduceVoice, { is: string; has: string }>([
+  ["value", { is: "I am", has: "I have" }],
+  ["answer", { is: "My answer is", has: "My answer has" }],
+  ["next", { is: "My next number is", has: "My next number has" }],
+]);
+
 export function describeClue(
   clue: DeduceConstraint,
-  candidates: readonly DeduceCandidate[]
+  candidates: readonly DeduceCandidate[],
+  voice: DeduceVoice = "value"
 ): string {
+  const subject = VOICE_SUBJECTS.get(voice) ?? VOICE_SUBJECTS.get("value")!;
   switch (clue.kind) {
     case "greater-than":
-      return `I am more than ${clue.value}.`;
+      return `${subject.is} more than ${clue.value}.`;
     case "less-than":
-      return `I am less than ${clue.value}.`;
+      return `${subject.is} less than ${clue.value}.`;
     case "has-digit":
-      return `I have a ${clue.digit} in me.`;
+      return `${subject.has} a ${clue.digit} in it.`;
     case "lacks-digit":
-      return `I have no ${clue.digit} in me.`;
+      return `${subject.has} no ${clue.digit} in it.`;
     case "tens-is":
-      return `I have ${clue.count} tens.`;
+      return `${subject.has} ${clue.count} tens.`;
     case "numerator-is":
       return `I am made of ${clue.value} pieces.`;
     case "denominator-is":
       return `My pieces are ${clue.value}ths.`;
     case "in-category":
-      return `I am ${categoryPhrase(clue.category)}.`;
+      return `${subject.is} ${categoryPhrase(clue.category)}.`;
     case "not-in-category":
-      return `I am not ${categoryPhrase(clue.category)}.`;
+      return `${subject.is} not ${categoryPhrase(clue.category)}.`;
     case "comes-before":
       return `I come before ${labelFor(clue.anchorId, candidates)}.`;
     case "comes-after":
@@ -162,6 +183,17 @@ function distinctValues(
  * The generator picks from these until the validator is satisfied, which is
  * what keeps clue sets non-redundant without hand-tuning each one.
  */
+/** Digits of a whole number, for clue eligibility. */
+function digitsOf(value: number): number[] {
+  return String(Math.abs(Math.trunc(value))).split("").map(Number);
+}
+
+/**
+ * How many "I have no N in me" clues a pool may offer. Two is enough to
+ * combine with a magnitude or parity clue; more crowds them out.
+ */
+const MAX_LACKS_DIGIT_CLUES = 2;
+
 function numberClues(target: DeduceCandidate, others: DeduceCandidate[]): DeduceConstraint[] {
   const clues: DeduceConstraint[] = [];
   const values = others.map((row) => row.value);
@@ -173,8 +205,19 @@ function numberClues(target: DeduceCandidate, others: DeduceCandidate[]): Deduce
   if (target.value >= 10) clues.push({ kind: "tens-is", count: Math.floor(target.value / 10) % 10 });
   const targetDigits = new Set(String(target.value).split("").map(Number));
   for (const digit of targetDigits) clues.push({ kind: "has-digit", digit });
+  // Capped. Ten "I have no 4 in me" clues would otherwise outnumber every
+  // other kind ten to one, and a shuffled pool would hand a child three of
+  // them in a row — a puzzle about reading digits rather than about the
+  // idea being taught. Only digits that actually rule a candidate out are
+  // offered, and only a couple of those.
+  const rulingDigits = [];
   for (let digit = 0; digit <= 9; digit += 1) {
-    if (!targetDigits.has(digit)) clues.push({ kind: "lacks-digit", digit });
+    if (targetDigits.has(digit)) continue;
+    if (!others.some((row) => digitsOf(row.value).includes(digit))) continue;
+    rulingDigits.push(digit);
+  }
+  for (const digit of rulingDigits.slice(0, MAX_LACKS_DIGIT_CLUES)) {
+    clues.push({ kind: "lacks-digit", digit });
   }
   clues.push({ kind: "in-category", category: target.value % 2 === 0 ? "even" : "odd" });
   return clues;
@@ -210,7 +253,14 @@ function chooseClues(
   }
 
   if (standing.length !== 1 || standing[0].id !== target.id) return null;
-  return chosen.length >= 2 ? chosen : null;
+  if (chosen.length < 2) return null;
+  // A set made only of "I have no N in me" is a valid deduction and a poor
+  // puzzle: it asks the child to read digits rather than to think about the
+  // idea the task is teaching. Rejected here rather than starved out of the
+  // pool, so the generator simply reshuffles and finds a better set — the
+  // pool still holds these clues for the puzzles that need them to close.
+  if (chosen.every((clue) => clue.kind === "lacks-digit")) return null;
+  return chosen;
 }
 
 /* ------------------------------------------------------------------ */
@@ -280,9 +330,140 @@ function numberPuzzle(
       solutionId: target.id,
       cluesNeeded: report.cluesNeeded,
       explanation: `${target.label} is the only one that fits every clue.`,
+      voice: "value",
     };
   }
   return null;
+}
+
+/**
+ * A puzzle whose cards are working, not answers.
+ *
+ * Structurally the same deduction as a number puzzle — the clues are about a
+ * value, and one card survives them all — but the value is not written on
+ * the card. Nothing can be eliminated until the child has worked each card
+ * out, which is what makes this evidence about the operation rather than
+ * about reading numerals.
+ */
+function expressionPuzzle(
+  input: DeduceInput,
+  options: {
+    skillId: string;
+    skillLabel: string;
+    subject: Game["subject"];
+    standardCode: string;
+    prompt: string;
+    voice: DeduceVoice;
+    /** One card. Called until enough distinct values are drawn. */
+    draw: (random: () => number) => { label: string; value: number };
+  }
+): DeduceTask | null {
+  const random = createSeededRandom(`${input.seed}:${options.skillId}`);
+  const { candidateCount, clueCount } = input.shape;
+
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    const drawn: Array<{ label: string; value: number }> = [];
+    const seen = new Set<number>();
+    // Distinct values, or two cards could both answer the same clues.
+    for (let guard = 0; guard < 200 && drawn.length < candidateCount; guard += 1) {
+      const card = options.draw(random);
+      if (seen.has(card.value)) continue;
+      seen.add(card.value);
+      drawn.push(card);
+    }
+    if (drawn.length < candidateCount) continue;
+
+    const candidates: DeduceCandidate[] = drawn.map((card, index) => ({
+      id: `x-${index}-${card.value}`,
+      label: card.label,
+      emoji: NUMBER_EMOJI[index % NUMBER_EMOJI.length],
+      value: card.value,
+      denominator: 0,
+      attributes: [card.value % 2 === 0 ? "even" : "odd"],
+      position: card.value,
+    }));
+    const target = candidates[Math.floor(random() * candidates.length)];
+    const pool = seededShuffle(
+      numberClues(target, candidates.filter((row) => row.id !== target.id)),
+      `${input.seed}:${options.skillId}:${attempt}`
+    );
+    const clues = chooseClues(candidates, target, pool, clueCount);
+    if (!clues) continue;
+
+    const report = validatePuzzle(candidates, clues);
+    if (!report.usable) continue;
+
+    return {
+      id: `deduce-${options.skillId}-${target.value}-${clues.length}`,
+      skillId: options.skillId,
+      skillLabel: options.skillLabel,
+      subject: options.subject,
+      standardCode: options.standardCode,
+      prompt: options.prompt,
+      candidates: seededShuffle(candidates, `${input.seed}:layout:${attempt}`),
+      clues,
+      solutionId: target.id,
+      cluesNeeded: report.cluesNeeded,
+      explanation: `${target.label} makes ${target.value}, and that is the only one that fits every clue.`,
+      voice: options.voice,
+    };
+  }
+  return null;
+}
+
+function deduceSubtraction(input: DeduceInput): DeduceTask | null {
+  const small = input.grade <= 1;
+  return expressionPuzzle(input, {
+    skillId: "math-subtraction",
+    skillLabel: "Subtraction",
+    subject: "Math",
+    standardCode: small ? "K.OA.A.2" : "2.OA.B.2",
+    prompt: "Work out each card. Which answer am I?",
+    voice: "answer",
+    draw: (random) => {
+      const left = 5 + Math.floor(random() * (small ? 6 : 15));
+      const right = 1 + Math.floor(random() * Math.min(left - 1, small ? 4 : 9));
+      return { label: `${left} - ${right}`, value: left - right };
+    },
+  });
+}
+
+function deduceMultiplication(input: DeduceInput): DeduceTask | null {
+  const small = input.grade <= 2;
+  return expressionPuzzle(input, {
+    skillId: "math-multiplication",
+    skillLabel: "Multiplication",
+    subject: "Math",
+    standardCode: small ? "2.OA.C.4" : "3.OA.A.1",
+    prompt: "Work out each card. Which answer am I?",
+    voice: "answer",
+    draw: (random) => {
+      const left = 2 + Math.floor(random() * (small ? 3 : 5));
+      const right = 2 + Math.floor(random() * (small ? 4 : 6));
+      return { label: `${left} x ${right}`, value: left * right };
+    },
+  });
+}
+
+function deducePatterns(input: DeduceInput): DeduceTask | null {
+  const small = input.grade <= 1;
+  return expressionPuzzle(input, {
+    skillId: "logic-patterns",
+    skillLabel: "Patterns",
+    subject: "Logic",
+    standardCode: small ? "1.OA.C.5" : "4.OA.C.5",
+    prompt: "Each pattern keeps going. Which one's next number am I?",
+    voice: "next",
+    draw: (random) => {
+      const step = small ? 1 + Math.floor(random() * 2) : 2 + Math.floor(random() * 4);
+      const start = 1 + Math.floor(random() * (small ? 3 : 6));
+      const shown = Array.from({ length: 3 }, (_, index) => start + index * step);
+      return {
+        label: `${shown.join(", ")}, ...`,
+        value: start + 3 * step,
+      };
+    },
+  });
 }
 
 function deduceCounting(input: DeduceInput): DeduceTask | null {
@@ -359,6 +540,7 @@ function deduceFractions(input: DeduceInput): DeduceTask | null {
       solutionId: target.id,
       cluesNeeded: report.cluesNeeded,
       explanation: `${target.label} is the only one that fits every clue.`,
+      voice: "value",
     };
   }
   return null;
@@ -519,6 +701,7 @@ function deduceSequence(
       solutionId: target.id,
       cluesNeeded: report.cluesNeeded,
       explanation: `${target.label} is the only one that fits every clue.`,
+      voice: "value",
     };
   }
   return null;
@@ -531,6 +714,9 @@ function deduceSequence(
 const GENERATORS = new Map<string, (input: DeduceInput) => DeduceTask | null>([
   ["math-counting", deduceCounting],
   ["math-place-value", deducePlaceValue],
+  ["math-subtraction", deduceSubtraction],
+  ["math-multiplication", deduceMultiplication],
+  ["logic-patterns", deducePatterns],
   ["math-fractions", deduceFractions],
   ["reading-sequencing", (input) => deduceSequence(input, "reading-sequencing")],
   ["science-life-cycles", (input) => deduceSequence(input, "science-life-cycles")],
@@ -540,6 +726,9 @@ const GENERATORS = new Map<string, (input: DeduceInput) => DeduceTask | null>([
 export const DEDUCE_SKILLS: string[] = [
   "math-counting",
   "math-place-value",
+  "math-subtraction",
+  "math-multiplication",
+  "logic-patterns",
   "math-fractions",
   "reading-sequencing",
   "science-life-cycles",

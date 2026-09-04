@@ -53,6 +53,15 @@ export type ErrorSignature =
   | "sequence.incomplete"
   // Comparisons
   | "comparison.reversed"
+  // Operations: the child worked, but worked the wrong operation. Only
+  // claimable where the task itself names its operands, so the confused
+  // result can be computed rather than guessed at from the answer alone.
+  | "operation.added-instead-of-subtracted"
+  | "operation.subtracted-instead-of-added"
+  | "operation.added-instead-of-multiplied"
+  | "operation.subtracted-instead-of-divided"
+  // Growing patterns
+  | "pattern.previous-term-repeated"
   // Deduction: relationships between the clues on screen and the cards
   // ruled in or out. Never a claim about why.
   | "deduce.comparison-ignored"
@@ -89,6 +98,11 @@ const SIGNATURE_PHRASES = new Map<ErrorSignature, string>(Object.entries({
   "sequence.cyclic-shift": "started the order in the wrong place",
   "sequence.incomplete": "left the order unfinished",
   "comparison.reversed": "compared the two the wrong way round",
+  "operation.added-instead-of-subtracted": "added the two numbers instead of taking one away",
+  "operation.subtracted-instead-of-added": "took one number away instead of adding them",
+  "operation.added-instead-of-multiplied": "added the two numbers instead of making groups of them",
+  "operation.subtracted-instead-of-divided": "took one number away instead of sharing into groups",
+  "pattern.previous-term-repeated": "repeated the last step instead of continuing the pattern",
   "deduce.comparison-ignored": "kept a card that the more-than or less-than clue rules out",
   "deduce.order-relation-ignored": "kept a card that the before or after clue rules out",
   "deduce.fraction-part-confused": "mixed up how many pieces with how big the pieces are",
@@ -123,6 +137,10 @@ export function signatureFavoursVerb(signature: string): "build" | "place" | nul
   if (signature === "deduce.comparison-ignored") return "place";
   if (signature === "deduce.order-relation-ignored") return "place";
   if (signature === "deduce.fraction-part-confused") return "build";
+  // Working the wrong operation is a question of what the operation *does*,
+  // which is what having the parts in your hands shows.
+  if (signature.startsWith("operation.")) return "build";
+  if (signature === "pattern.previous-term-repeated") return "build";
   return null;
 }
 
@@ -178,6 +196,62 @@ export function integerSignature(
 }
 
 /* ------------------------------------------------------------------ */
+/* Operations                                                          */
+/* ------------------------------------------------------------------ */
+
+/** The arithmetic a task asks for. */
+export type ArithmeticOperation = "add" | "subtract" | "multiply" | "divide";
+
+/**
+ * Names the case where a child worked a different operation than the one
+ * asked for.
+ *
+ * This is the observation a construction task can make and a multiple-choice
+ * task cannot: "12 take away 5" answered as 17 is not a slip near 7, it is a
+ * complete and correct addition of the two numbers on screen. Distinguishing
+ * the two changes what to teach — the first needs more practice, the second
+ * needs the operation itself made concrete.
+ *
+ * Deliberately narrow. Only the confusion that the operands actually produce
+ * is claimed, and only when it differs from the right answer: 2 + 2 and
+ * 2 x 2 are both 4, and there is nothing to observe about a child who
+ * answers 4.
+ */
+export function operationSignature(
+  operation: ArithmeticOperation,
+  left: number,
+  right: number,
+  submitted: number
+): ErrorSignature | null {
+  if (!Number.isFinite(left) || !Number.isFinite(right) || !Number.isFinite(submitted)) {
+    return null;
+  }
+  const sum = left + right;
+  const difference = left - right;
+
+  switch (operation) {
+    case "subtract":
+      return submitted === sum && sum !== difference
+        ? "operation.added-instead-of-subtracted"
+        : null;
+    case "add":
+      return submitted === difference && difference !== sum
+        ? "operation.subtracted-instead-of-added"
+        : null;
+    case "multiply":
+      return submitted === sum && sum !== left * right
+        ? "operation.added-instead-of-multiplied"
+        : null;
+    case "divide":
+      return right !== 0 && submitted === difference && difference !== left / right
+        ? "operation.subtracted-instead-of-divided"
+        : null;
+    default:
+      return null;
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Fractions                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -222,6 +296,15 @@ export function comparisonSignature(
 /* Ordered sequences                                                   */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Joins ids into one comparable string. A part id can hold any character a
+ * skill author types, so the separator has to be one that cannot appear in
+ * an id; U+0000 is the only such character. Written as an escape rather than
+ * the byte itself, because a literal NUL in the source makes grep and file(1)
+ * class this module as binary and skip it in every code search.
+ */
+const SEPARATOR = "\u0000";
+
 /**
  * Compares two orderings of the same items.
  *
@@ -240,7 +323,7 @@ export function sequenceSignature(
   if (expected.every((id, index) => id === submitted[index])) return null;
 
   const sameItems =
-    [...expected].sort().join(" ") === [...submitted].sort().join(" ");
+    [...expected].sort().join(SEPARATOR) === [...submitted].sort().join(SEPARATOR);
   if (!sameItems) return null;
 
   const reversed = [...expected].reverse();
