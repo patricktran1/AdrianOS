@@ -21,12 +21,11 @@ import {
 } from "@/lib/adrian-power-locker";
 import { buildAdventureWorld } from "@/lib/adventure-world";
 import { useLearnerModel } from "@/lib/adrian-evidence";
-import { recommendNextActivity } from "@/lib/adrian-learner-model";
+import { recommendNextActivity, type NextActivity } from "@/lib/adrian-learner-model";
 import {
   buildWorldMap,
   trailPoints,
   type WorldLandmark,
-  type WorldPriority,
 } from "@/lib/adrian-world-map";
 import { buildWeeklyWorldQuest } from "@/lib/adrian-world-quest";
 import {
@@ -35,12 +34,10 @@ import {
 } from "@/lib/adrian-prize-collections";
 import { readLearningSchedule } from "@/lib/adrian-learning-schedule";
 import {
-  DAILY_SESSION_EVENT,
-  ensureDailySession,
-  guidedMissionHref,
-  startDailySessionMission,
-  type DailySession,
-} from "@/lib/adrian-daily-session";
+  SESSION_EVENT,
+  ensureSession,
+  type SessionState,
+} from "@/lib/adrian-session-runtime";
 import { useAdrianSound } from "@/lib/adrian-sound";
 import type { Game } from "@/lib/games";
 import styles from "./WorldStage.module.css";
@@ -101,7 +98,7 @@ export default function WorldStage({ games }: { games: Game[] }) {
   const [sheet, setSheet] = useState<SheetId>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [schoolMode, setSchoolMode] = useState(false);
-  const [session, setSession] = useState<DailySession | null>(null);
+  const [session, setSession] = useState<SessionState | null>(null);
   const [learningRevision, setLearningRevision] = useState(0);
   const [equippedKey, setEquippedKey] = useState<string | null>(null);
   const [celebration, setCelebration] = useState<{ emoji: string; name: string } | null>(null);
@@ -135,15 +132,20 @@ export default function WorldStage({ games }: { games: Game[] }) {
     };
   }, [activeProfile.id, profilesReady]);
 
-  // The planned session is resolved here so the world can point straight at
-  // the next mission instead of routing the child through a school screen.
+  // The session plan is resolved here so the world can point straight at the
+  // next step. There is one planner: the beacon is the plan's current step,
+  // not a second opinion about what the child should do.
   useEffect(() => {
-    if (!profilesReady || !progressReady) return;
-    const refresh = () => setSession(ensureDailySession(activeProfile, games, progress));
+    if (!profilesReady) return;
+    const refresh = () => setSession(ensureSession(activeProfile.id, readProfileGrade(activeProfile), activeProfile.age));
     refresh();
-    window.addEventListener(DAILY_SESSION_EVENT, refresh);
-    return () => window.removeEventListener(DAILY_SESSION_EVENT, refresh);
-  }, [activeProfile, games, profilesReady, progress, progressReady]);
+    window.addEventListener(SESSION_EVENT, refresh);
+    window.addEventListener("adrianos-evidence-updated", refresh);
+    return () => {
+      window.removeEventListener(SESSION_EVENT, refresh);
+      window.removeEventListener("adrianos-evidence-updated", refresh);
+    };
+  }, [activeProfile, profilesReady]);
 
   // The world screen owns the whole viewport; nothing behind it should scroll.
   useEffect(() => {
@@ -188,32 +190,28 @@ export default function WorldStage({ games }: { games: Game[] }) {
     progressReady,
   ]);
 
-  const next = useMemo(() => recommendNextActivity(learner), [learner]);
+  /**
+   * What the world points at.
+   *
+   * The session plan is the authority. When a session is running, the
+   * beacon is its current step; when the session is finished for today the
+   * world falls back to the teaching engine's own next move, so the map is
+   * never left without a destination.
+   */
+  const next: NextActivity = useMemo(() => {
+    const step = session?.step;
+    return step ? step.activity : recommendNextActivity(learner);
+  }, [learner, session]);
 
-  const pendingMission = useMemo(() => {
-    if (!schoolMode || !session) return null;
-    const index = session.missions.findIndex((mission) => mission.status !== "complete");
-    return index < 0 ? null : { index, mission: session.missions[index] };
-  }, [schoolMode, session]);
-
-  const priority: WorldPriority | null = useMemo(() => {
-    if (!pendingMission) return null;
-    const game = games.find((item) => item.slug === pendingMission.mission.gameSlug);
-    return {
-      slug: pendingMission.mission.gameSlug,
-      // The mission's own title is written for a child; a game slug title
-      // ("Placement Adventure") reads like software.
-      title: pendingMission.mission.title || game?.title || "Next quest",
-      emoji: game?.emoji ?? "\u{1F392}",
-      href: pendingMission.mission.href,
-      guideLine: "Your quest is ready. Tap the bright one!",
-      rationale: "A planned session mission is pending, so it leads the world.",
-    };
-  }, [games, pendingMission]);
+  /** The map routes to places; the catalogue is what knows their names. */
+  const resolveTitle = useCallback(
+    (slug: string) => games.find((game) => game.slug === slug)?.title ?? null,
+    [games]
+  );
 
   const map = useMemo(
-    () => (world ? buildWorldMap(world, learner, next, foundGlints, priority) : null),
-    [foundGlints, learner, next, priority, world]
+    () => (world ? buildWorldMap(world, learner, next, foundGlints, undefined, resolveTitle) : null),
+    [foundGlints, learner, next, resolveTitle, world]
   );
 
   const quest = useMemo(() => {
@@ -299,26 +297,10 @@ export default function WorldStage({ games }: { games: Game[] }) {
     router.push(href);
   }, [play, router, vibrate]);
 
-  /**
-   * A landmark tap is the only step between the world and gameplay.
-   * When the beacon is carrying a planned mission it is marked active first,
-   * so the guided run is recorded without the child visiting a school screen.
-   */
+  /** A landmark tap is the only step between the world and gameplay. */
   const enterLandmark = useCallback((landmark: WorldLandmark) => {
-    if (landmark.beacon && pendingMission && profileId) {
-      const updated = startDailySessionMission(profileId, pendingMission.index);
-      if (updated) {
-        travel(guidedMissionHref(
-          updated.missions[pendingMission.index],
-          profileId,
-          pendingMission.index,
-          updated.missions.length
-        ));
-        return;
-      }
-    }
     travel(landmark.href);
-  }, [pendingMission, profileId, travel]);
+  }, [travel]);
 
   const openSheet = useCallback((id: Exclude<SheetId, null>) => {
     play("tap");

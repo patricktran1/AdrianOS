@@ -40,6 +40,19 @@ const passes = [
     branches: 86,
   },
   {
+    label: "Session planner",
+    include: [
+      "lib/session/session-planner.ts",
+      "lib/session/session-goals.ts",
+      "lib/session/session-store.ts",
+      "lib/session/session-summary.ts",
+      "lib/session/session-explore.ts",
+    ],
+    lines: 95,
+    functions: 92,
+    branches: 86,
+  },
+  {
     label: "Interaction kernels",
     include: [
       "lib/kernels/kernel-tasks.ts",

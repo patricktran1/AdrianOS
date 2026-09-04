@@ -14,6 +14,9 @@ const gate = await source("components/FamilyOnboardingGate.tsx");
 const setup = await source("components/FamilySetup.tsx");
 const learnerProfile = await source("lib/adrian-learning-profile.ts");
 const dailySession = await source("lib/adrian-daily-session.ts");
+const sessionRuntime = await source("lib/adrian-session-runtime.ts");
+const sessionExplore = await source("lib/session/session-explore.ts");
+const sessionPlanner = await source("lib/session/session-planner.ts");
 const placement = await source("app/games/placement-adventure/page.tsx");
 const layout = await source("app/layout.tsx");
 
@@ -38,11 +41,28 @@ if (!setup.includes("LEARNER_INTERESTS") || !setup.includes("LEARNING_PRIORITIES
 if (!learnerProfile.includes("learner-profile-settings") || !learnerProfile.includes("writeLearningForProfile")) {
   failures.push("personalization: learner settings are not stored in synced learning state");
 }
-for (const contract of ["hasCompletedPlacement", "personalizedExploreItem", "Parent priority:", "placementFirst"]) {
-  if (!dailySession.includes(contract)) failures.push(`daily session: missing ${contract}`);
+/*
+ * The blank-slate promises moved with the code that keeps them. The session
+ * planner owns the sequence now, so the guarantees are checked where they
+ * actually live: the runtime supplies them, the planner honours them, and
+ * the school screens are a projection of the plan rather than a second one.
+ */
+for (const contract of ["hasCompletedPlacement", "readLearningProfile", "personalizedExploreSlugs"]) {
+  if (!sessionRuntime.includes(contract)) {
+    failures.push(`session runtime: missing ${contract}`);
+  }
 }
-if (!dailySession.includes('if (placement) return [placement]')) {
-  failures.push("daily session: a first placement map can be displaced by a free or light day");
+if (!sessionExplore.includes("a.interest !== b.interest") || !sessionExplore.includes("a.priority !== b.priority")) {
+  failures.push("session explore: interests and parent priorities no longer order exploration");
+}
+if (!sessionPlanner.includes("if (needsPlacement && !model.confident) steps.push(placementStep());")) {
+  failures.push("session planner: a first placement map can be displaced by a free or light day");
+}
+if (!/needsPlacement\s*=\s*false/.test(sessionPlanner)) {
+  failures.push("session planner: placement is no longer an explicit planning input");
+}
+if (dailySession.includes("getCurriculumRecommendedSkill") || dailySession.includes("ensureDailyAdventure")) {
+  failures.push("daily session: the school screens are planning again instead of projecting the session");
 }
 if (!placement.includes("useFamilyProfiles") || placement.includes("getActiveProfile")) {
   failures.push("placement: profile rendering is not hydration-safe");

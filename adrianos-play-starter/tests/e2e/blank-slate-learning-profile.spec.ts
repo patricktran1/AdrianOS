@@ -74,7 +74,11 @@ test.describe("privacy-first family onboarding", () => {
       const profileId = family.profiles?.[0]?.id;
       const learning = JSON.parse(window.localStorage.getItem(`adrianos-learning-v1:${profileId}`) ?? "{}");
       const profile = learning.reviewQueue?.find((row: { id?: string }) => row.id === "learner-profile-settings");
-      const session = learning.reviewQueue?.find((row: { id?: string }) => String(row.id ?? "").startsWith("daily-session:"));
+      // The session is planned from evidence and stored in its own slot; it
+      // is no longer a playlist parked in the review queue.
+      const session = JSON.parse(
+        window.localStorage.getItem(`adrianos-session-v1:${profileId}`) ?? "null"
+      );
       return { family, profile, session };
     });
 
@@ -83,6 +87,7 @@ test.describe("privacy-first family onboarding", () => {
     expect(JSON.parse(saved.profile.data.interestsJson)).toContain("Space");
     expect(JSON.parse(saved.profile.data.prioritiesJson)).toEqual(expect.arrayContaining(["Reading", "Science"]));
     expect(saved.profile.data.sessionMinutes).toBe(18);
-    expect(JSON.parse(saved.session.data.sessionJson).missions[0].gameSlug).toBe("placement-adventure");
+    expect(saved.session.goals[0].k).toBe("placement");
+    expect(saved.session.goals[0].d).toBe("placement-adventure");
   });
 });

@@ -11,7 +11,7 @@ async function waitForChainController(page: Page) {
 }
 
 test.describe("Adaptive Adventure Chain", () => {
-  test("turns a verified completion into three distinct personalized next paths", async ({ page }) => {
+  test("turns a verified completion into the session's one next destination", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/games/story-expedition", { waitUntil: "domcontentloaded" });
@@ -72,21 +72,16 @@ test.describe("Adaptive Adventure Chain", () => {
 
     const chain = page.locator('[data-adventure-chain="active"]');
     await expect(chain).toBeVisible({ timeout: 8_000 });
-    await expect(chain.getByRole("heading", { name: "Choose what happens next" })).toBeVisible();
-    await expect(chain.getByText("real play and mastery evidence")).toBeVisible();
 
+    // The end of an activity is a join between two steps of a session, not a
+    // fork. One destination, chosen by the planner, with the reason the
+    // planner gave for it.
     const cards = chain.locator(".adventure-chain-card");
-    await expect(cards).toHaveCount(3);
-    await expect(chain.locator('[data-chain-kind="stretch"]')).toHaveCount(1);
-    await expect(chain.locator('[data-chain-kind="rescue"]')).toHaveCount(1);
-    await expect(chain.locator('[data-chain-kind="explore"]')).toHaveCount(1);
-    await expect(chain.locator('[data-chain-game="mastery-rescue-lab"]')).toHaveCount(1);
-
-    const slugs = await cards.evaluateAll((elements) =>
-      elements.map((element) => element.getAttribute("data-chain-game") ?? "")
-    );
-    expect(new Set(slugs).size).toBe(3);
-    expect(slugs).not.toContain("story-expedition");
+    await expect(cards).toHaveCount(1);
+    await expect(chain.locator(".adventure-chain-grid")).toHaveAttribute("data-chain-count", "1");
+    await expect(cards).not.toHaveAttribute("data-chain-game", "story-expedition");
+    // Nothing on this screen reads as an assessment.
+    expect(await chain.innerText()).not.toMatch(/score|%|mastery|behind|wrong/i);
 
     await expect.poll(async () => page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,

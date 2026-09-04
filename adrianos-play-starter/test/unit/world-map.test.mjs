@@ -91,7 +91,7 @@ test("the sky follows the real clock rather than a random roll", () => {
   assert.equal(skyForHour(13), "day");
   assert.equal(skyForHour(18), "sunset");
   assert.equal(skyForHour(23), "night");
-  const map = buildWorldMap(world(), EMPTY_LEARNER_MODEL, recommendNextActivity(EMPTY_LEARNER_MODEL), [], null, new Date(2026, 7, 1, 13));
+  const map = buildWorldMap(world(), EMPTY_LEARNER_MODEL, recommendNextActivity(EMPTY_LEARNER_MODEL), [], new Date(2026, 7, 1, 13));
   assert.equal(map.sky, "day");
 });
 
@@ -206,17 +206,10 @@ test("a transfer beacon carries the skill-parameterised kernel route", () => {
   // Guide language stays a child's invitation, not an assessment.
   assert.doesNotMatch(map.guideLine, /transfer|mechanic|evidence|context|assess/i);
 
-  // A pending mission still outranks the model's transfer routing.
-  const priority = {
-    slug: "number-quest",
-    title: "Find the right starting point",
-    emoji: "🧭",
-    href: "/games/number-quest?guided=1",
-    guideLine: "Your quest is ready.",
-    rationale: "A planned session mission is pending.",
-  };
-  const guided = buildWorldMap(world({ portals, heroPortal: portals[0] }), model, next, [], priority);
-  assert.equal(guided.beacon.href, "/games/number-quest?guided=1");
+  // The destination survives even when the portal is hosting a different
+  // game: a place hosts whatever the session needs today.
+  const elsewhere = buildWorldMap(world(), model, next);
+  assert.equal(elsewhere.beacon.href, "/games/maker-workshop?skill=math-place-value&from=transfer");
 });
 
 test("a stretch with no subject match falls through to the boss peak", () => {
@@ -233,48 +226,40 @@ test("a stretch with no subject match falls through to the boss peak", () => {
   assert.equal(map.beacon.portal.id, "boss");
 });
 
-test("a pending mission takes over the beacon without moving the map", () => {
-  const priority = {
-    slug: "number-quest",
-    title: "Find the right starting point",
-    emoji: "🧭",
-    href: "/games/number-quest?guided=1",
-    guideLine: "Your quest is ready. Tap the bright one!",
-    rationale: "A planned session mission is pending.",
-  };
+test("the beacon carries the session's destination without moving the map", () => {
+  // The world used to arbitrate between the learner model and a stored
+  // playlist. There is one planner now, so whatever `next` names is simply
+  // where the beacon leads.
+  const model = buildLearnerModel("kid", evidenceRun(16, { responseMs: 2600 }));
+  const next = recommendNextActivity(model);
   const plain = buildWorldMap(world(), EMPTY_LEARNER_MODEL, recommendNextActivity(EMPTY_LEARNER_MODEL));
-  const guided = buildWorldMap(
-    world(),
-    EMPTY_LEARNER_MODEL,
-    recommendNextActivity(EMPTY_LEARNER_MODEL),
-    [],
-    priority
-  );
+  const routed = buildWorldMap(world(), model, next);
 
-  assert.equal(guided.beacon.href, "/games/number-quest?guided=1");
-  assert.equal(guided.beacon.status, "Find the right starting point");
-  assert.equal(guided.guideLine, priority.guideLine);
+  assert.equal(routed.beacon.href, next.preferredHref);
+  assert.equal(routed.guideLine, next.childReason);
   // The place name and its coordinates are untouched: the geography is stable
   // even when the activity waiting there changes.
-  assert.equal(guided.beacon.label, plain.beacon.label);
-  assert.deepEqual(guided.beacon.wide, plain.beacon.wide);
+  assert.equal(routed.landmarks.length, plain.landmarks.length);
+  for (const landmark of routed.landmarks) {
+    const same = plain.landmarks.find((row) => row.portal.id === landmark.portal.id);
+    assert.equal(landmark.label, same.label);
+    assert.deepEqual(landmark.wide, same.wide);
+  }
   // Non-beacon landmarks keep their own destinations.
-  for (const landmark of guided.landmarks.filter((row) => !row.beacon)) {
+  for (const landmark of routed.landmarks.filter((row) => !row.beacon)) {
     assert.equal(landmark.href, landmark.portal.href);
   }
 });
 
-test("the priority claims the place that already hosts its game", () => {
-  const priority = {
-    slug: "adaptive-boss-arena",
-    title: "Boss run",
-    emoji: "👾",
-    href: "/games/adaptive-boss-arena?guided=1",
-    guideLine: "Ready?",
-    rationale: "Mission pending.",
-  };
-  const map = buildWorldMap(world(), EMPTY_LEARNER_MODEL, recommendNextActivity(EMPTY_LEARNER_MODEL), [], priority);
-  assert.equal(map.beacon.portal.id, "boss");
+test("the world holds no second opinion about where to go", () => {
+  // buildWorldMap takes the decision it is given. Anything that wants to
+  // change the beacon has to change the plan, which is the point.
+  const model = buildLearnerModel("kid", evidenceRun(16, { responseMs: 2600 }));
+  const next = recommendNextActivity(model);
+  const first = buildWorldMap(world(), model, next);
+  const second = buildWorldMap(world(), model, next);
+  assert.equal(first.beacon.href, second.beacon.href);
+  assert.equal(first.beacon.portal.id, second.beacon.portal.id);
 });
 
 test("structures accumulate with clears and sit on terrain", () => {
@@ -333,4 +318,32 @@ test("the adult explanation names the evidence behind the choice", () => {
   const summary = describeWorldDecision(map, model);
   assert.match(summary, /14 recorded answers/);
   assert.match(summary, new RegExp(map.beacon.label));
+});
+
+test("the beacon is labelled with where it actually leads", () => {
+  // A landmark hosts a rotating game. When the session routes past it, the
+  // label has to say the destination, or a child taps "Stepping Stones" and
+  // arrives somewhere else entirely.
+  const next = {
+    intent: "explore",
+    skillId: null,
+    skillLabel: null,
+    subject: null,
+    preferredSlugs: ["placement-adventure"],
+    preferredHref: "/games/placement-adventure?first=1",
+    childReason: "Let's find your starting point together.",
+    adultReason: "A short check that tunes the first route.",
+    difficultyShift: 0,
+    hintStrategy: "on-request",
+  };
+  const unnamed = buildWorldMap(world(), EMPTY_LEARNER_MODEL, next);
+  const named = buildWorldMap(
+    world(), EMPTY_LEARNER_MODEL, next, [], undefined,
+    (slug) => (slug === "placement-adventure" ? "Placement Adventure" : null)
+  );
+  assert.equal(named.beacon.href, "/games/placement-adventure?first=1");
+  assert.equal(named.beacon.status, "Placement Adventure");
+  // Without a resolver the map falls back to the hosted game rather than
+  // inventing a name for a destination it does not recognise.
+  assert.equal(unnamed.beacon.status, unnamed.beacon.portal.game.title);
 });

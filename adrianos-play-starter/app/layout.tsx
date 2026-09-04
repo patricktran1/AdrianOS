@@ -8,6 +8,7 @@ import FamilyOnboardingGate from "@/components/FamilyOnboardingGate";
 import GradeGameSpotlightBridge from "@/components/GradeGameSpotlightBridge";
 import InstallAppPrompt from "@/components/InstallAppPrompt";
 import MasteryLoopBridge from "@/components/MasteryLoopBridge";
+import SessionAdvanceBridge from "@/components/SessionAdvanceBridge";
 import MobileAppDock from "@/components/MobileAppDock";
 import ParentSessionSecurityBridge from "@/components/ParentSessionSecurityBridge";
 import PWARegistrar from "@/components/PWARegistrar";
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ParentSessionSecurityBridge />
         <WeeklyReportBridge />
         <MasteryLoopBridge />
+        <SessionAdvanceBridge />
         <FamilyOnboardingGate>{children}</FamilyOnboardingGate>
         <GradeGameSpotlightBridge />
         <DailyAdventureRemixBridge />
