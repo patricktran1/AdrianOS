@@ -36,6 +36,7 @@ const ACTIVITY_PHRASES = new Map<InteractionMechanic, string>([
   ["choose", "picking answers"],
   ["recall", "remembering pairs"],
   ["locate", "finding the part of a story that answers a question"],
+  ["compose", "writing a piece of their own"],
 ]);
 
 const REVISION_PHRASES = new Map<SessionRevisionReason, string>([

@@ -34,6 +34,7 @@ export type InteractionMechanic =
   | KernelVerb
   | "deduce"
   | "locate"
+  | "compose"
   | "choose"
   | "recall";
 
@@ -75,6 +76,9 @@ const MECHANIC_BY_GAME: Record<string, InteractionMechanic> = {
   "math-motion-lab": "place",
   // Find pairs from memory.
   "memory-match": "recall",
+  // A child writes their own text here. Whatever else that is, it is not
+  // picking an offered answer, which is what this map defaulted it to.
+  "writing-studio": "compose",
 };
 
 export function mechanicForGame(gameSlug: string): InteractionMechanic {
@@ -83,7 +87,8 @@ export function mechanicForGame(gameSlug: string): InteractionMechanic {
 
 export function normalizeMechanic(value: unknown): InteractionMechanic | null {
   return value === "build" || value === "place" || value === "deduce"
-    || value === "locate" || value === "choose" || value === "recall"
+    || value === "locate" || value === "compose"
+    || value === "choose" || value === "recall"
     ? value
     : null;
 }
@@ -126,6 +131,9 @@ const MECHANIC_CATEGORIES = new Map<InteractionMechanic, MechanicCategory>([
   ["place", "position"],
   ["deduce", "inference"],
   ["locate", "evidence"],
+  // Composing a text and composing a number are both construction: a
+  // session doing one after the other has asked for one kind of thinking.
+  ["compose", "construction"],
 ]);
 
 export function mechanicCategory(mechanic: InteractionMechanic): MechanicCategory {

@@ -39,6 +39,10 @@ import {
   type ArithmeticOperation,
   type ErrorSignature,
 } from "../learning/error-signatures.ts";
+import {
+  WRITING_SENTENCES,
+  type WritingLevel,
+} from "../writing/sentence-bank.ts";
 
 export type KernelVerb = "build" | "place";
 
@@ -144,9 +148,18 @@ export function judgeKernelAnswer(
     };
   }
   const sequence = chosen.map((part) => part.id);
-  const correct =
+  const exact =
     sequence.length === task.targetIds.length
     && sequence.every((id, index) => id === task.targetIds[index]);
+  // Two tiles that read the same *are* the same tile. Nothing in the bank
+  // repeats a word today, so this changes no current task — it is here
+  // because rebuilding sentences is the one PLACE task where a duplicate
+  // tile is natural English ("the cat sat on the mat"), and without it the
+  // first author to write one would silently mark an identical sentence
+  // wrong. Comparing what the row reads, rather than which tile object it
+  // came from, can only ever accept an arrangement indistinguishable on
+  // screen; a test holds every other PLACE task to distinct labels.
+  const correct = exact || readsTheSame(task, chosen);
   return {
     correct,
     canonicalAnswer: chosen.map((part) => part.label).join(", "),
@@ -156,6 +169,15 @@ export function judgeKernelAnswer(
 
 function nearlyEqual(a: number, b: number): boolean {
   return Math.abs(a - b) < 0.0001;
+}
+
+/** Whether a placement reads identically to the answer, tile ids aside. */
+function readsTheSame(task: KernelTask, chosen: KernelPart[]): boolean {
+  if (chosen.length !== task.targetIds.length) return false;
+  const labelOf = new Map(task.tray.map((part) => [part.id, part.label]));
+  return task.targetIds.every(
+    (id, index) => labelOf.get(id) === chosen[index]?.label
+  );
 }
 
 /**
@@ -586,6 +608,79 @@ type Expression = { label: string; value: number };
  * Returns fewer expressions than asked for rather than looping forever if a
  * narrow range cannot supply them; every caller can order what it gets.
  */
+/* ------------------------------------------------------------------ */
+/* Writing                                                             */
+/* ------------------------------------------------------------------ */
+
+/** Which band of sentences a grade rebuilds. */
+function writingLevelFor(grade: ElementaryGrade, difficultyShift: -1 | 0 | 1): WritingLevel {
+  const base = grade <= 1 ? 0 : grade <= 3 ? 1 : 2;
+  const level = Math.max(0, Math.min(2, base + difficultyShift));
+  return (["Starter", "Growing", "Challenge"] as const)[level];
+}
+
+/**
+ * Rebuild a sentence from its words.
+ *
+ * The ending mark is its own tile, and the only capitalised word is the one
+ * that starts the sentence, so getting this right means placing a capital
+ * first and punctuation last as well as ordering the words — which is why
+ * this is sentence writing rather than another ordering puzzle.
+ *
+ * The words are shown scrambled but never sorted into a helpful order: a
+ * tray in alphabetical order would let a child work backwards from the tray
+ * rather than from the sentence.
+ */
+function placeWritingSentence(
+  input: TaskInput,
+  skillId: "writing-sentences" | "writing-conventions" = "writing-sentences"
+): KernelTask {
+  const conventions = skillId === "writing-conventions";
+  const level = writingLevelFor(input.grade, input.difficultyShift);
+  const pool = WRITING_SENTENCES.filter((row) => row.level === level);
+  const chosen = seededShuffle(pool, `${input.seed}:writing-sentence`)[0] ?? WRITING_SENTENCES[0];
+
+  const mark = chosen.text.slice(-1);
+  const words = chosen.text.slice(0, -1).trim().split(/\s+/);
+  const parts: KernelPart[] = [
+    ...words.map((word, index) => ({
+      id: `w-${index}`,
+      label: word,
+      emoji: "🪧",
+      value: index,
+    })),
+    { id: "w-mark", label: mark, emoji: "🪧", value: words.length },
+  ];
+
+  // The same task serves both skills, and the attribution is honest either
+  // way: the capital can only go first and the mark can only go last, so a
+  // correct build is evidence of both ordering the words and placing the
+  // conventions. Which one is recorded is which one we came here to observe.
+  return {
+    id: `place-${skillId}-${chosen.id}`,
+    verb: "place",
+    skillId,
+    skillLabel: conventions ? "Capitalization and punctuation" : "Sentence construction",
+    subject: "Reading",
+    standardCode: conventions
+      ? (input.grade <= 1 ? "L.1.2" : input.grade <= 3 ? "L.3.2" : "L.5.2")
+      : (input.grade <= 1 ? "L.1.1" : input.grade <= 3 ? "L.3.1" : "L.5.1"),
+    prompt: conventions
+      ? "Build the sentence. Watch where the capital and the mark belong."
+      : "Put the words in order to make one sentence.",
+    hint: "A sentence starts with a capital letter and ends with its mark.",
+    explanation: `The sentence reads: ${chosen.text}`,
+    tray: seededShuffle(parts, `${input.seed}:writing-tray`),
+    slots: parts.length,
+    targetIds: parts.map((part) => part.id),
+    targetValue: 0,
+    format: "integer",
+    denominator: 0,
+    targetLabel: chosen.text,
+    operation: null,
+  };
+}
+
 function distinctResults(
   make: () => Expression,
   count: number,
@@ -979,6 +1074,8 @@ export const KERNEL_SKILLS: Record<KernelVerb, string[]> = {
     "math-division",
     "math-fractions",
     "math-decimals",
+    "writing-sentences",
+    "writing-conventions",
     "reading-sequencing",
     "science-life-cycles",
   ],
@@ -1019,6 +1116,8 @@ const PLACE_GENERATORS = new Map<string, KernelGenerator>([
   ["math-subtraction", placeSubtraction],
   ["math-multiplication", placeMultiplication],
   ["math-division", placeDivision],
+  ["writing-sentences", placeWritingSentence],
+  ["writing-conventions", (input) => placeWritingSentence(input, "writing-conventions")],
   ["reading-sequencing", (input) => placeSequence(input, "reading-sequencing")],
   ["science-life-cycles", (input) => placeSequence(input, "science-life-cycles")],
 ]);

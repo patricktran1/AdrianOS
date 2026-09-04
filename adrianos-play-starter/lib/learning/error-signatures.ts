@@ -68,6 +68,13 @@ export type ErrorSignature =
   | "reading.evidence-found-but-misread"
   | "reading.looked-in-another-part"
   | "reading.marked-the-whole-passage"
+  // Writing: structural facts about a finished piece, each one observed on
+  // its own rather than collapsed with the others. Never a claim about why.
+  | "writing.no-capital-letter"
+  | "writing.no-ending-punctuation"
+  | "writing.too-few-sentences"
+  | "writing.ideas-not-connected"
+  | "writing.draft-unchanged"
   // Deduction: relationships between the clues on screen and the cards
   // ruled in or out. Never a claim about why.
   | "deduce.comparison-ignored"
@@ -113,6 +120,11 @@ const SIGNATURE_PHRASES = new Map<ErrorSignature, string>(Object.entries({
   "reading.evidence-found-but-misread": "found the sentence that tells you, and read it a different way",
   "reading.looked-in-another-part": "marked a different part of the story from the one that tells you",
   "reading.marked-the-whole-passage": "marked the whole story rather than the part that tells you",
+  "writing.no-capital-letter": "began the writing without a capital letter",
+  "writing.no-ending-punctuation": "finished the writing without an ending mark",
+  "writing.too-few-sentences": "wrote fewer complete sentences than the piece asked for",
+  "writing.ideas-not-connected": "wrote the ideas without words that join them together",
+  "writing.draft-unchanged": "published the draft without changing anything in it",
   "deduce.comparison-ignored": "kept a card that the more-than or less-than clue rules out",
   "deduce.order-relation-ignored": "kept a card that the before or after clue rules out",
   "deduce.fraction-part-confused": "mixed up how many pieces with how big the pieces are",
@@ -160,6 +172,13 @@ export function signatureFavoursVerb(
   if (signature === "reading.answered-without-evidence") return "locate";
   if (signature === "reading.looked-in-another-part") return "locate";
   if (signature === "reading.marked-the-whole-passage") return "locate";
+  // Building a sentence from tiles asks for a capital first and an ending
+  // mark last, so it is where those are practised rather than pointed out.
+  // Joining ideas and revising a draft have no such form, and saying so is
+  // better than routing a child somewhere that does not teach it.
+  if (signature === "writing.no-capital-letter") return "place";
+  if (signature === "writing.no-ending-punctuation") return "place";
+  if (signature === "writing.too-few-sentences") return "place";
   return null;
 }
 

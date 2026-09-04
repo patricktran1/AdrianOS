@@ -37,7 +37,21 @@ function genreLabel(prompt: WritingPrompt): string {
   return "INFORMATIONAL WRITING";
 }
 
+/**
+ * What one published piece says about each writing skill.
+ *
+ * `analyzeWriting` works out six separate structural facts and this used to
+ * record two of them ANDed together, with no signature and no task id. A
+ * child who never uses a capital and a child who never ends a sentence
+ * produced the identical row, so no pattern could ever form from either, and
+ * the teaching engine could not see writing at all.
+ *
+ * Each row now names the one thing that was missing. The task id is the
+ * prompt rather than the piece, because patterns are counted across distinct
+ * tasks and prompts are what change from week to week.
+ */
 function evidenceRows(piece: WritingPiece, prompt: WritingPrompt, analysis: WritingAnalysis) {
+  const task = (skillId: string) => `writing:${prompt.id}:${skillId}`;
   return [
     {
       skillId: "writing-ideas",
@@ -45,6 +59,8 @@ function evidenceRows(piece: WritingPiece, prompt: WritingPrompt, analysis: Writ
       prompt: `Writing piece ${piece.id}: organize ideas`,
       correctAnswer: "A clear plan connected to the prompt",
       correct: piece.selectedIdeas.length >= 2,
+      taskId: task("writing-ideas"),
+      errorSignature: null,
     },
     {
       skillId: "writing-sentences",
@@ -52,6 +68,10 @@ function evidenceRows(piece: WritingPiece, prompt: WritingPrompt, analysis: Writ
       prompt: `Writing piece ${piece.id}: build complete sentences`,
       correctAnswer: "Enough complete sentences for the writer's level",
       correct: analysis.enoughWords && analysis.enoughSentences,
+      taskId: task("writing-sentences"),
+      errorSignature: analysis.enoughWords && analysis.enoughSentences
+        ? null
+        : "writing.too-few-sentences",
     },
     {
       skillId: "writing-conventions",
@@ -59,6 +79,14 @@ function evidenceRows(piece: WritingPiece, prompt: WritingPrompt, analysis: Writ
       prompt: `Writing piece ${piece.id}: use writing conventions`,
       correctAnswer: "Capital letter and ending punctuation",
       correct: analysis.capitalStart && analysis.endingPunctuation,
+      taskId: task("writing-conventions"),
+      // Only one can be named per attempt, and the opening is where a reader
+      // meets the sentence, so it is reported first when both are missing.
+      errorSignature: !analysis.capitalStart
+        ? "writing.no-capital-letter"
+        : !analysis.endingPunctuation
+          ? "writing.no-ending-punctuation"
+          : null,
     },
     {
       skillId: "writing-organization",
@@ -66,6 +94,8 @@ function evidenceRows(piece: WritingPiece, prompt: WritingPrompt, analysis: Writ
       prompt: `Writing piece ${piece.id}: organize the ${prompt.genre.toLowerCase()}`,
       correctAnswer: "Ideas connected in a clear order",
       correct: analysis.organized,
+      taskId: task("writing-organization"),
+      errorSignature: analysis.organized ? null : "writing.ideas-not-connected",
     },
     {
       skillId: "writing-revision",
@@ -73,6 +103,8 @@ function evidenceRows(piece: WritingPiece, prompt: WritingPrompt, analysis: Writ
       prompt: `Writing piece ${piece.id}: revise the draft`,
       correctAnswer: "A meaningful change from draft to final writing",
       correct: analysis.revisionChanged,
+      taskId: task("writing-revision"),
+      errorSignature: analysis.revisionChanged ? null : "writing.draft-unchanged",
     },
   ];
 }
@@ -278,6 +310,9 @@ export default function WritingStudioPage() {
         correctAnswer: row.correctAnswer,
         correct: row.correct,
         review: reviewMode,
+        mechanic: "compose",
+        taskId: row.taskId,
+        errorSignature: row.errorSignature,
         data: {
           writingId: saved.id,
           promptId: saved.promptId,
