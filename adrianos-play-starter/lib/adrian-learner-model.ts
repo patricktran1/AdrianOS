@@ -932,6 +932,9 @@ const SKILL_PREREQUISITES = new Map<string, string>([
   // any of the operations; a child can extend 2, 4, 6 long before they would
   // call it multiplying.
   ["logic-patterns", "math-counting"],
+  // Capitals and full stops are properties of a sentence, so a child who
+  // cannot yet build one is not helped by being sent back to the marks.
+  ["writing-conventions", "writing-sentences"],
 ]);
 
 export type NextActivity = {
@@ -1326,6 +1329,7 @@ const MECHANIC_PHRASES = new Map<string, string>([
   ["recall", "memory play"],
   ["deduce", "working it out from clues"],
   ["locate", "showing where the story says it"],
+  ["compose", "writing their own piece"],
 ]);
 
 function findTransferCandidate(model: LearnerModel): NextActivity | null {

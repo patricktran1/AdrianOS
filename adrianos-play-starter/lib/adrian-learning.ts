@@ -86,7 +86,7 @@ export type LearningAttempt = {
    * classified by the mechanic registry, so only routes that genuinely host
    * a non-default verb need to say so.
    */
-  mechanic?: "choose" | "build" | "place" | "deduce" | "locate" | "recall";
+  mechanic?: "choose" | "build" | "place" | "deduce" | "locate" | "compose" | "recall";
   /**
    * Identifies the specific task, so retrying one task is not mistaken for
    * independent evidence of a habit.
