@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import CoachMode, { type CoachCheck } from "@/components/CoachMode";
+import { optionSeed, presentIndexed } from "@/lib/learning/answer-order";
 import { scienceByPrompt, wordsByHint, type ScienceQuestion } from "@/lib/adrian-content-bank";
 
 type CoachContext = {
@@ -29,12 +30,26 @@ function visibleHeadings(): string[] {
     .filter(Boolean);
 }
 
-function shuffledChoices(answer: string, alternatives: string[]): { choices: string[]; answerIndex: number } {
+/**
+ * The coach's own quick check, with its answer somewhere a child cannot
+ * predict.
+ *
+ * This used to rotate three choices by a fixed amount, which is not a shuffle:
+ * it moved the answer off the front and then left it at index 1 on every
+ * question the coach ever asked. The coach has no profile to seed from — it is
+ * an overlay, not a game — so the check's own prompt is the seed. That is
+ * stable for a given question, which is what keeps the buttons still while a
+ * child reads them.
+ */
+function shuffledChoices(
+  answer: string,
+  alternatives: string[],
+  seedText: string
+): { choices: string[]; answerIndex: number } {
   const unique = [answer, ...alternatives.filter((item) => item !== answer)]
     .filter((item, index, source) => source.indexOf(item) === index)
     .slice(0, 3);
-  const rotated = unique.length === 3 ? [unique[1], unique[0], unique[2]] : unique;
-  return { choices: rotated, answerIndex: rotated.indexOf(answer) };
+  return presentIndexed(unique, unique.indexOf(answer), optionSeed("coach", "coach-check", seedText));
 }
 
 function parseAmount(raw: string, money: boolean): number {
@@ -141,6 +156,11 @@ function mathContext(headings: string[]): CoachContext | null {
   const checkChoices = money
     ? ["100 cents", "10 cents", "1 cent"]
     : [String(checkAnswer), String(Math.max(0, checkAnswer - 1)), String(checkAnswer + 1)];
+  const mathCheck = presentIndexed(
+    checkChoices,
+    0,
+    optionSeed("coach", "coach-check", `${heading}:${checkAnswer}`)
+  );
 
   return {
     gameSlug: "math-blast",
@@ -157,8 +177,8 @@ function mathContext(headings: string[]): CoachContext | null {
         : operator === "+"
           ? `What is ${left} + 1?`
           : `What is ${left} − 1?`,
-      choices: checkChoices,
-      answerIndex: 0,
+      choices: mathCheck.choices,
+      answerIndex: mathCheck.answerIndex,
       explanation: money
         ? "One dollar is made of 100 cents."
         : operator === "+"
@@ -173,7 +193,7 @@ function scienceContext(headings: string[]): CoachContext | null {
   if (!prompt) return null;
   const fact: ScienceQuestion = SCIENCE_FACTS[prompt];
   const answer = fact.choices[fact.answer];
-  const check = shuffledChoices(answer, fact.choices);
+  const check = shuffledChoices(answer, fact.choices, prompt);
   const topicClue: Record<ScienceQuestion["topic"], string> = {
     Earth: "Think about a real process involving weather, water, rocks, motion, or energy.",
     Body: "Think about the job a body part or body process performs to keep us working.",
@@ -211,7 +231,7 @@ function wordContext(headings: string[]): CoachContext | null {
     String.fromCharCode(((first.charCodeAt(0) - 65 + 1) % 26) + 65),
     String.fromCharCode(((first.charCodeAt(0) - 65 + 2) % 26) + 65),
   ];
-  const check = shuffledChoices(first, distractors);
+  const check = shuffledChoices(first, distractors, item.word);
   return {
     gameSlug: "word-builder",
     skillId: `reading-spelling-${difficulty}`,

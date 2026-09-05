@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { presentDeck } from "@/lib/learning/answer-order";
 import { pickFreshItems } from "@/lib/adrian-content-rotation";
 import { getDueReviewItems, readLearningForProfile, recordLearningAttempt } from "@/lib/adrian-learning";
 import { getActiveProfile } from "@/lib/adrian-profiles";
@@ -93,7 +94,7 @@ export default function DigitalCitizenshipLabPage() {
     const reviews = reviewItems();
     const next = useReview && reviews.length ? reviews : normalItems();
     if (!next.length) return;
-    setSession(next);
+    setSession(presentDeck(next, profileId, "digital-citizenship-lab"));
     setIndex(0);
     setSelected("");
     setScore(0);

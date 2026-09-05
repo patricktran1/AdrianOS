@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { presentDeck } from "@/lib/learning/answer-order";
 import { pickFreshItems } from "@/lib/adrian-content-rotation";
 import { getDueReviewItems, readLearningForProfile, recordLearningAttempt } from "@/lib/adrian-learning";
 import { getActiveProfile } from "@/lib/adrian-profiles";
@@ -114,7 +115,7 @@ export default function MusicLabPage() {
     const reviews = reviewItems();
     const next = review && reviews.length ? reviews : normalItems();
     if (!next.length) return;
-    setSession(next); setIndex(0); setSelected(""); setLocked(false); setMissed(false); setReviewMode(review && reviews.length > 0); setPlaying(true); setFinished(false); setScore(0); setSolvedCards([]); setNewCards([]); setMessage("Press Hear it, then choose the best musical explanation.");
+    setSession(presentDeck(next, profileId, "music-lab")); setIndex(0); setSelected(""); setLocked(false); setMissed(false); setReviewMode(review && reviews.length > 0); setPlaying(true); setFinished(false); setScore(0); setSolvedCards([]); setNewCards([]); setMessage("Press Hear it, then choose the best musical explanation.");
     recordPlay("music-lab");
   }
 

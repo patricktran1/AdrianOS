@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { optionSeed, presentValues } from "@/lib/learning/answer-order";
 import { useAdrianProgress } from "@/lib/adrian-progress";
 import { getActiveProfile } from "@/lib/adrian-profiles";
 import { getDueReviewItems, recordLearningAttempt, type ReviewItem } from "@/lib/adrian-learning";
@@ -161,7 +162,7 @@ function makeProblem(topic: Topic, difficulty: number, random = Math.random): Pr
   };
 }
 
-function makeChoices(problem: Problem, random = Math.random): number[] {
+function makeChoices(problem: Problem, profileId: string, random = Math.random): number[] {
   const choices = new Set<number>([problem.answer]);
   const step = problem.money ? 5 : 1;
   const spread = problem.money ? 8 : Math.max(5, Math.ceil(problem.answer / 5));
@@ -170,7 +171,13 @@ function makeChoices(problem: Problem, random = Math.random): number[] {
     if (offset === 0) offset = spread;
     choices.add(Math.max(0, problem.answer + offset * step));
   }
-  return Array.from(choices).sort(() => random() - 0.5);
+  // The answer is inserted first, so the set preserves that order; a seeded
+  // permutation is what stops the first slot being the one worth tapping.
+  return presentValues(
+    Array.from(choices),
+    problem.answer,
+    optionSeed(profileId, GAME_SLUG, problemKey(problem))
+  );
 }
 
 function problemKey(problem: Problem) {
@@ -233,7 +240,7 @@ export default function MathBlastPage() {
   const profileId = profile.id;
   const dueReviews = getDueReviewItems(profileId, GAME_SLUG);
   const bestScore = progress.games[GAME_SLUG]?.bestScore ?? 0;
-  const choices = useMemo(() => makeChoices(problem), [problem]);
+  const choices = useMemo(() => makeChoices(problem, profileId), [problem, profileId]);
   const teaching = useMemo(() => arithmeticTeachingSupport(problem), [problem]);
   const targetQuestions = mode === "review"
     ? Math.max(1, reviewProblems.length)

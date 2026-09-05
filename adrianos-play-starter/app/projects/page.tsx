@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { optionSeed, presentOptions } from "@/lib/learning/answer-order";
 import { useEffect, useMemo, useState } from "react";
 import { useAdrianProgress } from "@/lib/adrian-progress";
 import { useFamilyProfiles } from "@/lib/adrian-profiles";
@@ -108,6 +109,11 @@ export default function ProjectsPage() {
 
   const currentProject = project;
   const currentTemplate = template;
+  const discoverOptions = presentOptions(
+    template.discover.options,
+    template.discover.answer,
+    optionSeed(activeProfile.id, "projects", `${template.id}:discover`)
+  );
 
   function selectProject(next: ProjectWork) {
     setProject(next);
@@ -361,7 +367,7 @@ export default function ProjectsPage() {
           <div style={factCard}>{template.discover.fact}</div>
           <h3 style={questionTitle}>{template.discover.question}</h3>
           <div style={optionGrid}>
-            {template.discover.options.map((option) => (
+            {discoverOptions.map((option) => (
               <button
                 key={option}
                 onClick={() => answerDiscovery(option)}

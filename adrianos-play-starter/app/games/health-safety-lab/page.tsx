@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { presentDeck } from "@/lib/learning/answer-order";
 import { pickFreshItems } from "@/lib/adrian-content-rotation";
 import {
   HEALTH_MISSIONS,
@@ -149,7 +150,7 @@ export default function HealthSafetyLabPage() {
     const reviews = reviewItems();
     const nextSession = useReview && reviews.length > 0 ? reviews : normalItems();
     if (nextSession.length === 0) return;
-    setSession(nextSession);
+    setSession(presentDeck(nextSession, profileId, "health-safety-lab"));
     setIndex(0);
     setSelected("");
     setScore(0);

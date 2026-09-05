@@ -1,6 +1,7 @@
 "use client";
 
 import { useAdrianProgress } from "@/lib/adrian-progress";
+import { shuffled } from "@/lib/adrian-content-rotation";
 import { getActiveProfile } from "@/lib/adrian-profiles";
 import {
   getDueReviewItems,
@@ -25,13 +26,9 @@ const THEMES: Record<Theme, string[]> = {
 const PAIRS: Record<Difficulty, number> = { Easy: 6, Classic: 8, Challenge: 10 };
 const PREVIEW_MS: Record<Difficulty, number> = { Easy: 2800, Classic: 2200, Challenge: 1600 };
 
-function shuffle<T>(items: T[]): T[] {
-  return [...items].sort(() => Math.random() - 0.5);
-}
-
 function makeDeck(theme: Theme, difficulty: Difficulty): Card[] {
-  const symbols = shuffle(THEMES[theme]).slice(0, PAIRS[difficulty]);
-  return shuffle([...symbols, ...symbols].map((symbol, id) => ({ id, symbol, matched: false })));
+  const symbols = shuffled(THEMES[theme]).slice(0, PAIRS[difficulty]);
+  return shuffled([...symbols, ...symbols].map((symbol, id) => ({ id, symbol, matched: false })));
 }
 
 function validTheme(value: unknown): value is Theme {
