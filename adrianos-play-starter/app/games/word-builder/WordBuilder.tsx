@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { shuffled } from "@/lib/adrian-content-rotation";
 import styles from "./word-builder.module.css";
 
 const WORDS = [
@@ -19,7 +20,7 @@ function shuffleWord(word: string): string[] {
   let attempts = 0;
 
   do {
-    letters = [...letters].sort(() => Math.random() - 0.5);
+    letters = shuffled(letters);
     attempts += 1;
   } while (letters.join("") === word && attempts < 10);
 

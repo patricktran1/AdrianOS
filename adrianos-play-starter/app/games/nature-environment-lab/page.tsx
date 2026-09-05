@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { presentDeck } from "@/lib/learning/answer-order";
 import { pickFreshItems } from "@/lib/adrian-content-rotation";
 import { getDueReviewItems, readLearningForProfile, recordLearningAttempt } from "@/lib/adrian-learning";
 import { getActiveProfile } from "@/lib/adrian-profiles";
@@ -97,7 +98,7 @@ export default function NatureEnvironmentLabPage() {
     const reviews = reviewItems();
     const next = useReview && reviews.length ? reviews : normalItems();
     if (!next.length) return;
-    setSession(next); setIndex(0); setSelected(""); setScore(0); setPlaying(true); setFinished(false); setLocked(false);
+    setSession(presentDeck(next, profileId, "nature-environment-lab")); setIndex(0); setSelected(""); setScore(0); setPlaying(true); setFinished(false); setLocked(false);
     setReviewMode(useReview && reviews.length > 0); setRecordedMiss(false); setMessage("Trace the relationships and choose the action supported by the evidence.");
     setNewTools([]); setSolvedToolIds([]); recordPlay("nature-environment-lab");
   }

@@ -64,6 +64,7 @@ const passes = [
       "lib/learning/deduce-evidence.ts",
       "lib/kernels/locate-tasks.ts",
       "lib/learning/locate-evidence.ts",
+      "lib/learning/answer-order.ts",
     ],
     lines: 97,
     functions: 92,

@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { optionSeed, presentItem } from "@/lib/learning/answer-order";
 import { useAdrianProgress } from "@/lib/adrian-progress";
 import { pickFreshItems } from "@/lib/adrian-content-rotation";
 import { getDueReviewItems, readLearningForProfile, recordLearningAttempt } from "@/lib/adrian-learning";
@@ -82,8 +83,16 @@ export default function ReadingLabPage() {
   const dueReviews = getDueReviewItems(profileId, "reading-lab");
   const currentItem = session[index] ?? null;
   const currentStory = currentItem ? readingStoryById(currentItem.storyId) : null;
-  const currentQuestion = currentStory && currentItem
+  const authoredQuestion = currentStory && currentItem
     ? readingQuestionById(currentStory, currentItem.questionId)
+    : null;
+  // The deck holds story/question references rather than the rows themselves,
+  // so presentation happens once the question has been resolved.
+  const currentQuestion = authoredQuestion && currentStory
+    ? presentItem(
+        authoredQuestion,
+        optionSeed(profileId, "reading-lab", `${currentStory.id}:${authoredQuestion.id}`)
+      )
     : null;
   const bestScore = progress.games["reading-lab"]?.bestScore ?? 0;
 

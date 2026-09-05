@@ -1,6 +1,8 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { presentDeck } from "@/lib/learning/answer-order";
+import { shuffled } from "@/lib/adrian-content-rotation";
 import { getActiveProfile } from "@/lib/adrian-profiles";
 import { useAdrianProgress } from "@/lib/adrian-progress";
 import { readLearningForProfile, recordLearningAttempt, writeLearningForProfile, type ReviewItem } from "@/lib/adrian-learning";
@@ -105,7 +107,7 @@ export default function ArtDesignLabPage() {
 
   function start() {
     const pool = MISSIONS.filter((mission) => mission.level === level);
-    setSession([...pool].sort(() => Math.random() - .5));
+    setSession(presentDeck(shuffled(pool), profileId, "art-design-lab"));
     setIndex(0); setSelected(""); setScore(0); setLocked(false); setMissed(false); setStage("quiz");
     setMessage("Look carefully. Choose the answer supported by the visual idea.");
     recordPlay("art-design-lab");

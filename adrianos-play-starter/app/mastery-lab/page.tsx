@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { optionSeed, presentIndexed } from "@/lib/learning/answer-order";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAdrianProgress } from "@/lib/adrian-progress";
@@ -55,10 +56,19 @@ export default function MasteryLabPage() {
     };
   }, [activeProfile.id, hydrated]);
 
-  const lesson = useMemo(
-    () => intervention ? masteryLessonFor(intervention) : null,
-    [intervention],
-  );
+  const lesson = useMemo(() => {
+    if (!intervention) return null;
+    const authored = masteryLessonFor(intervention);
+    // The phase is part of the seed on purpose: the understanding check and
+    // the memory check a day later ask the same question, and a child who
+    // remembers only where the button was has not remembered the answer.
+    const shown = presentIndexed(
+      authored.choices,
+      authored.answerIndex,
+      optionSeed(activeProfile.id, "mastery-lab", `${intervention.skillId}:${intervention.phase}`)
+    );
+    return { ...authored, choices: shown.choices, answerIndex: shown.answerIndex };
+  }, [intervention, activeProfile.id]);
 
   function begin() {
     if (!intervention) return;

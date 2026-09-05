@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { optionSeed, presentIndexed } from "@/lib/learning/answer-order";
 import { useAdrianProgress } from "@/lib/adrian-progress";
 import { SCIENCE_QUESTIONS, type ScienceQuestion, type ScienceTopic } from "@/lib/adrian-content-bank";
 import { pickFreshItems, shuffled } from "@/lib/adrian-content-rotation";
@@ -107,7 +108,16 @@ export default function ScienceQuestPage() {
         : normalQuestions();
     if (selected.length === 0) return;
 
-    setSession(selected);
+    // The bank stores the answer as an index, so presentation rewrites the
+    // index alongside the choices and every comparison below keeps working.
+    setSession(selected.map((question) => {
+      const shown = presentIndexed(
+        question.choices,
+        question.answer,
+        optionSeed(profileId, "science-quest", question.id)
+      );
+      return { ...question, choices: shown.choices, answer: shown.answerIndex };
+    }));
     setIndex(0);
     setScore(0);
     setStreak(0);

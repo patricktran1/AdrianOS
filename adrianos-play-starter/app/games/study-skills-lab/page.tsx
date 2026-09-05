@@ -1,6 +1,7 @@
 "use client";
 
 import GameFrame from "@/components/GameFrame";
+import { presentDeck } from "@/lib/learning/answer-order";
 import { pickFreshItems } from "@/lib/adrian-content-rotation";
 import { getDueReviewItems, readLearningForProfile, recordLearningAttempt } from "@/lib/adrian-learning";
 import { getActiveProfile } from "@/lib/adrian-profiles";
@@ -115,7 +116,7 @@ export default function StudySkillsLabPage() {
     const reviews = reviewItems();
     const nextSession = useReview && reviews.length > 0 ? reviews : normalItems();
     if (nextSession.length === 0) return;
-    setSession(nextSession);
+    setSession(presentDeck(nextSession, profileId, "study-skills-lab"));
     setIndex(0);
     setSelected("");
     setScore(0);
