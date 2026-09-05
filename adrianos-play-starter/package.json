@@ -27,8 +27,8 @@
     "check:answer-order": "node scripts/check-answer-order.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.0.0",
-    "next": "^16.2.0",
+    "@supabase/supabase-js": "^2.112.4",
+    "next": "^16.3.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
