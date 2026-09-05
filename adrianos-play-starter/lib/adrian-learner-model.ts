@@ -935,6 +935,9 @@ const SKILL_PREREQUISITES = new Map<string, string>([
   // Capitals and full stops are properties of a sentence, so a child who
   // cannot yet build one is not helped by being sent back to the marks.
   ["writing-conventions", "writing-sentences"],
+  // Organising several sentences rests on being able to build one; a child
+  // still assembling a single sentence is not helped by a paragraph.
+  ["writing-organization", "writing-sentences"],
 ]);
 
 export type NextActivity = {

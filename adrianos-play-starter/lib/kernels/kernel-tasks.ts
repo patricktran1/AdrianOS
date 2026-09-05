@@ -43,6 +43,7 @@ import {
   WRITING_SENTENCES,
   type WritingLevel,
 } from "../writing/sentence-bank.ts";
+import { WRITING_PARAGRAPHS } from "../writing/paragraph-bank.ts";
 
 export type KernelVerb = "build" | "place";
 
@@ -101,6 +102,17 @@ export type KernelTask = {
     right: number;
   } | null;
 };
+
+/**
+ * A label longer than this is words, not a value.
+ *
+ * The tray was built for "47" and "3 x 4" — a 64px square with an emoji above
+ * centred text. Sentence-length pieces need a stacked, left-aligned layout
+ * instead, and the surface decides which to use by measuring the task's own
+ * labels against this. Kept here, beside the parts it describes, so the
+ * surface and the test that guards it cannot drift apart.
+ */
+export const LONG_LABEL_CHARS = 24;
 
 export type KernelJudgement = {
   correct: boolean;
@@ -681,6 +693,54 @@ function placeWritingSentence(
   };
 }
 
+/**
+ * Put a paragraph's sentences back in the order it was written in.
+ *
+ * The pieces are whole sentences rather than words, which is the difference
+ * between building one sentence and organising several: nothing here can be
+ * settled by grammar alone. A child has to follow what each sentence points
+ * back to — a pronoun, "that dent", "those drops" — or the time and cause
+ * words that say which step came first.
+ *
+ * Every paragraph in the bank has exactly one ordering that reads correctly.
+ * That is the property the whole task rests on, and it is enforced by test
+ * rather than assumed, because a paragraph with two right answers marks a
+ * child wrong for organising it perfectly well.
+ */
+function placeWritingParagraph(input: TaskInput): KernelTask {
+  const level = writingLevelFor(input.grade, input.difficultyShift);
+  const pool = WRITING_PARAGRAPHS.filter((row) => row.level === level);
+  const chosen = seededShuffle(pool, `${input.seed}:writing-paragraph`)[0]
+    ?? WRITING_PARAGRAPHS[0];
+
+  const parts: KernelPart[] = chosen.sentences.map((text, index) => ({
+    id: `p-${index}`,
+    label: text,
+    emoji: "📄",
+    value: index,
+  }));
+
+  return {
+    id: `place-writing-organization-${chosen.id}`,
+    verb: "place",
+    skillId: "writing-organization",
+    skillLabel: "Organizing a paragraph",
+    subject: "Reading",
+    standardCode: input.grade <= 1 ? "W.1.3" : input.grade <= 3 ? "W.3.2" : "W.5.2",
+    prompt: `Put ${chosen.title} back in the order it was written.`,
+    hint: "Find the sentence that starts the story. Then look for the words that point back to it.",
+    explanation: `It reads: ${chosen.sentences.join(" ")}`,
+    tray: seededShuffle(parts, `${input.seed}:paragraph-tray`),
+    slots: parts.length,
+    targetIds: parts.map((part) => part.id),
+    targetValue: 0,
+    format: "integer",
+    denominator: 0,
+    targetLabel: chosen.sentences.join(" "),
+    operation: null,
+  };
+}
+
 function distinctResults(
   make: () => Expression,
   count: number,
@@ -1076,6 +1136,7 @@ export const KERNEL_SKILLS: Record<KernelVerb, string[]> = {
     "math-decimals",
     "writing-sentences",
     "writing-conventions",
+    "writing-organization",
     "reading-sequencing",
     "science-life-cycles",
   ],
@@ -1118,6 +1179,7 @@ const PLACE_GENERATORS = new Map<string, KernelGenerator>([
   ["math-division", placeDivision],
   ["writing-sentences", placeWritingSentence],
   ["writing-conventions", (input) => placeWritingSentence(input, "writing-conventions")],
+  ["writing-organization", placeWritingParagraph],
   ["reading-sequencing", (input) => placeSequence(input, "reading-sequencing")],
   ["science-life-cycles", (input) => placeSequence(input, "science-life-cycles")],
 ]);

@@ -34,6 +34,7 @@ import {
   buildKernelRun,
   judgeKernelAnswer,
   KERNEL_RUN_LENGTH,
+  LONG_LABEL_CHARS,
   type KernelPart,
   type KernelTask,
   resolveKernelSkill,
@@ -185,6 +186,12 @@ export default function KernelPlayground({ verb }: { verb: KernelVerb }) {
   }, [adaptation.scaffold, started, finished, round, task?.id]);
 
   const chosenIds = useMemo(() => new Set(chosen.map((part) => part.id)), [chosen]);
+  // Read off the task rather than the skill, so any future generator whose
+  // pieces are sentences gets the readable layout without being listed here.
+  const longLabels = useMemo(
+    () => (task?.tray ?? []).some((part) => part.label.length > LONG_LABEL_CHARS),
+    [task]
+  );
   const done = solved || revealed;
   const canCheck = task
     ? !done
@@ -369,21 +376,21 @@ export default function KernelPlayground({ verb }: { verb: KernelVerb }) {
           <div aria-label={theme.boxLabel} data-testid="kernel-box" style={boxOuter}>
             <span style={boxTitle}>{theme.boxLabel}</span>
             {task.verb === "place" ? (
-              <div style={slotRow}>
+              <div style={longLabels ? slotColumn : slotRow}>
                 {Array.from({ length: task.slots }, (_, index) => {
                   const part = chosen[index];
                   return (
                     <span
                       key={index}
                       style={{
-                        ...slotStyle,
+                        ...(longLabels ? slotLine : slotStyle),
                         borderColor: part ? theme.accent : "rgba(255,255,255,.22)",
                       }}
                     >
                       {part ? (
                         <>
-                          <span style={slotEmoji}>{part.emoji}</span>
-                          <span style={slotLabel}>{part.label}</span>
+                          {longLabels ? null : <span style={slotEmoji}>{part.emoji}</span>}
+                          <span style={longLabels ? partSentence : slotLabel}>{part.label}</span>
                         </>
                       ) : (
                         <span style={slotIndex}>{index + 1}</span>
@@ -408,7 +415,11 @@ export default function KernelPlayground({ verb }: { verb: KernelVerb }) {
             )}
           </div>
 
-          <div data-testid="kernel-tray" style={trayGrid}>
+          <div
+            data-testid="kernel-tray"
+            data-long-labels={longLabels ? "true" : "false"}
+            style={longLabels ? trayColumn : trayGrid}
+          >
             {task.tray.map((part) => (
               <button
                 key={part.id}
@@ -416,12 +427,12 @@ export default function KernelPlayground({ verb }: { verb: KernelVerb }) {
                 onClick={() => tap(part)}
                 disabled={done || chosenIds.has(part.id)}
                 style={{
-                  ...partButton,
+                  ...(longLabels ? partRow : partButton),
                   opacity: chosenIds.has(part.id) ? 0.25 : 1,
                 }}
               >
-                <span style={partEmoji}>{part.emoji}</span>
-                <span style={partLabel}>{part.label}</span>
+                {longLabels ? null : <span style={partEmoji}>{part.emoji}</span>}
+                <span style={longLabels ? partSentence : partLabel}>{part.label}</span>
               </button>
             ))}
           </div>
@@ -476,6 +487,20 @@ const boxTitle: React.CSSProperties = { display: "block", fontSize: 11, fontWeig
 const slotRow: React.CSSProperties = { display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 8 };
 const slotStyle: React.CSSProperties = { minWidth: 72, minHeight: 72, padding: "6px 10px", display: "grid", placeItems: "center", gap: 2, borderRadius: 16, border: "3px solid", background: "#181e2b" };
 const slotEmoji: React.CSSProperties = { fontSize: 24, lineHeight: 1 };
+/*
+ * Sentence-shaped tiles.
+ *
+ * The tray was built for "47" and "3 x 4": a 64px square with an emoji above
+ * a centred word. A whole sentence in that box wraps into an unreadable
+ * column, so when a task's own labels are long the tray and the slots become
+ * stacked full-width lines instead — left-aligned, no emoji competing with
+ * the words, and tall enough to read at a glance.
+ */
+const trayColumn: React.CSSProperties = { display: "grid", gap: 8, margin: "6px 0 4px" };
+const slotColumn: React.CSSProperties = { display: "grid", gap: 8 };
+const partRow: React.CSSProperties = { width: "100%", minHeight: 52, padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(255,255,255,.16)", background: "#222936", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", textAlign: "left" };
+const slotLine: React.CSSProperties = { width: "100%", minHeight: 52, padding: "12px 14px", borderRadius: 14, border: "3px solid", background: "#181e2b", display: "flex", alignItems: "center", textAlign: "left" };
+const partSentence: React.CSSProperties = { fontSize: 15, fontWeight: 700, lineHeight: 1.45, textAlign: "left" };
 const slotLabel: React.CSSProperties = { fontSize: 14, fontWeight: 950 };
 const slotIndex: React.CSSProperties = { fontSize: 22, fontWeight: 950, color: "#3b4354" };
 const buildBox: React.CSSProperties = { minHeight: 84, display: "flex", justifyContent: "center", alignItems: "center", flexWrap: "wrap", gap: 8, padding: 6 };
