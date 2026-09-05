@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { seedQaFamily } from "./helpers/seed-family";
 import { buildDeduceRun, type DeduceTask } from "../../lib/kernels/deduce-tasks";
-import { rulingConstraint } from "../../lib/kernels/deduce-constraints";
+import { rulingConstraint, satisfies } from "../../lib/kernels/deduce-constraints";
 import { buildLearnerModel, chooseLearningIntent } from "../../lib/adrian-learner-model";
 
 const PROFILE_ID = "qa-learner";
@@ -23,14 +23,29 @@ async function startHunt(page: Page, query = "") {
   await page.getByRole("button", { name: /Start the hunt/ }).click();
 }
 
-/** Reveals every clue, then crosses out exactly what the clues exclude. */
+/**
+ * Crossing a card out is two taps: the card, then the clue that rules it out.
+ * A tap on a card asks a question and answers nothing, which is what stops a
+ * child reading the answer off the surface's replies.
+ */
+async function strike(page: Page, task: DeduceTask, candidateId: string, clueIndex: number) {
+  await page.locator(`[data-candidate-id="${candidateId}"]`).click();
+  await page.getByTestId(`deduce-clue-${clueIndex}`).click();
+}
+
+/** The clue that actually rules a card out, or -1. */
+function rulingIndex(task: DeduceTask, candidate: DeduceTask["candidates"][number]) {
+  return task.clues.findIndex((clue) => !satisfies(candidate, clue, task.candidates));
+}
+
+/** Reveals every clue, then crosses out each card under the clue that rules it out. */
 async function reasonItOut(page: Page, task: DeduceTask) {
   const more = page.getByTestId("deduce-more-clues");
   while (await more.isVisible().catch(() => false)) await more.click();
   for (const candidate of task.candidates) {
     if (candidate.id === task.solutionId) continue;
     if (rulingConstraint(candidate, task.clues, task.candidates)) {
-      await page.locator(`[data-candidate-id="${candidate.id}"]`).click();
+      await strike(page, task, candidate.id, rulingIndex(task, candidate));
     }
   }
 }
@@ -130,10 +145,12 @@ test.describe("Clue Hollow", () => {
     await startHunt(page, "?skill=math-place-value");
     const task = deduceRun(2, "math-place-value")[0];
 
-    // No extra clues asked for; simply cross out everything but the answer.
+    // No extra clues asked for; cross out everything but the answer, naming
+    // clue 1 for all of them rather than reading which one actually rules
+    // each card out.
     for (const candidate of task.candidates) {
       if (candidate.id === task.solutionId) continue;
-      await page.locator(`[data-candidate-id="${candidate.id}"]`).click();
+      await strike(page, task, candidate.id, 0);
     }
     await page.getByTestId("deduce-claim").click();
 
@@ -148,7 +165,7 @@ test.describe("Clue Hollow", () => {
     const task = deduceRun(2, "math-place-value")[0];
 
     for (const candidate of task.candidates) {
-      await page.locator(`[data-candidate-id="${candidate.id}"]`).click();
+      await strike(page, task, candidate.id, 0);
     }
     await expect(page.getByTestId("deduce-claim")).toBeDisabled();
     await expect(page.getByTestId("deduce-claim")).toContainText("0 could still be it");
@@ -161,7 +178,7 @@ test.describe("Clue Hollow", () => {
     const task = deduceRun(2, "math-place-value")[0];
     const answer = page.locator(`[data-candidate-id="${task.solutionId}"]`);
 
-    await answer.click();
+    await strike(page, task, task.solutionId, 0);
     await expect(answer).toHaveAttribute("data-ruled-out", "true");
     await answer.click();
     await expect(answer).toHaveAttribute("data-ruled-out", "false");
@@ -187,11 +204,74 @@ test.describe("Clue Hollow", () => {
     expect((await readEvidence(page)).length).toBe(1);
   });
 
+  /*
+   * The strategy that beat the shipped verb, played out.
+   *
+   * The old surface answered every tap: "Hmm — no clue says it can't be that
+   * one yet" for a card nothing ruled out, "Good spot" for one that was. So a
+   * child could reveal every clue, tap each card in turn, and read the answer
+   * off the replies — 100% correct and 100% recorded as reasoning over 40,320
+   * puzzles, against 26% for guessing. Tapping a card back also erased the
+   * record of having tried it.
+   *
+   * A tap now asks a question instead of answering one, so the probe returns
+   * nothing to learn from.
+   */
+  test("tapping every card tells the child nothing about which is the answer", async ({ page }) => {
+    await seedQaFamily(page, { clear: true, grade: 2 });
+    await startHunt(page, "?skill=math-place-value");
+    const task = deduceRun(2, "math-place-value")[0];
+    const more = page.getByTestId("deduce-more-clues");
+    while (await more.isVisible().catch(() => false)) await more.click();
+
+    const said: string[] = [];
+    for (const candidate of task.candidates) {
+      const card = page.locator(`[data-candidate-id="${candidate.id}"]`);
+      await card.click();
+      said.push((await page.getByTestId("deduce-message").innerText()).trim());
+      await card.click(); // take the question back
+    }
+
+    // Every card produced the same shape of reply — the child's own words
+    // handed back. Nothing separates the answer from the rest.
+    const shapes = said.map((line) => line.replace(/it can't be .*$/, "it can't be X"));
+    expect(new Set(shapes).size).toBe(1);
+    // And nothing was recorded, because nothing was claimed.
+    expect((await readEvidence(page)).length).toBe(0);
+  });
+
+  /*
+   * The other half: even with the answer known, a child who cannot say which
+   * clue rules each card out is not recorded as having reasoned.
+   */
+  test("knowing the answer is not the same as being able to say why", async ({ page }) => {
+    await seedQaFamily(page, { clear: true, grade: 2 });
+    await startHunt(page, "?skill=math-place-value");
+    const task = deduceRun(2, "math-place-value")[0];
+    const more = page.getByTestId("deduce-more-clues");
+    while (await more.isVisible().catch(() => false)) await more.click();
+
+    // Spare the right card — but name a clue that does not rule out the card
+    // being crossed, wherever such a clue exists.
+    for (const candidate of task.candidates) {
+      if (candidate.id === task.solutionId) continue;
+      const wrong = task.clues.findIndex((clue) => satisfies(candidate, clue, task.candidates));
+      await strike(page, task, candidate.id, wrong >= 0 ? wrong : rulingIndex(task, candidate));
+    }
+    await page.getByTestId("deduce-claim").click();
+
+    const rows = await readEvidence(page);
+    expect(rows[0].correct).toBe(true);
+    // The evidence log keeps a fixed set of fields and drops everything else,
+    // so what the model sees of this is exactly one thing: not reasoned.
+    expect(rows[0].reasoned).toBe(false);
+  });
+
   test("a refresh mid-mystery does not leave a half-recorded attempt", async ({ page }) => {
     await seedQaFamily(page, { clear: true, grade: 2 });
     await startHunt(page, "?skill=math-place-value");
     const task = deduceRun(2, "math-place-value")[0];
-    await page.locator(`[data-candidate-id="${task.candidates[0].id}"]`).click();
+    await strike(page, task, task.candidates[0].id, 0);
     await page.reload({ waitUntil: "domcontentloaded" });
     // Nothing was claimed, so nothing was recorded.
     expect((await readEvidence(page)).length).toBe(0);
@@ -206,9 +286,14 @@ test.describe("Clue Hollow", () => {
     await expect(first).toContainText(/could be/i);
     await expect(first).toHaveAttribute("aria-pressed", "false");
     await first.click();
+    // Waiting for its clue, and the card says so rather than only glowing.
+    await expect(first).toContainText(/which clue/i);
+    await page.getByTestId("deduce-clue-0").click();
     // Text, ARIA state and a data attribute all carry it — not just a tint.
-    await expect(first).toContainText(/ruled out/i);
+    // The card wears the clue the child named, so a wrong reason stays visible.
+    await expect(first).toContainText(/clue 1/i);
     await expect(first).toHaveAttribute("aria-pressed", "true");
+    await expect(first).toHaveAttribute("data-struck-by", "0");
   });
 
   test("a keyboard-only child under reduced motion can solve a mystery", async ({ browser }) => {
@@ -229,6 +314,8 @@ test.describe("Clue Hollow", () => {
       if (candidate.id === task.solutionId) continue;
       if (rulingConstraint(candidate, task.clues, task.candidates)) {
         await page.locator(`[data-candidate-id="${candidate.id}"]`).focus();
+        await page.keyboard.press("Enter");
+        await page.getByTestId(`deduce-clue-${rulingIndex(task, candidate)}`).focus();
         await page.keyboard.press("Enter");
       }
     }

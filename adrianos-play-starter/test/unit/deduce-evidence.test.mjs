@@ -5,7 +5,8 @@ import {
   isCleanDeduction,
   isComparisonReversal,
 } from "../../lib/learning/deduce-evidence.ts";
-import { buildDeduceRun } from "../../lib/kernels/deduce-tasks.ts";
+import { buildDeduceRun, DEDUCE_SKILLS, strikeLine } from "../../lib/kernels/deduce-tasks.ts";
+import { rulingConstraint, satisfies } from "../../lib/kernels/deduce-constraints.ts";
 import { describeSignature, isKnownSignature } from "../../lib/learning/error-signatures.ts";
 import {
   buildLearnerModel,
@@ -15,7 +16,7 @@ import {
 } from "../../lib/adrian-learner-model.ts";
 import { distinctCategories, mechanicCategory } from "../../lib/kernels/kernel-registry.ts";
 
-const CLEAN = { unjustifiedEliminations: 0, restored: 0, misappliedKinds: [] };
+const CLEAN = { unjustifiedEliminations: 0, misattributedStrikes: 0, restored: 0, misappliedKinds: [] };
 
 function numberTask() {
   return {
@@ -57,7 +58,7 @@ test("working the clues and landing on the answer are told apart", () => {
     correct: true,
     revealedCount: 2,
     cluesNeeded: 2,
-    trace: { unjustifiedEliminations: 2, restored: 0, misappliedKinds: [] },
+    trace: { unjustifiedEliminations: 2, misattributedStrikes: 0, restored: 0, misappliedKinds: [] },
   });
   assert.equal(swept, false, "clearing the board is not reasoning");
 
@@ -77,7 +78,7 @@ test("an uncorrected unsupported cross-out still counts against the solve", () =
       correct: true,
       revealedCount: 2,
       cluesNeeded: 2,
-      trace: { unjustifiedEliminations: 1, restored: 3, misappliedKinds: [] },
+      trace: { unjustifiedEliminations: 1, misattributedStrikes: 0, restored: 3, misappliedKinds: [] },
     }),
     false
   );
@@ -89,7 +90,7 @@ test("correcting yourself is not held against you", () => {
     correct: true,
     revealedCount: 2,
     cluesNeeded: 2,
-    trace: { unjustifiedEliminations: 0, restored: 2, misappliedKinds: [] },
+    trace: { unjustifiedEliminations: 0, misattributedStrikes: 0, restored: 2, misappliedKinds: [] },
   });
   assert.equal(recovered, true, "restoring a card is a correction, not a fault");
 });
@@ -177,7 +178,7 @@ test("deciding early and sweeping the board are separate observations", () => {
       task: swept,
       chosen: swept.candidates[0],
       revealedCount: 1,
-      trace: { unjustifiedEliminations: 1, restored: 0, misappliedKinds: [] },
+      trace: { unjustifiedEliminations: 1, misattributedStrikes: 0, restored: 0, misappliedKinds: [] },
     }),
     "deduce.ruled-out-without-a-reason"
   );
@@ -432,4 +433,130 @@ test("legacy rows carry no reasoning claim", () => {
   // reasoned is null on every row, so the rule cannot penalise them.
   assert.ok(model.skills[0].mechanics.some((row) => row.mechanic === "deduce"));
   assert.equal(model.skills[0].mechanics.find((row) => row.mechanic === "deduce").reasonedRate, 1);
+});
+
+/*
+ * Naming the clue, played out over the whole generated space.
+ *
+ * These replay agents against every puzzle the generators can produce, using
+ * exactly the rules the surface applies: a crossing is unjustified when no
+ * shown clue rules the card out, and misattributed when some clue does but
+ * not the one the child named.
+ *
+ * The point of the verb is that a right answer reached by guessing and a
+ * right answer reached by reasoning look different. Before naming the clue
+ * they did not: revealing every clue costs nothing, every puzzle needs its
+ * whole clue set, and at full reveal every card except the answer is ruled
+ * out by something — so sparing one card at random left a trace identical to
+ * a reasoner's on a quarter of puzzles, and an outright oracle read the
+ * answer off the surface's own replies on all of them.
+ */
+function playSpace(name, chooseSpared, nameClue) {
+  let puzzles = 0;
+  let reasoned = 0;
+  for (let profile = 0; profile < 12; profile += 1) {
+    for (const grade of [-1, 0, 1, 2, 3, 4, 5]) {
+      for (const skillId of DEDUCE_SKILLS) {
+        for (const task of buildDeduceRun({
+          profileId: `kid-${profile}`,
+          grade,
+          skillId,
+          difficultyShift: 0,
+          dayKey: "2026-09-05",
+        })) {
+          puzzles += 1;
+          const spared = chooseSpared(task, profile);
+          const crossed = task.candidates.filter((row) => row.id !== spared.id);
+          let unjustifiedEliminations = 0;
+          let misattributedStrikes = 0;
+          for (const [order, card] of crossed.entries()) {
+            const named = task.clues[nameClue(task, card, profile, order)];
+            if (!rulingConstraint(card, task.clues, task.candidates)) unjustifiedEliminations += 1;
+            else if (satisfies(card, named, task.candidates)) misattributedStrikes += 1;
+          }
+          if (isCleanDeduction({
+            correct: spared.id === task.solutionId,
+            revealedCount: task.clues.length,
+            cluesNeeded: task.cluesNeeded,
+            trace: { unjustifiedEliminations, misattributedStrikes, restored: 0, misappliedKinds: [] },
+          })) reasoned += 1;
+        }
+      }
+    }
+  }
+  return { name, puzzles, rate: reasoned / puzzles };
+}
+
+const solutionOf = (task) => task.candidates.find((row) => row.id === task.solutionId);
+const rulingClueIndex = (task, card) =>
+  task.clues.findIndex((clue) => !satisfies(card, clue, task.candidates));
+
+test("a child who names the ruling clue is always credited", () => {
+  const played = playSpace("honest", solutionOf, rulingClueIndex);
+  assert.equal(
+    played.rate,
+    1,
+    `reasoning correctly must always read as reasoning, got ${played.rate}`
+  );
+});
+
+test("a child who misnames a clue on every puzzle is not credited", () => {
+  // Wrong on the first card of every puzzle, right on the rest.
+  const played = playSpace("misnames one clue per puzzle", solutionOf, (task, card, _p, order) => {
+    if (order === 0) {
+      const wrong = task.clues.findIndex((clue) => satisfies(card, clue, task.candidates));
+      if (wrong >= 0) return wrong;
+    }
+    return rulingClueIndex(task, card);
+  });
+  // Forgiveness for a real slip lives a level up: a run is four puzzles and
+  // the model wants a reasoned rate of 0.6, so slipping on one still leaves
+  // 0.75. Measured over 16,800 runs, that child clears the bar every time.
+  // Slipping on *every* puzzle is a habit, and this is what says so.
+  assert.ok(
+    played.rate < 0.1,
+    `misnaming a clue every time must not read as reasoning, got ${played.rate}`
+  );
+});
+
+test("crossing out without reading the clues does not read as reasoning", () => {
+  const played = playSpace(
+    "blind",
+    (task, profile) => task.candidates[profile % task.candidates.length],
+    (task, _card, profile) => profile % task.clues.length
+  );
+  assert.ok(
+    played.rate < 0.1,
+    `blind play must not look like reasoning, got ${(played.rate * 100).toFixed(2)}%`
+  );
+});
+
+/*
+ * The structural fact the whole design rests on: no clue ever rules out the
+ * answer. It is why a child cannot cross out the solution and still show a
+ * clean trace, and why "spare a card at random" was worth a quarter of the
+ * puzzles before naming was required.
+ */
+test("no clue ever rules out the answer", () => {
+  for (let profile = 0; profile < 6; profile += 1) {
+    for (const grade of [-1, 0, 1, 2, 3, 4, 5]) {
+      for (const skillId of DEDUCE_SKILLS) {
+        for (const task of buildDeduceRun({
+          profileId: `kid-${profile}`, grade, skillId, difficultyShift: 0, dayKey: "2026-09-05",
+        })) {
+          assert.equal(
+            rulingConstraint(solutionOf(task), task.clues, task.candidates),
+            null,
+            `${task.id} has a clue that rules out its own answer`
+          );
+        }
+      }
+    }
+  }
+});
+
+/* The sentence a strike says cannot depend on whether the strike was right. */
+test("the strike sentence is built from the child's two choices and nothing else", () => {
+  assert.equal(strikeLine("I am more than 3.", "11"), "I am more than 3. 11 is out.");
+  assert.equal(strikeLine.length, 2);
 });

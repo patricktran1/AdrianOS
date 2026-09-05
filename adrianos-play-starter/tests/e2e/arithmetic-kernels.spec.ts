@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { seedQaFamily } from "./helpers/seed-family";
 import { buildKernelRun, type KernelTask } from "../../lib/kernels/kernel-tasks";
 import { buildDeduceRun } from "../../lib/kernels/deduce-tasks";
-import { rulingConstraint } from "../../lib/kernels/deduce-constraints";
+import { rulingConstraint, satisfies } from "../../lib/kernels/deduce-constraints";
 
 const PROFILE_ID = "qa-learner";
 const EVIDENCE_KEY = `adrianos-evidence-v1:${PROFILE_ID}`;
@@ -170,7 +170,12 @@ test.describe("arithmetic kernels", () => {
     for (const candidate of first.candidates) {
       if (candidate.id === first.solutionId) continue;
       if (rulingConstraint(candidate, first.clues, first.candidates)) {
+        // Crossing out is two taps: the card, then the clue that rules it out.
         await page.locator(`[data-candidate-id="${candidate.id}"]`).click();
+        const ruling = first.clues.findIndex(
+          (clue) => !satisfies(candidate, clue, first.candidates)
+        );
+        await page.getByTestId(`deduce-clue-${ruling}`).click();
       }
     }
     // Crossing cards out is not answering: the child claims the one left.
