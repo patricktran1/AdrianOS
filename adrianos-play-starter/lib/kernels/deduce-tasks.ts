@@ -95,6 +95,19 @@ const VOICE_SUBJECTS = new Map<DeduceVoice, { is: string; has: string }>([
   ["next", { is: "My next number is", has: "My next number has" }],
 ]);
 
+/**
+ * What the child hears when they cross a card out under a clue.
+ *
+ * It is handed the clue's words and the card's name and nothing else. It is
+ * not given the candidate, the constraint, or the field of candidates, so it
+ * *cannot* vary with whether the strike was justified. The verdict is not
+ * being withheld here — it is not computable from what this function knows,
+ * which is the point.
+ */
+export function strikeLine(clueText: string, label: string): string {
+  return `${clueText} ${label} is out.`;
+}
+
 export function describeClue(
   clue: DeduceConstraint,
   candidates: readonly DeduceCandidate[],
@@ -670,10 +683,25 @@ function deduceSequence(
   }));
 
   for (let attempt = 0; attempt < 24; attempt += 1) {
-    // Keep the stages in their natural order on screen: this is a deduction
-    // task, not a hidden ordering task.
+    // The stages used to stay in their natural order on screen, so that this
+    // read as a deduction task rather than a hidden ordering one. But the
+    // clues below are always "comes after the one before" and "comes before
+    // the one after", which puts the answer strictly inside the slice — and
+    // in natural order that is a position. Measured: with three cards the
+    // answer was the middle one on 100% of puzzles, which is every puzzle a
+    // TK or Kindergarten child sees, and with four it was one of the middle
+    // two. Tapping the middle card was a complete strategy.
+    //
+    // Every clue names an anchor card by id and compares `position`, never an
+    // array index, so presentation order is free to change and each clue
+    // still means exactly what it meant. It also asks the child for the
+    // sequence knowledge the skill is named after, instead of letting the
+    // row of cards supply it.
     const start = Math.floor(random() * Math.max(1, all.length - candidateCount + 1));
-    const candidates = all.slice(start, start + candidateCount);
+    const candidates = seededShuffle(
+      all.slice(start, start + candidateCount),
+      `${input.seed}:${skillId}:present:${attempt}`
+    );
     if (candidates.length < 3) continue;
     const target = candidates[Math.floor(random() * candidates.length)];
 

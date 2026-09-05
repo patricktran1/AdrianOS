@@ -43,10 +43,12 @@ import {
   DEDUCE_RUN_LENGTH,
   resolveDeduceSkill,
   type DeduceTask,
+  strikeLine,
 } from "@/lib/kernels/deduce-tasks";
 import {
   isRuledOut,
   rulingConstraint,
+  satisfies,
   type DeduceCandidate,
 } from "@/lib/kernels/deduce-constraints";
 import {
@@ -96,12 +98,26 @@ export default function DeducePlayground() {
 
   // The reasoning trace for the round in progress. A ref because it is
   // written from event handlers and must never trigger a re-render.
-  const trace = useRef<DeduceTrace>({ unjustifiedEliminations: 0, restored: 0, misappliedKinds: [] });
+  const trace = useRef<DeduceTrace>({
+    unjustifiedEliminations: 0,
+    misattributedStrikes: 0,
+    restored: 0,
+    misappliedKinds: [],
+  });
   // Which cards are *currently* crossed out without a clue supporting it.
   // Held separately so that correcting a hasty cross-out clears it: the
   // action is still recorded, but a child who thinks again and fixes it has
   // reasoned their way to the answer.
   const unsupported = useRef<Set<string>>(new Set());
+  // Cards currently crossed out under a clue that does not rule them out.
+  // Some other shown clue does — the card belongs out, the reason was wrong.
+  const misattributed = useRef<Set<string>>(new Set());
+  // Which clue the child said rules each crossed-out card out. A Map because
+  // the keys are candidate ids and ids are content.
+  const [strikeClue, setStrikeClue] = useState<Map<string, number>>(new Map());
+  // The card waiting for its clue. Tapping a card asks a question; the
+  // question is answered by tapping a clue.
+  const [pending, setPending] = useState<string | null>(null);
   const claimGuard = useRef(false);
 
   useEffect(() => {
@@ -142,10 +158,18 @@ export default function DeducePlayground() {
     setRuledOut([]);
     setMisses(0);
     setSolved(false);
-    trace.current = { unjustifiedEliminations: 0, restored: 0, misappliedKinds: [] };
+    trace.current = {
+      unjustifiedEliminations: 0,
+      misattributedStrikes: 0,
+      restored: 0,
+      misappliedKinds: [],
+    };
     unsupported.current = new Set();
+    misattributed.current = new Set();
+    setStrikeClue(new Map());
+    setPending(null);
     claimGuard.current = false;
-    setMessage("Read the clue. Cross out the ones it cannot be.");
+    setMessage("Tap a card, then tap the clue that says it cannot be that one.");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started, finished, round, task?.id, adaptation.scaffold]);
 
@@ -157,6 +181,10 @@ export default function DeducePlayground() {
     () => (task ? task.candidates.filter((row) => !ruledOut.includes(row.id)) : []),
     [task, ruledOut]
   );
+  const pendingLabel = useMemo(
+    () => task?.candidates.find((row) => row.id === pending)?.label ?? "",
+    [task, pending]
+  );
 
   // Claiming is possible only when the child's own work has narrowed the
   // field to one. This is what stops "cross out everything" being a route
@@ -164,33 +192,103 @@ export default function DeducePlayground() {
   const canClaim = standing.length === 1 && !solved;
   const moreClues = task ? revealed < task.clues.length : false;
 
-  function toggleCard(candidate: DeduceCandidate) {
+  /**
+   * Tapping a card asks a question. It does not answer one.
+   *
+   * The old surface evaluated the clues on every tap and said so — "Hmm, no
+   * clue says it can't be that one yet" for a card nothing ruled out, "Good
+   * spot" for one that was. That is a free bit of ground truth per tap on a
+   * three-to-five card board, so a child could reveal every clue, tap every
+   * card, and read the answer off the replies without doing any reasoning:
+   * 100% correct and 100% recorded as reasoned, measured over 40,320 puzzles.
+   *
+   * So a tap now lifts the card and asks which clue rules it out. Nothing
+   * here consults the clues; `rulingConstraint` is unreachable from this
+   * handler, which is the property the contract check defends.
+   */
+  function tapCard(candidate: DeduceCandidate) {
     if (!task || solved) return;
     if (ruledOut.includes(candidate.id)) {
-      // Bringing a card back is a legitimate correction, not a failure.
-      trace.current.restored += 1;
-      unsupported.current.delete(candidate.id);
-      trace.current.unjustifiedEliminations = unsupported.current.size;
-      setRuledOut((value) => value.filter((id) => id !== candidate.id));
-      setMessage(`${candidate.label} is back in the hunt.`);
+      restoreCard(candidate);
       return;
     }
-    const ruling = rulingConstraint(candidate, revealedClues, task.candidates);
-    if (!ruling) {
-      // Nothing revealed so far contradicts this card. The move is allowed —
-      // children are entitled to explore — but it is recorded honestly.
+    if (pending === candidate.id) {
+      // Asked and thought better of it. Nothing was claimed, so nothing is
+      // recorded.
+      setPending(null);
+      setMessage("Tap a card, then tap the clue that says it cannot be that one.");
+      return;
+    }
+    setPending(candidate.id);
+    const question = `Which clue says it can't be ${candidate.label}?`;
+    setMessage(question);
+    speak(question);
+  }
+
+  /**
+   * The child names the clue, and the card goes out under it.
+   *
+   * This is the only place in the surface where the clues are checked against
+   * a card, and what it computes never reaches the screen: the sentence the
+   * child hears is built from the clue they chose and the card they chose, so
+   * it reads the same whether or not the strike was justified.
+   */
+  function useClue(clueIndex: number) {
+    if (!task || solved || pending === null) return;
+    const candidate = task.candidates.find((row) => row.id === pending);
+    if (!candidate) return;
+    const named = task.clues[clueIndex];
+    if (!named) return;
+
+    // Recorded, never spoken.
+    if (!rulingConstraint(candidate, revealedClues, task.candidates)) {
+      // No clue on screen rules this card out at all.
       unsupported.current.add(candidate.id);
-      trace.current.unjustifiedEliminations = unsupported.current.size;
       for (const clue of revealedClues) {
         if (!trace.current.misappliedKinds.includes(clue.kind)) {
           trace.current.misappliedKinds.push(clue.kind);
         }
       }
-      setMessage("Hmm — no clue says it can't be that one yet.");
-    } else {
-      setMessage(`Good spot. ${describeClue(ruling, task.candidates, task.voice)}`);
+    } else if (satisfies(candidate, named, task.candidates)) {
+      // Something rules it out, but not the clue the child named.
+      misattributed.current.add(candidate.id);
+      if (!trace.current.misappliedKinds.includes(named.kind)) {
+        trace.current.misappliedKinds.push(named.kind);
+      }
     }
+    trace.current.unjustifiedEliminations = unsupported.current.size;
+    trace.current.misattributedStrikes = misattributed.current.size;
+
+    setStrikeClue((value) => new Map(value).set(candidate.id, clueIndex));
     setRuledOut((value) => [...value, candidate.id]);
+    setPending(null);
+    const line = strikeLine(describeClue(named, task.candidates, task.voice), candidate.label);
+    setMessage(line);
+    speak(line);
+  }
+
+  /**
+   * Bringing a card back is a legitimate correction, not a failure — and now
+   * that a tap answers nothing, that is true rather than aspirational. There
+   * is no verdict to take back, so a child who crosses out, thinks again and
+   * restores has given away nothing and learned nothing they had not worked
+   * out themselves.
+   */
+  function restoreCard(candidate: DeduceCandidate) {
+    if (!task || solved) return;
+    trace.current.restored += 1;
+    unsupported.current.delete(candidate.id);
+    misattributed.current.delete(candidate.id);
+    trace.current.unjustifiedEliminations = unsupported.current.size;
+    trace.current.misattributedStrikes = misattributed.current.size;
+    setStrikeClue((value) => {
+      const next = new Map(value);
+      next.delete(candidate.id);
+      return next;
+    });
+    setRuledOut((value) => value.filter((id) => id !== candidate.id));
+    setPending(null);
+    setMessage(`${candidate.label} is back in the hunt.`);
   }
 
   function revealNext() {
@@ -246,23 +344,29 @@ export default function DeducePlayground() {
           cluesRevealed: revealed,
           cluesNeeded: task.cluesNeeded,
           unjustifiedEliminations: trace.current.unjustifiedEliminations,
+          misattributedStrikes: trace.current.misattributedStrikes,
         },
       },
       activeProfile.id
     );
 
     if (correct) {
-      const clean = revealed >= task.cluesNeeded && trace.current.unjustifiedEliminations === 0;
-      setSparks((value) => value + (clean && misses === 0 ? 3 : 1));
+      // Sparks and the closing line read only what the child watched happen —
+      // whether they got there first try. They used to read `clean`, which is
+      // the recorded judgement spoken aloud, and a judgement a child can hear
+      // is a judgement a child can farm by replaying the round.
+      setSparks((value) => value + (misses === 0 ? 3 : 1));
       setSolved(true);
       setMessage(
-        clean ? "Solved! Every clue fits." : "That's the one! Let's check the clues together."
+        misses === 0 ? "Solved! That's the one." : "That's the one. Let's read the clues together."
       );
     } else if (misses === 0) {
       setMisses(1);
       setRuledOut([]);
-      unsupported.current = new Set();
-      trace.current.unjustifiedEliminations = 0;
+      setStrikeClue(new Map());
+      setPending(null);
+      // The board resets for a second try. The trace does not: it is the same
+      // mystery, and crossings already made were still made.
       claimGuard.current = false;
       setMessage(
         stillContradicted
@@ -372,11 +476,22 @@ export default function DeducePlayground() {
                   <span aria-hidden="true" style={{ fontSize: 20 }}>🔦</span>
                   <span style={{ flex: 1, textAlign: "left" }}>{text}</span>
                   <button
-                    onClick={() => speak(text)}
-                    aria-label={`Hear clue ${index + 1}`}
-                    style={speakButton}
+                    onClick={() => (pending ? useClue(index) : speak(text))}
+                    data-testid={`deduce-clue-${index}`}
+                    data-armed={pending ? "true" : "false"}
+                    aria-label={
+                      pending
+                        ? `Use clue ${index + 1} on ${pendingLabel}`
+                        : `Hear clue ${index + 1}`
+                    }
+                    style={{
+                      ...speakButton,
+                      // A clue waiting to be chosen is lit. Never colour
+                      // alone: the label says which job the button is doing.
+                      borderColor: pending ? ACCENT : "rgba(255,255,255,.14)",
+                    }}
                   >
-                    🔊
+                    {pending ? "👉" : "🔊"}
                   </button>
                 </li>
               );
@@ -394,29 +509,42 @@ export default function DeducePlayground() {
           <div style={grid} data-testid="deduce-candidates">
             {task.candidates.map((candidate) => {
               const out = ruledOut.includes(candidate.id);
+              const named = strikeClue.get(candidate.id);
+              const waiting = pending === candidate.id;
               return (
                 <button
                   key={candidate.id}
                   data-candidate-id={candidate.id}
                   data-ruled-out={out ? "true" : "false"}
+                  data-struck-by={named === undefined ? "" : String(named)}
+                  data-pending={waiting ? "true" : "false"}
                   aria-pressed={out}
                   aria-label={
                     out
-                      ? `${candidate.label}, crossed out. Tap to bring back.`
-                      : `${candidate.label}, still possible. Tap to cross out.`
+                      ? `${candidate.label}, crossed out by clue ${(named ?? 0) + 1}. Tap to bring back.`
+                      : waiting
+                        ? `${candidate.label}, waiting for a clue. Tap a clue, or tap again to cancel.`
+                        : `${candidate.label}, still possible. Tap to cross out.`
                   }
-                  onClick={() => toggleCard(candidate)}
+                  onClick={() => tapCard(candidate)}
                   disabled={solved}
                   style={{
                     ...candidateCard,
-                    borderColor: out ? "#3a4a3f" : ACCENT,
+                    borderColor: out ? "#3a4a3f" : waiting ? "#ffd45f" : ACCENT,
                     opacity: out ? 0.45 : 1,
                   }}
                 >
                   <span style={{ fontSize: 30, lineHeight: 1 }}>{candidate.emoji}</span>
                   <span style={candidateLabel}>{candidate.label}</span>
-                  {/* State is never colour alone: crossed-out cards say so. */}
-                  <span style={candidateState}>{out ? "✕ ruled out" : "could be"}</span>
+                  {/*
+                    State is never colour alone. A crossed-out card wears the
+                    clue the child named, so a wrong reason stays visible to
+                    them and to the adult beside them — without the surface
+                    ever saying whether it was the right one.
+                  */}
+                  <span style={candidateState}>
+                    {out ? `✕ clue ${(named ?? 0) + 1}` : waiting ? "which clue?" : "could be"}
+                  </span>
                 </button>
               );
             })}
@@ -435,7 +563,7 @@ export default function DeducePlayground() {
 
           <div role="status" style={teaching}>
             <strong>{misses === 0 ? "HOLLOW GUIDE" : "HELPER"}</strong>
-            <p style={{ margin: "6px 0 0" }}>{message}</p>
+            <p style={{ margin: "6px 0 0" }} data-testid="deduce-message">{message}</p>
             {solved && (
               <button onClick={advance} data-testid="deduce-advance" style={{ ...primary, background: ACCENT, marginTop: 12 }}>
                 {round >= run.length - 1 ? "Finish →" : "Next mystery →"}
