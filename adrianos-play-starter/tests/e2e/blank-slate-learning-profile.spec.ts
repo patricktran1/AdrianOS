@@ -67,7 +67,13 @@ test.describe("privacy-first family onboarding", () => {
     await expect(page.getByText("Science", { exact: true })).toBeVisible();
     await expect(page.getByText("18").first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Find the right starting point" })).toBeVisible();
-    await expect(page.getByText(/about 18 minutes/)).toBeVisible();
+    // The parent asked for 18 minutes, but the default schedule makes Saturday
+    // a light day and Sunday a free one, and both cap the session at 8. This
+    // assertion used to hardcode 18 and so failed every weekend; it now asks
+    // for whatever the schedule actually promises today.
+    const weekday = new Date().getDay() >= 1 && new Date().getDay() <= 5;
+    const promisedMinutes = weekday ? 18 : 8;
+    await expect(page.getByText(new RegExp(`about ${promisedMinutes} minutes`))).toBeVisible();
 
     const saved = await page.evaluate(() => {
       const family = JSON.parse(window.localStorage.getItem("adrianos-family-v1") ?? "{}");
